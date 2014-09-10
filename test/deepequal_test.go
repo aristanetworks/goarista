@@ -259,6 +259,66 @@ func TestDeepEqual(t *testing.T) {
 		&[]string{"bar", "foo"},
 		false,
 	}, {
+		[]uint32{42, 51},
+		[]uint32{42, 51},
+		true,
+	}, {
+		[]uint32{42, 51},
+		[]uint32{42, 88},
+		false,
+	}, {
+		[]uint32{42, 51},
+		[]uint32{42},
+		false,
+	}, {
+		[]uint32{42, 51},
+		[]uint64{42, 51},
+		false,
+	}, {
+		[]uint64{42, 51},
+		[]uint32{42, 51},
+		false,
+	}, {
+		[]uint64{42, 51},
+		[]uint64{42, 51},
+		true,
+	}, {
+		[]uint64{42, 51},
+		[]uint64{42},
+		false,
+	}, {
+		[]uint64{42, 51},
+		[]uint64{42, 88},
+		false,
+	}, {
+		[]interface{}{"foo", uint32(42)},
+		[]interface{}{"foo", uint32(42)},
+		true,
+	}, {
+		[]interface{}{"foo", uint32(42)},
+		[]interface{}{"foo"},
+		false,
+	}, {
+		[]interface{}{"foo"},
+		[]interface{}{"foo", uint32(42)},
+		false,
+	}, {
+		[]interface{}{"foo", uint32(42)},
+		[]interface{}{"foo", uint8(42)},
+		false,
+	}, {
+		[]interface{}{"foo", "bar"},
+		[]string{"foo", "bar"},
+		false,
+	}, {
+		&[]interface{}{"foo", uint32(42)},
+		&[]interface{}{"foo", uint32(42)},
+		true,
+	}, {
+		&[]interface{}{"foo", uint32(42)},
+		[]interface{}{"foo", uint32(42)},
+		false,
+	}, {
 		comparable{a: 42},
 		comparable{a: 42},
 		true,

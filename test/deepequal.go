@@ -99,8 +99,47 @@ func DeepEqual(a, b interface{}) bool {
 			}
 		}
 		return true
+	case []uint32:
+		v, ok := b.([]uint32)
+		if !ok || len(a) != len(v) {
+			return false
+		}
+		for i, s := range a {
+			if s != v[i] {
+				return false
+			}
+		}
+		return true
+	case []uint64:
+		v, ok := b.([]uint64)
+		if !ok || len(a) != len(v) {
+			return false
+		}
+		for i, s := range a {
+			if s != v[i] {
+				return false
+			}
+		}
+		return true
+	case []interface{}:
+		v, ok := b.([]interface{})
+		if !ok || len(a) != len(v) {
+			return false
+		}
+		for i, s := range a {
+			if !DeepEqual(s, v[i]) {
+				return false
+			}
+		}
+		return true
 	case *[]string:
 		v, ok := b.(*[]string)
+		if !ok || a == nil || v == nil {
+			return ok && a == v
+		}
+		return DeepEqual(*a, *v)
+	case *[]interface{}:
+		v, ok := b.(*[]interface{})
 		if !ok || a == nil || v == nil {
 			return ok && a == v
 		}
