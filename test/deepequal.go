@@ -99,8 +99,8 @@ func DeepEqual(a, b interface{}) bool {
 			}
 		}
 		return true
-	case []uint32:
-		v, ok := b.([]uint32)
+	case []byte:
+		v, ok := b.([]byte)
 		if !ok || len(a) != len(v) {
 			return false
 		}
@@ -112,6 +112,17 @@ func DeepEqual(a, b interface{}) bool {
 		return true
 	case []uint16:
 		v, ok := b.([]uint16)
+		if !ok || len(a) != len(v) {
+			return false
+		}
+		for i, s := range a {
+			if s != v[i] {
+				return false
+			}
+		}
+		return true
+	case []uint32:
+		v, ok := b.([]uint32)
 		if !ok || len(a) != len(v) {
 			return false
 		}
