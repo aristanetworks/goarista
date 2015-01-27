@@ -86,6 +86,12 @@ func DeepEqual(a, b interface{}) bool {
 			return ok && a == v
 		}
 		return DeepEqual(*a, *v)
+	case *map[interface{}]interface{}:
+		v, ok := b.(*map[interface{}]interface{})
+		if !ok || a == nil || v == nil {
+			return ok && a == v
+		}
+		return DeepEqual(*a, *v)
 	case comparable:
 		return a.Equal(b)
 	case []string:
@@ -166,6 +172,7 @@ func DeepEqual(a, b interface{}) bool {
 			return ok && a == v
 		}
 		return DeepEqual(*a, *v)
+
 	default:
 		// All the basic types and structs that do not implement comparable.
 		return a == b

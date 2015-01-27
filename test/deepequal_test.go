@@ -151,6 +151,14 @@ func TestDeepEqual(t *testing.T) {
 		map[string]interface{}{"a": uint32(42)},
 		false,
 	}, {
+		map[interface{}]interface{}{},
+		map[interface{}]interface{}{},
+		true,
+	}, {
+		&map[interface{}]interface{}{},
+		&map[interface{}]interface{}{},
+		true,
+	}, {
 		map[interface{}]interface{}{&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo"},
 		map[interface{}]interface{}{&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo"},
 		true,
