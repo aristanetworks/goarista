@@ -6,6 +6,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 )
@@ -38,9 +39,9 @@ func StringifyInterface(key interface{}) (string, error) {
 	case int64:
 		str = strconv.FormatInt(key, 10)
 	case float32:
-		str = strconv.FormatFloat(float64(key), 'b', -1, 32)
+		str = "f" + strconv.FormatInt(int64(math.Float32bits(key)), 10)
 	case float64:
-		str = strconv.FormatFloat(key, 'b', -1, 64)
+		str = "f" + strconv.FormatInt(int64(math.Float64bits(key)), 10)
 	case string:
 		str = key
 	case map[string]interface{}:

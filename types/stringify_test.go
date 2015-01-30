@@ -4,6 +4,7 @@
 package types
 
 import (
+	"math"
 	"os"
 	"testing"
 )
@@ -35,6 +36,10 @@ func TestStringifyInterface(t *testing.T) {
 		input:  uint64(43),
 		output: "43",
 	}, {
+		name:   "max uint64",
+		input:  uint64(math.MaxUint64),
+		output: "18446744073709551615",
+	}, {
 		name:   "int8",
 		input:  int8(-32),
 		output: "-32",
@@ -61,11 +66,11 @@ func TestStringifyInterface(t *testing.T) {
 	}, {
 		name:   "float32",
 		input:  float32(2.345),
-		output: "9835643p-22",
+		output: "f1075188859",
 	}, {
 		name:   "float64",
 		input:  float64(-34.6543),
-		output: "-4877159142712043p-47",
+		output: "f-4593298060402564373",
 	}, {
 		name: "map[string]interface{}",
 		input: map[string]interface{}{
