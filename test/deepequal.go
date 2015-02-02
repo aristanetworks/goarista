@@ -3,6 +3,10 @@
 
 package test
 
+import (
+	"math"
+)
+
 // comparable types have an equality-testing method.
 type comparable interface {
 	// Equal returns true if this object is equal to the other one.
@@ -172,6 +176,12 @@ func DeepEqual(a, b interface{}) bool {
 			return ok && a == v
 		}
 		return DeepEqual(*a, *v)
+	case float32:
+		v, ok := b.(float32)
+		return ok && (a == b || (math.IsNaN(float64(a)) && math.IsNaN(float64(v))))
+	case float64:
+		v, ok := b.(float64)
+		return ok && (a == b || (math.IsNaN(a) && math.IsNaN(v)))
 
 	default:
 		// All the basic types and structs that do not implement comparable.
