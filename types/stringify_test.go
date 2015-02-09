@@ -16,6 +16,14 @@ func TestStringifyInterface(t *testing.T) {
 		input  interface{}
 		output string
 	}{{
+		name:   "nil",
+		input:  nil,
+		output: "Unable to stringify nil",
+	}, {
+		name:   "struct{}",
+		input:  struct{}{},
+		output: "Unable to stringify type struct {}",
+	}, {
 		name:   "string",
 		input:  "foobar",
 		output: "foobar",
@@ -82,6 +90,12 @@ func TestStringifyInterface(t *testing.T) {
 			},
 		},
 		output: "foobar_43_45_barfoo",
+	}, {
+		name: "nil inside map[string]interface{}",
+		input: map[string]interface{}{
+			"n": nil,
+		},
+		output: "Unable to stringify nil",
 	}}
 
 	tcaseFilter := os.Getenv("TESTCASE")
@@ -92,7 +106,9 @@ func TestStringifyInterface(t *testing.T) {
 
 		result, err := StringifyInterface(tcase.input)
 		if err != nil {
-			t.Errorf("Test %s: Error returned: %s", tcase.name, err.Error())
+			if err.Error() != tcase.output {
+				t.Errorf("Test %s: Error returned: %s", tcase.name, err.Error())
+			}
 		} else if tcase.output != result {
 			t.Errorf("Test %s: Result is different\nReceived: %s\nExpected: %s",
 				tcase.name, result, tcase.output)

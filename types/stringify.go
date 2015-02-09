@@ -17,7 +17,7 @@ import (
 func StringifyInterface(key interface{}) (string, error) {
 	var str string
 	if key == nil {
-		return "", errors.New("Unable to encode nil key")
+		return "", errors.New("Unable to stringify nil")
 	}
 	switch key := key.(type) {
 	case bool:
@@ -65,7 +65,7 @@ func StringifyInterface(key interface{}) (string, error) {
 		return StringifyInterface(*key)
 
 	default:
-		return "", fmt.Errorf("don't know how to serialize key with type %T", key)
+		return "", fmt.Errorf("Unable to stringify type %T", key)
 	}
 
 	return str, nil
