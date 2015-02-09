@@ -17,7 +17,7 @@ import (
 func StringifyInterface(key interface{}) (string, error) {
 	var str string
 	if key == nil {
-		return "", errors.New("Unable to decode nil key")
+		return "", errors.New("Unable to encode nil key")
 	}
 	switch key := key.(type) {
 	case bool:
