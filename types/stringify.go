@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"strconv"
 )
 
@@ -45,11 +44,7 @@ func StringifyInterface(key interface{}) (string, error) {
 	case string:
 		str = key
 	case map[string]interface{}:
-		keys := make([]string, 0, len(key))
-		for k := range key {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
+		keys := SortedKeys(key)
 		for _, k := range keys {
 			v := key[k]
 			if len(str) > 0 {
