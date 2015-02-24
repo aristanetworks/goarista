@@ -14,10 +14,10 @@ import (
 // representation.  We need to do this because some entities use the string
 // representation of their keys as their names.
 func StringifyInterface(key interface{}) (string, error) {
-	var str string
 	if key == nil {
 		return "", errors.New("Unable to stringify nil")
 	}
+	var str string
 	switch key := key.(type) {
 	case bool:
 		str = strconv.FormatBool(key)
