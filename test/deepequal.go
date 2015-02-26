@@ -3,9 +3,7 @@
 
 package test
 
-import (
-	"math"
-)
+import "math"
 
 // comparable types have an equality-testing method.
 type comparable interface {
