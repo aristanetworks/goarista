@@ -45,5 +45,27 @@ func TestDiff(t *testing.T) {
 				diff, test.diff, test.a, test.b)
 		}
 	}
+}
 
+var benchEqual = map[string]interface{}{
+	"foo": "bar",
+	"bar": map[string]interface{}{
+		"foo": "bar",
+		"bar": map[string]interface{}{
+			"foo": "bar",
+		},
+		"foo2": []uint32{1, 2, 5, 78, 23, 236, 346, 3456},
+	},
+}
+
+func BenchmarkDeepEqual(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		DeepEqual(benchEqual, benchEqual)
+	}
+}
+
+func BenchmarkDeepEqualWithDiff(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Diff(benchEqual, benchEqual)
+	}
 }

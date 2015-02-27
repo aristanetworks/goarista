@@ -25,51 +25,33 @@ func DeepEqual(a, b interface{}) bool {
 	switch a := a.(type) {
 	case map[string]interface{}:
 		v, ok := b.(map[string]interface{})
-		if !ok {
+		if !ok || len(a) != len(v) {
 			return false
 		}
 		for key, value := range a {
 			if other, ok := v[key]; !ok || !DeepEqual(value, other) {
-				return false
-			}
-		}
-		// Check for keys in b not in a.
-		for key := range v {
-			if _, ok := a[key]; !ok {
 				return false
 			}
 		}
 		return true
 	case map[uint32]interface{}:
 		v, ok := b.(map[uint32]interface{})
-		if !ok {
+		if !ok || len(a) != len(v) {
 			return false
 		}
 		for key, value := range a {
 			if other, ok := v[key]; !ok || !DeepEqual(value, other) {
-				return false
-			}
-		}
-		// Check for keys in b not in a.
-		for key := range v {
-			if _, ok := a[key]; !ok {
 				return false
 			}
 		}
 		return true
 	case map[uint64]interface{}:
 		v, ok := b.(map[uint64]interface{})
-		if !ok {
+		if !ok || len(a) != len(v) {
 			return false
 		}
 		for key, value := range a {
 			if other, ok := v[key]; !ok || !DeepEqual(value, other) {
-				return false
-			}
-		}
-		// Check for keys in b not in a.
-		for key := range v {
-			if _, ok := a[key]; !ok {
 				return false
 			}
 		}
