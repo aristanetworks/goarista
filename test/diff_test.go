@@ -64,7 +64,7 @@ func BenchmarkDeepEqual(b *testing.B) {
 	}
 }
 
-func BenchmarkDeepEqualWithDiff(b *testing.B) {
+func BenchmarkDiff(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Diff(benchEqual, benchEqual)
 	}
