@@ -3,7 +3,10 @@
 
 package test
 
-import "math"
+import (
+	"math"
+	"reflect"
+)
 
 // comparable types have an equality-testing method.
 type comparable interface {
@@ -164,6 +167,25 @@ func DeepEqual(a, b interface{}) bool {
 		return ok && (a == b || (math.IsNaN(a) && math.IsNaN(v)))
 
 	default:
+		// Handle any map if not comparable
+		av := reflect.ValueOf(a)
+		if av.Kind() == reflect.Map {
+			bv := reflect.ValueOf(b)
+			if bv.Type() != av.Type() {
+				return false
+			}
+			// TODO: Refactor. Quick hack to make it work for now
+			ma := map[interface{}]interface{}{}
+			for _, k := range av.MapKeys() {
+				ma[k.Interface()] = av.MapIndex(k).Interface()
+			}
+			mb := map[interface{}]interface{}{}
+			for _, k := range bv.MapKeys() {
+				mb[k.Interface()] = bv.MapIndex(k).Interface()
+			}
+			return mapEqual(ma, mb)
+		}
+
 		// All the basic types and structs that do not implement comparable.
 		return a == b
 	}

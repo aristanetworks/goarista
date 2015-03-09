@@ -10,32 +10,7 @@ import (
 )
 
 func TestDiff(t *testing.T) {
-	testcases := append(getDeepEqualTests(t),
-		[]deepEqualTestCase{{
-			a:     map[int8]int(nil),
-			b:     map[int8]int(nil),
-			equal: true,
-		}, {
-			a:     map[int8]int16(nil),
-			b:     map[int8]int(nil),
-			equal: false,
-			diff:  "types are different: map[int8]int16 vs map[int8]int",
-		}, {
-			a:     map[int8]int{int8(3): 2, int8(4): 6},
-			b:     map[int8]int{int8(3): 2, int8(4): 6},
-			equal: true,
-		}, {
-			a:     map[int8]int{int8(3): 2, int8(4): 5},
-			b:     map[int8]int{int8(3): 2, int8(4): 6},
-			equal: false,
-			diff:  "for key int8(4) in map, values are different: Ints different: 5, 6",
-		}, {
-			a:     map[int8]int{int8(3): 2, int8(2): 6},
-			b:     map[int8]int{int8(3): 2, int8(4): 6},
-			equal: false,
-			diff:  "key int8(2) in map is missing in the second map",
-		}}...,
-	)
+	testcases := getDeepEqualTests(t)
 
 	for _, test := range testcases {
 		diff := Diff(test.a, test.b)
@@ -58,14 +33,37 @@ var benchEqual = map[string]interface{}{
 	},
 }
 
-func BenchmarkDeepEqual(b *testing.B) {
+var benchDiff = map[string]interface{}{
+	"foo": "bar",
+	"bar": map[string]interface{}{
+		"foo": "bar",
+		"bar": map[string]interface{}{
+			"foo": "bar",
+		},
+		"foo2": []uint32{1, 2, 5, 78, 23, 236, 346, 3457},
+	},
+}
+
+func BenchmarkEqualDeepEqual(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		DeepEqual(benchEqual, benchEqual)
 	}
 }
 
-func BenchmarkDiff(b *testing.B) {
+func BenchmarkEqualDiff(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Diff(benchEqual, benchEqual)
+	}
+}
+
+func BenchmarkDiffDeepEqual(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		DeepEqual(benchEqual, benchDiff)
+	}
+}
+
+func BenchmarkDiffDiff(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Diff(benchEqual, benchDiff)
 	}
 }

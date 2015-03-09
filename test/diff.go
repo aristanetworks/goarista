@@ -19,6 +19,14 @@ type diffable interface {
 // Diff returns the difference of two objects in a human readable format
 // Empty string is returned when there is no difference
 func Diff(a, b interface{}) string {
+	if DeepEqual(a, b) {
+		return ""
+	}
+
+	return diffImpl(a, b)
+}
+
+func diffImpl(a, b interface{}) string {
 
 	av := reflect.ValueOf(a)
 	bv := reflect.ValueOf(b)
@@ -84,7 +92,7 @@ func Diff(a, b interface{}) string {
 				av.Len(), bv.Len())
 		}
 		for i := 0; i < l; i++ {
-			diff := Diff(av.Index(i).Interface(), bv.Index(i).Interface())
+			diff := diffImpl(av.Index(i).Interface(), bv.Index(i).Interface())
 			if len(diff) > 0 {
 				diff = fmt.Sprintf(
 					"In arrays, values are different at index %d: %s",
@@ -108,12 +116,12 @@ func Diff(a, b interface{}) string {
 			ok := false
 			for _, kb := range bv.MapKeys() {
 				if ka.Kind() == reflect.Ptr {
-					if diff := Diff(ka.Elem(), kb.Elem()); len(diff) == 0 {
+					if diff := diffImpl(ka.Elem(), kb.Elem()); len(diff) == 0 {
 						be = bv.MapIndex(kb)
 						ok = true
 						break
 					}
-				} else if diff := Diff(
+				} else if diff := diffImpl(
 					ka.Interface(), kb.Interface()); len(diff) == 0 {
 					be = bv.MapIndex(kb)
 					ok = true
@@ -140,7 +148,7 @@ func Diff(a, b interface{}) string {
 					"for key %s in map, value can't become an interface: %s",
 					prettyPrint(ka), prettyPrint(be))
 			}
-			if diff := Diff(ae.Interface(), be.Interface()); len(diff) > 0 {
+			if diff := diffImpl(ae.Interface(), be.Interface()); len(diff) > 0 {
 				return fmt.Sprintf(
 					"for key %s in map, values are different: %s",
 					prettyPrint(ka), diff)
@@ -151,7 +159,7 @@ func Diff(a, b interface{}) string {
 		if c, d := isNilCheck(av, bv); c {
 			return d
 		}
-		return Diff(av.Elem().Interface(), bv.Elem().Interface())
+		return diffImpl(av.Elem().Interface(), bv.Elem().Interface())
 
 	case reflect.String:
 		if av.String() != bv.String() {
