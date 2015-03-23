@@ -37,7 +37,7 @@ func prettyPrint(v reflect.Value) string {
 	case reflect.Map:
 		var r []byte
 		r = append(r, []byte(v.Type().String())...)
-		r = append(r, []byte("{")...)
+		r = append(r, '{')
 		var elems mapEntries
 		for _, k := range v.MapKeys() {
 			elem := &mapEntry{
@@ -52,10 +52,25 @@ func prettyPrint(v reflect.Value) string {
 				r = append(r, []byte(", ")...)
 			}
 			r = append(r, []byte(e.k)...)
-			r = append(r, []byte(":")...)
+			r = append(r, ':')
 			r = append(r, []byte(e.v)...)
 		}
-		r = append(r, []byte("}")...)
+		r = append(r, '}')
+		return string(r)
+	case reflect.Struct:
+		var r []byte
+		r = append(r, []byte(v.Type().String())...)
+		r = append(r, '{')
+		for i := 0; i < v.NumField(); i++ {
+			if i > 0 {
+				r = append(r, []byte(", ")...)
+			}
+			sf := v.Type().Field(i)
+			r = append(r, sf.Name...)
+			r = append(r, ':')
+			r = append(r, prettyPrint(v.Field(i))...)
+		}
+		r = append(r, '}')
 		return string(r)
 	default:
 		return fmt.Sprintf("%#v", v.Interface())

@@ -169,7 +169,33 @@ func DeepEqual(a, b interface{}) bool {
 	default:
 		// Handle any map if not comparable
 		av := reflect.ValueOf(a)
-		if av.Kind() == reflect.Map {
+		switch av.Kind() {
+		case reflect.Ptr:
+			bv := reflect.ValueOf(b)
+			if bv.Type() != av.Type() {
+				return false
+			}
+			if av.IsNil() || bv.IsNil() {
+				return a == b
+			}
+			return DeepEqual(av.Elem().Interface(), bv.Elem().Interface())
+		case reflect.Slice, reflect.Array:
+			bv := reflect.ValueOf(b)
+			if bv.Type() != av.Type() {
+				return false
+			}
+			if av.Len() != bv.Len() {
+				return false
+			}
+			l := av.Len()
+			for i := 0; i < l; i++ {
+				if DeepEqual(av.Index(i).Interface(),
+					bv.Index(i).Interface()) == false {
+					return false
+				}
+			}
+			return true
+		case reflect.Map:
 			bv := reflect.ValueOf(b)
 			if bv.Type() != av.Type() {
 				return false
@@ -184,10 +210,10 @@ func DeepEqual(a, b interface{}) bool {
 				mb[k.Interface()] = bv.MapIndex(k).Interface()
 			}
 			return mapEqual(ma, mb)
+		default:
+			// All the basic types and structs that do not implement comparable.
+			return a == b
 		}
-
-		// All the basic types and structs that do not implement comparable.
-		return a == b
 	}
 }
 

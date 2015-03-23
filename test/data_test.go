@@ -379,7 +379,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			a:     comparable{a: 42},
 			b:     comparable{a: 51},
 			equal: false,
-			diff:  "Comparable types are different: test_test.comparable{a:0x2a, t:(*testing.T)(nil)} vs test_test.comparable{a:0x33, t:(*testing.T)(nil)}",
+			diff:  "Comparable types are different: test_test.comparable{a:uint32(42), t:*nil} vs test_test.comparable{a:uint32(51), t:*nil}",
 		}, {
 			a:     builtinCompare{a: 42, b: "foo"},
 			b:     builtinCompare{a: 42, b: "foo"},
@@ -388,7 +388,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			a:     builtinCompare{a: 42, b: "foo"},
 			b:     builtinCompare{a: 42, b: "bar"},
 			equal: false,
-			diff:  "Structs types are different: test_test.builtinCompare{a:0x2a, b:\"foo\"} vs test_test.builtinCompare{a:0x2a, b:\"bar\"}",
+			diff:  "Structs types are different: test_test.builtinCompare{a:uint32(42), b:\"foo\"} vs test_test.builtinCompare{a:uint32(42), b:\"bar\"}",
 		}, {
 			a:     map[int8]int8{2: 3, 3: 4},
 			b:     map[int8]int8{2: 3, 3: 4},
