@@ -4,6 +4,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -115,6 +116,14 @@ func (k keyImpl) SetToMap(m map[Key]interface{}, value interface{}) {
 		}
 	}
 	m[k] = value
+}
+
+func (k keyImpl) GoString() string {
+	return fmt.Sprintf("types.NewKey(%#v)", k.Key())
+}
+
+func (k keyImpl) MarshalJSON() ([]byte, error) {
+	return json.Marshal(k.Key())
 }
 
 func (k keyImpl) Equal(other interface{}) bool {
