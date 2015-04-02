@@ -1,15 +1,15 @@
 // Copyright (c) 2015 Arista Networks, Inc.  All rights reserved.
 // Arista Networks, Inc. Confidential and Proprietary.
 
-package test_test // yes!
+package test
 
 import (
 	"testing"
-
-	. "arista/test"
 )
 
 func TestDiff(t *testing.T) {
+	saved := prettyPrintDepth
+	prettyPrintDepth = 4
 	testcases := getDeepEqualTests(t)
 
 	for _, test := range testcases {
@@ -20,6 +20,7 @@ func TestDiff(t *testing.T) {
 				diff, test.diff, test.a, test.b)
 		}
 	}
+	prettyPrintDepth = saved
 }
 
 var benchEqual = map[string]interface{}{

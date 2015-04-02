@@ -1,7 +1,7 @@
 // Copyright (c) 2015 Arista Networks, Inc.  All rights reserved.
 // Arista Networks, Inc. Confidential and Proprietary.
 
-package test_test
+package test
 
 import (
 	"testing"
@@ -364,22 +364,22 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			equal: false,
 			diff:  "types are different: *[]interface {} vs []interface {}",
 		}, {
-			a:     comparable{a: 42},
-			b:     comparable{a: 42},
+			a:     comparableStruct{a: 42},
+			b:     comparableStruct{a: 42},
 			equal: true,
 		}, {
-			a:     comparable{a: 42, t: t},
-			b:     comparable{a: 42},
+			a:     comparableStruct{a: 42, t: t},
+			b:     comparableStruct{a: 42},
 			equal: true,
 		}, {
-			a:     comparable{a: 42},
-			b:     comparable{a: 42, t: t},
+			a:     comparableStruct{a: 42},
+			b:     comparableStruct{a: 42, t: t},
 			equal: true,
 		}, {
-			a:     comparable{a: 42},
-			b:     comparable{a: 51},
+			a:     comparableStruct{a: 42},
+			b:     comparableStruct{a: 51},
 			equal: false,
-			diff:  "Comparable types are different: test_test.comparable{a:uint32(42), t:*nil} vs test_test.comparable{a:uint32(51), t:*nil}",
+			diff:  "Comparable types are different: test.comparableStruct{a:uint32(42), t:*nil} vs test.comparableStruct{a:uint32(51), t:*nil}",
 		}, {
 			a:     builtinCompare{a: 42, b: "foo"},
 			b:     builtinCompare{a: 42, b: "foo"},
@@ -388,7 +388,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			a:     builtinCompare{a: 42, b: "foo"},
 			b:     builtinCompare{a: 42, b: "bar"},
 			equal: false,
-			diff:  "Structs types are different: test_test.builtinCompare{a:uint32(42), b:\"foo\"} vs test_test.builtinCompare{a:uint32(42), b:\"bar\"}",
+			diff:  "Structs types are different: test.builtinCompare{a:uint32(42), b:\"foo\"} vs test.builtinCompare{a:uint32(42), b:\"bar\"}",
 		}, {
 			a:     map[int8]int8{2: 3, 3: 4},
 			b:     map[int8]int8{2: 3, 3: 4},

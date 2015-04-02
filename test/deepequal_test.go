@@ -1,21 +1,19 @@
 // Copyright (c) 2014 Arista Networks, Inc.  All rights reserved.
 // Arista Networks, Inc. Confidential and Proprietary.
 
-package test_test // yes!
+package test
 
 import (
 	"testing"
-
-	. "arista/test"
 )
 
-type comparable struct {
+type comparableStruct struct {
 	a uint32
 	t *testing.T
 }
 
-func (c comparable) Equal(v interface{}) bool {
-	other, ok := v.(comparable)
+func (c comparableStruct) Equal(v interface{}) bool {
+	other, ok := v.(comparableStruct)
 	// Deliberately ignore t.
 	return ok && c.a == other.a
 }

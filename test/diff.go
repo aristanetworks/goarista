@@ -130,28 +130,33 @@ func diffImpl(a, b interface{}) string {
 			}
 			if !ok {
 				return fmt.Sprintf(
-					"key %s in map is missing in the second map", prettyPrint(ka))
+					"key %s in map is missing in the second map",
+					prettyPrint(ka, ptrSet{}, prettyPrintDepth))
 			}
 			if !be.IsValid() {
 				return fmt.Sprintf(
 					"for key %s in map, values are different: %s vs %s "+
 						"(the \"nil\" entry might be a missing entry)",
-					prettyPrint(ka), prettyPrint(ae), prettyPrint(be))
+					prettyPrint(ka, ptrSet{}, prettyPrintDepth),
+					prettyPrint(ae, ptrSet{}, prettyPrintDepth),
+					prettyPrint(be, ptrSet{}, prettyPrintDepth))
 			}
 			if !ae.CanInterface() {
 				return fmt.Sprintf(
 					"for key %s in map, value can't become an interface: %s",
-					prettyPrint(ka), prettyPrint(ae))
+					prettyPrint(ka, ptrSet{}, prettyPrintDepth),
+					prettyPrint(ae, ptrSet{}, prettyPrintDepth))
 			}
 			if !be.CanInterface() {
 				return fmt.Sprintf(
 					"for key %s in map, value can't become an interface: %s",
-					prettyPrint(ka), prettyPrint(be))
+					prettyPrint(ka, ptrSet{}, prettyPrintDepth),
+					prettyPrint(be, ptrSet{}, prettyPrintDepth))
 			}
 			if diff := diffImpl(ae.Interface(), be.Interface()); len(diff) > 0 {
 				return fmt.Sprintf(
 					"for key %s in map, values are different: %s",
-					prettyPrint(ka), diff)
+					prettyPrint(ka, ptrSet{}, prettyPrintDepth), diff)
 			}
 		}
 
@@ -186,10 +191,10 @@ func isNilCheck(a, b reflect.Value) (bool /*checked*/, string) {
 			return true, ""
 		}
 		return true, fmt.Sprintf("one value is nil and the other is not nil: %s",
-			prettyPrint(b))
+			prettyPrint(b, ptrSet{}, prettyPrintDepth))
 	} else if b.IsNil() {
 		return true, fmt.Sprintf("one value is nil and the other is not nil: %s",
-			prettyPrint(a))
+			prettyPrint(a, ptrSet{}, prettyPrintDepth))
 	}
 	return false, ""
 }
