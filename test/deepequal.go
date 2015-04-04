@@ -4,6 +4,7 @@
 package test
 
 import (
+	"bytes"
 	"math"
 	"reflect"
 )
@@ -100,15 +101,7 @@ func DeepEqual(a, b interface{}) bool {
 		return true
 	case []byte:
 		v, ok := b.([]byte)
-		if !ok || len(a) != len(v) {
-			return false
-		}
-		for i, s := range a {
-			if s != v[i] {
-				return false
-			}
-		}
-		return true
+		return ok && bytes.Equal(a, v)
 	case []uint16:
 		v, ok := b.([]uint16)
 		if !ok || len(a) != len(v) {
