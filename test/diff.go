@@ -27,20 +27,16 @@ func Diff(a, b interface{}) string {
 }
 
 func diffImpl(a, b interface{}) string {
-
 	av := reflect.ValueOf(a)
 	bv := reflect.ValueOf(b)
 	// Check if nil
-	if av.Kind() == reflect.Invalid {
-		if bv.Kind() == reflect.Invalid {
+	if !av.IsValid() {
+		if !bv.IsValid() {
 			return "" // Both are "nil" with no type
 		}
-		return fmt.Sprintf(
-			"one value is nil and the other is of type: %T",
-			b)
-	} else if bv.Kind() == reflect.Invalid {
-		return fmt.Sprintf("one value is nil and the other is of type: %T",
-			a)
+		return fmt.Sprintf("one value is nil and the other is of type: %T", b)
+	} else if !bv.IsValid() {
+		return fmt.Sprintf("one value is nil and the other is of type: %T", a)
 	}
 	if av.Type() != bv.Type() {
 		return fmt.Sprintf("types are different: %T vs %T", a, b)
@@ -51,8 +47,7 @@ func diffImpl(a, b interface{}) string {
 	}
 
 	if ac, ok := a.(comparable); ok {
-		r := ac.Equal(b.(comparable))
-		if r {
+		if ac.Equal(b.(comparable)) {
 			return ""
 		}
 		return fmt.Sprintf("Comparable types are different: %s vs %s",
@@ -89,7 +84,7 @@ func diffImpl(a, b interface{}) string {
 		l := av.Len()
 		if l != bv.Len() {
 			return fmt.Sprintf("Arrays have different size: %d != %d",
-				av.Len(), bv.Len())
+				l, bv.Len())
 		}
 		for i := 0; i < l; i++ {
 			diff := diffImpl(av.Index(i).Interface(), bv.Index(i).Interface())

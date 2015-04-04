@@ -26,6 +26,12 @@ func DeepEqual(a, b interface{}) bool {
 		return a == b
 	}
 	switch a := a.(type) {
+	// Short circuit fast-path for common built-in types.
+	case uint8, uint16, uint32, uint64,
+		string, bool,
+		int8, int16, int32, int64:
+		return a == b
+
 	case map[string]interface{}:
 		v, ok := b.(map[string]interface{})
 		if !ok || len(a) != len(v) {
@@ -167,39 +173,30 @@ func DeepEqual(a, b interface{}) bool {
 		return ok && (a == b || (math.IsNaN(a) && math.IsNaN(v)))
 
 	default:
-		// Handle any map if not comparable
+		// Handle other kinds of non-comparable objects.
 		av := reflect.ValueOf(a)
+		bv := reflect.ValueOf(b)
+		if bv.Type() != av.Type() {
+			return false
+		}
 		switch av.Kind() {
 		case reflect.Ptr:
-			bv := reflect.ValueOf(b)
-			if bv.Type() != av.Type() {
-				return false
-			}
 			if av.IsNil() || bv.IsNil() {
 				return a == b
 			}
 			return DeepEqual(av.Elem().Interface(), bv.Elem().Interface())
 		case reflect.Slice, reflect.Array:
-			bv := reflect.ValueOf(b)
-			if bv.Type() != av.Type() {
-				return false
-			}
-			if av.Len() != bv.Len() {
-				return false
-			}
 			l := av.Len()
+			if l != bv.Len() {
+				return false
+			}
 			for i := 0; i < l; i++ {
-				if DeepEqual(av.Index(i).Interface(),
-					bv.Index(i).Interface()) == false {
+				if !DeepEqual(av.Index(i).Interface(), bv.Index(i).Interface()) {
 					return false
 				}
 			}
 			return true
 		case reflect.Map:
-			bv := reflect.ValueOf(b)
-			if bv.Type() != av.Type() {
-				return false
-			}
 			// TODO: Refactor. Quick hack to make it work for now
 			ma := map[interface{}]interface{}{}
 			for _, k := range av.MapKeys() {
@@ -211,7 +208,7 @@ func DeepEqual(a, b interface{}) bool {
 			}
 			return mapEqual(ma, mb)
 		default:
-			// All the basic types and structs that do not implement comparable.
+			// Other the basic types and structs.
 			return a == b
 		}
 	}
