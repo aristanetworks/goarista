@@ -22,9 +22,10 @@ func (c comparableStruct) Equal(v interface{}) bool {
 func TestDeepEqual(t *testing.T) {
 	testcases := getDeepEqualTests(t)
 	for _, test := range testcases {
-		if actual := DeepEqual(test.a, test.b); actual != test.equal {
-			t.Errorf("DeepEqual returned %v but we wanted %v for %#v == %#v",
-				actual, test.equal, test.a, test.b)
+		equal := len(test.diff) == 0
+		if actual := DeepEqual(test.a, test.b); actual != equal {
+			t.Errorf("DeepEqual returned %t but we wanted %t for %#v == %#v",
+				actual, equal, test.a, test.b)
 		}
 	}
 }
