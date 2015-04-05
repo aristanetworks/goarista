@@ -31,9 +31,8 @@ func DeepEqual(a, b interface{}) bool {
 	}
 	switch a := a.(type) {
 	// Short circuit fast-path for common built-in types.
-	case uint8, uint16, uint32, uint64,
-		string, bool,
-		int8, int16, int32, int64:
+	// Note: the cases are listed by frequency.
+	case bool:
 		return a == b
 
 	case map[string]interface{}:
@@ -47,6 +46,49 @@ func DeepEqual(a, b interface{}) bool {
 			}
 		}
 		return true
+
+	case string, uint32, uint64, int32,
+		uint16, int16, uint8, int8, int64:
+		return a == b
+
+	case *map[string]interface{}:
+		v, ok := b.(*map[string]interface{})
+		if !ok || a == nil || v == nil {
+			return ok && a == v
+		}
+		return DeepEqual(*a, *v)
+
+	case map[interface{}]interface{}:
+		v, ok := b.(map[interface{}]interface{})
+		if !ok {
+			return false
+		}
+		// We compare in both directions to catch keys that are in b but not
+		// in a.  It sucks to have to do another O(N^2) for this, but oh well.
+		return mapEqual(a, v) && mapEqual(v, a)
+
+	case float32:
+		v, ok := b.(float32)
+		return ok && (a == b || (math.IsNaN(float64(a)) && math.IsNaN(float64(v))))
+	case float64:
+		v, ok := b.(float64)
+		return ok && (a == b || (math.IsNaN(a) && math.IsNaN(v)))
+
+	case []string:
+		v, ok := b.([]string)
+		if !ok || len(a) != len(v) {
+			return false
+		}
+		for i, s := range a {
+			if s != v[i] {
+				return false
+			}
+		}
+		return true
+	case []byte:
+		v, ok := b.([]byte)
+		return ok && bytes.Equal(a, v)
+
 	case map[uint32]interface{}:
 		v, ok := b.(map[uint32]interface{})
 		if !ok || len(a) != len(v) {
@@ -69,20 +111,7 @@ func DeepEqual(a, b interface{}) bool {
 			}
 		}
 		return true
-	case map[interface{}]interface{}:
-		v, ok := b.(map[interface{}]interface{})
-		if !ok {
-			return false
-		}
-		// We compare in both directions to catch keys that are in b but not
-		// in a.  It sucks to have to do another O(N^2) for this, but oh well.
-		return mapEqual(a, v) && mapEqual(v, a)
-	case *map[string]interface{}:
-		v, ok := b.(*map[string]interface{})
-		if !ok || a == nil || v == nil {
-			return ok && a == v
-		}
-		return DeepEqual(*a, *v)
+
 	case *map[interface{}]interface{}:
 		v, ok := b.(*map[interface{}]interface{})
 		if !ok || a == nil || v == nil {
@@ -91,31 +120,7 @@ func DeepEqual(a, b interface{}) bool {
 		return DeepEqual(*a, *v)
 	case comparable:
 		return a.Equal(b)
-	case []string:
-		v, ok := b.([]string)
-		if !ok || len(a) != len(v) {
-			return false
-		}
-		for i, s := range a {
-			if s != v[i] {
-				return false
-			}
-		}
-		return true
-	case []byte:
-		v, ok := b.([]byte)
-		return ok && bytes.Equal(a, v)
-	case []uint16:
-		v, ok := b.([]uint16)
-		if !ok || len(a) != len(v) {
-			return false
-		}
-		for i, s := range a {
-			if s != v[i] {
-				return false
-			}
-		}
-		return true
+
 	case []uint32:
 		v, ok := b.([]uint32)
 		if !ok || len(a) != len(v) {
@@ -161,12 +166,6 @@ func DeepEqual(a, b interface{}) bool {
 			return ok && a == v
 		}
 		return DeepEqual(*a, *v)
-	case float32:
-		v, ok := b.(float32)
-		return ok && (a == b || (math.IsNaN(float64(a)) && math.IsNaN(float64(v))))
-	case float64:
-		v, ok := b.(float64)
-		return ok && (a == b || (math.IsNaN(a) && math.IsNaN(v)))
 
 	default:
 		// Handle other kinds of non-comparable objects.
