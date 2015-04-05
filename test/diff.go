@@ -23,7 +23,7 @@ func Diff(a, b interface{}) string {
 		return ""
 	}
 
-	return diffImpl(a, b, make(map[edge]struct{}))
+	return diffImpl(a, b, nil)
 }
 
 func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
@@ -132,7 +132,9 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		if av.CanAddr() && bv.CanAddr() {
 			e := edge{from: av.UnsafeAddr(), to: bv.UnsafeAddr()}
 			// Detect and prevent cycles.
-			if _, ok := seen[e]; ok {
+			if seen == nil {
+				seen = make(map[edge]struct{})
+			} else if _, ok := seen[e]; ok {
 				return ""
 			}
 			seen[e] = struct{}{}

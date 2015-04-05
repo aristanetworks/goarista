@@ -26,6 +26,10 @@ var comparableType = reflect.TypeOf((*comparable)(nil)).Elem()
 //     implementing the comparable interface.
 //   - Supports "composite" (or "complex") keys in maps that are pointers.
 func DeepEqual(a, b interface{}) bool {
+	return deepEqual(a, b, nil)
+}
+
+func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
@@ -41,7 +45,7 @@ func DeepEqual(a, b interface{}) bool {
 			return false
 		}
 		for key, value := range a {
-			if other, ok := v[key]; !ok || !DeepEqual(value, other) {
+			if other, ok := v[key]; !ok || !deepEqual(value, other, seen) {
 				return false
 			}
 		}
@@ -56,7 +60,7 @@ func DeepEqual(a, b interface{}) bool {
 		if !ok || a == nil || v == nil {
 			return ok && a == v
 		}
-		return DeepEqual(*a, *v)
+		return deepEqual(*a, *v, seen)
 
 	case map[interface{}]interface{}:
 		v, ok := b.(map[interface{}]interface{})
@@ -95,7 +99,7 @@ func DeepEqual(a, b interface{}) bool {
 			return false
 		}
 		for key, value := range a {
-			if other, ok := v[key]; !ok || !DeepEqual(value, other) {
+			if other, ok := v[key]; !ok || !deepEqual(value, other, seen) {
 				return false
 			}
 		}
@@ -106,7 +110,7 @@ func DeepEqual(a, b interface{}) bool {
 			return false
 		}
 		for key, value := range a {
-			if other, ok := v[key]; !ok || !DeepEqual(value, other) {
+			if other, ok := v[key]; !ok || !deepEqual(value, other, seen) {
 				return false
 			}
 		}
@@ -117,7 +121,7 @@ func DeepEqual(a, b interface{}) bool {
 		if !ok || a == nil || v == nil {
 			return ok && a == v
 		}
-		return DeepEqual(*a, *v)
+		return deepEqual(*a, *v, seen)
 	case comparable:
 		return a.Equal(b)
 
@@ -149,7 +153,7 @@ func DeepEqual(a, b interface{}) bool {
 			return false
 		}
 		for i, s := range a {
-			if !DeepEqual(s, v[i]) {
+			if !deepEqual(s, v[i], seen) {
 				return false
 			}
 		}
@@ -159,17 +163,17 @@ func DeepEqual(a, b interface{}) bool {
 		if !ok || a == nil || v == nil {
 			return ok && a == v
 		}
-		return DeepEqual(*a, *v)
+		return deepEqual(*a, *v, seen)
 	case *[]interface{}:
 		v, ok := b.(*[]interface{})
 		if !ok || a == nil || v == nil {
 			return ok && a == v
 		}
-		return DeepEqual(*a, *v)
+		return deepEqual(*a, *v, seen)
 
 	default:
 		// Handle other kinds of non-comparable objects.
-		return genericDeepEqual(a, b, make(map[edge]struct{}))
+		return genericDeepEqual(a, b, seen)
 	}
 }
 
@@ -204,21 +208,22 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 		if av.CanAddr() && bv.CanAddr() {
 			e := edge{from: av.UnsafeAddr(), to: bv.UnsafeAddr()}
 			// Detect and prevent cycles.
-			if _, ok := seen[e]; ok {
+			if seen == nil {
+				seen = make(map[edge]struct{})
+			} else if _, ok := seen[e]; ok {
 				return true
 			}
 			seen[e] = struct{}{}
 		}
 
-		return genericDeepEqual(av.Interface(), bv.Interface(), seen)
+		return deepEqual(av.Interface(), bv.Interface(), seen)
 	case reflect.Slice, reflect.Array:
 		l := av.Len()
 		if l != bv.Len() {
 			return false
 		}
 		for i := 0; i < l; i++ {
-			if !genericDeepEqual(av.Index(i).Interface(),
-				bv.Index(i).Interface(), seen) {
+			if !deepEqual(av.Index(i).Interface(), bv.Index(i).Interface(), seen) {
 				return false
 			}
 		}
@@ -245,7 +250,7 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			if !eb.IsValid() {
 				return false
 			}
-			if !genericDeepEqual(ea.Interface(), eb.Interface(), seen) {
+			if !deepEqual(ea.Interface(), eb.Interface(), seen) {
 				return false
 			}
 		}
@@ -261,7 +266,7 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			}
 			af := forceExport(av.Field(i))
 			bf := forceExport(bv.Field(i))
-			if !genericDeepEqual(af.Interface(), bf.Interface(), seen) {
+			if !deepEqual(af.Interface(), bf.Interface(), seen) {
 				return false
 			}
 		}
@@ -303,7 +308,7 @@ func complexKeyMapEqual(av, bv reflect.Value,
 	for _, ka := range av.MapKeys() {
 		var eb reflect.Value // The entry in bv with a key equal to ka
 		for _, kb := range bv.MapKeys() {
-			if genericDeepEqual(ka.Elem().Interface(), kb.Elem().Interface(), seen) {
+			if deepEqual(ka.Elem().Interface(), kb.Elem().Interface(), seen) {
 				// Found the corresponding entry in bv.
 				eb = bv.MapIndex(kb)
 				break
@@ -313,7 +318,7 @@ func complexKeyMapEqual(av, bv reflect.Value,
 			return false, ka, reflect.Value{}
 		}
 		ea := av.MapIndex(ka)
-		if !genericDeepEqual(ea.Interface(), eb.Interface(), seen) {
+		if !deepEqual(ea.Interface(), eb.Interface(), seen) {
 			return false, ka, eb
 		}
 	}
