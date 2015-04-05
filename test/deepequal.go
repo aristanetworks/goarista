@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"math"
 	"reflect"
+	"unsafe"
 )
 
 // comparable types have an equality-testing method.
@@ -15,13 +16,15 @@ type comparable interface {
 	Equal(other interface{}) bool
 }
 
-// DeepEqual is a simpler implementation of reflect.DeepEqual that:
-//   - Doesn't handle all the types (only the basic types found in our
-//     system are supported).
-//   - Doesn't handle cycles in references.
+var comparableType = reflect.TypeOf((*comparable)(nil)).Elem()
+
+// DeepEqual is a faster implementation of reflect.DeepEqual that:
+//   - Has a reflection-free fast-path for all the common types we use.
+//   - Gives data types the ability to exclude some of their fields from the
+//     consideration of DeepEqual by tagging them with `deepequal:"ignore"`.
 //   - Gives data types the ability to define their own comparison method by
 //     implementing the comparable interface.
-//   - Supports keys in maps that are pointers.
+//   - Supports "composite" (or "complex") keys in maps that are pointers.
 func DeepEqual(a, b interface{}) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -167,44 +170,155 @@ func DeepEqual(a, b interface{}) bool {
 
 	default:
 		// Handle other kinds of non-comparable objects.
-		av := reflect.ValueOf(a)
-		bv := reflect.ValueOf(b)
-		if bv.Type() != av.Type() {
-			return false
+		return genericDeepEqual(a, b, make(map[edge]struct{}))
+	}
+}
+
+type edge struct {
+	from uintptr
+	to   uintptr
+}
+
+func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
+	av := reflect.ValueOf(a)
+	bv := reflect.ValueOf(b)
+	if avalid, bvalid := av.IsValid(), bv.IsValid(); !avalid || !bvalid {
+		return avalid == bvalid
+	}
+	if bv.Type() != av.Type() {
+		return false
+	}
+
+	switch av.Kind() {
+	case reflect.Interface:
+		if av.Type().Implements(comparableType) {
+			return av.Interface().(comparable).Equal(bv.Interface())
 		}
-		switch av.Kind() {
-		case reflect.Ptr:
-			if av.IsNil() || bv.IsNil() {
-				return a == b
-			}
-			return DeepEqual(av.Elem().Interface(), bv.Elem().Interface())
-		case reflect.Slice, reflect.Array:
-			l := av.Len()
-			if l != bv.Len() {
-				return false
-			}
-			for i := 0; i < l; i++ {
-				if !DeepEqual(av.Index(i).Interface(), bv.Index(i).Interface()) {
-					return false
-				}
-			}
-			return true
-		case reflect.Map:
-			// TODO: Refactor. Quick hack to make it work for now
-			ma := map[interface{}]interface{}{}
-			for _, k := range av.MapKeys() {
-				ma[k.Interface()] = av.MapIndex(k).Interface()
-			}
-			mb := map[interface{}]interface{}{}
-			for _, k := range bv.MapKeys() {
-				mb[k.Interface()] = bv.MapIndex(k).Interface()
-			}
-			return mapEqual(ma, mb)
-		default:
-			// Other the basic types and structs.
+		fallthrough
+	case reflect.Ptr:
+		if av.IsNil() || bv.IsNil() {
 			return a == b
 		}
+
+		av = av.Elem()
+		bv = bv.Elem()
+		if av.CanAddr() && bv.CanAddr() {
+			e := edge{from: av.UnsafeAddr(), to: bv.UnsafeAddr()}
+			// Detect and prevent cycles.
+			if _, ok := seen[e]; ok {
+				return true
+			}
+			seen[e] = struct{}{}
+		}
+
+		return genericDeepEqual(av.Interface(), bv.Interface(), seen)
+	case reflect.Slice, reflect.Array:
+		l := av.Len()
+		if l != bv.Len() {
+			return false
+		}
+		for i := 0; i < l; i++ {
+			if !genericDeepEqual(av.Index(i).Interface(),
+				bv.Index(i).Interface(), seen) {
+				return false
+			}
+		}
+		return true
+	case reflect.Map:
+		if av.IsNil() != bv.IsNil() {
+			return false
+		}
+		if av.Len() != bv.Len() {
+			return false
+		}
+		if av.Pointer() == bv.Pointer() {
+			return true
+		}
+		for _, k := range av.MapKeys() {
+			// Upon finding the first key that's a pointer, we bail out and do
+			// a O(N^2) comparison.
+			if kk := k.Kind(); kk == reflect.Ptr || kk == reflect.Interface {
+				ok, _, _ := complexKeyMapEqual(av, bv, seen)
+				return ok
+			}
+			ea := av.MapIndex(k)
+			eb := bv.MapIndex(k)
+			if !eb.IsValid() {
+				return false
+			}
+			if !genericDeepEqual(ea.Interface(), eb.Interface(), seen) {
+				return false
+			}
+		}
+		return true
+	case reflect.Struct:
+		typ := av.Type()
+		if typ.Implements(comparableType) {
+			return av.Interface().(comparable).Equal(bv.Interface())
+		}
+		for i, n := 0, av.NumField(); i < n; i++ {
+			if typ.Field(i).Tag.Get("deepequal") == "ignore" {
+				continue
+			}
+			af := forceExport(av.Field(i))
+			bf := forceExport(bv.Field(i))
+			if !genericDeepEqual(af.Interface(), bf.Interface(), seen) {
+				return false
+			}
+		}
+		return true
+	default:
+		// Other the basic types.
+		return a == b
 	}
+}
+
+// The `reflect' package intentionally makes it impossible to access the value
+// of an unexported attribute.  The implementation of reflect.DeepEqual() cheats
+// as it bypasses this check.  Unfortunately, we can't use the same cheat, which
+// prevents us from re-implementing DeepEqual properly.  So this is our cheat on
+// top of theirs.  It makes the given reflect.Value appear as if it was exported.
+func forceExport(v reflect.Value) reflect.Value {
+	const flagRO uintptr = 1 << 5 // from reflect/value.go
+	ptr := unsafe.Pointer(&v)
+	rv := (*struct {
+		typ  unsafe.Pointer // a *reflect.rtype (reflect.Type)
+		ptr  unsafe.Pointer // The value wrapped by this reflect.Value
+		flag uintptr
+	})(ptr)
+	rv.flag &= ^flagRO // Unset the flag so this value appears to be exported.
+	return v
+}
+
+// Compares two maps with complex keys (that are pointers).  This assumes the
+// maps have already been checked to have the same sizes.  The cost of this
+// function is O(N^2) in the size of the input maps.
+//
+// The return is to be interpreted this way:
+//    true, _, _            =>   av == bv
+//    false, key, invalid   =>   the given key wasn't found in bv
+//    false, key, value     =>   the given key had the given value in bv,
+//                               which is different in av
+func complexKeyMapEqual(av, bv reflect.Value,
+	seen map[edge]struct{}) (bool, reflect.Value, reflect.Value) {
+	for _, ka := range av.MapKeys() {
+		var eb reflect.Value // The entry in bv with a key equal to ka
+		for _, kb := range bv.MapKeys() {
+			if genericDeepEqual(ka.Elem().Interface(), kb.Elem().Interface(), seen) {
+				// Found the corresponding entry in bv.
+				eb = bv.MapIndex(kb)
+				break
+			}
+		}
+		if !eb.IsValid() { // We didn't find a key equal to `ka' in 'bv'.
+			return false, ka, reflect.Value{}
+		}
+		ea := av.MapIndex(ka)
+		if !genericDeepEqual(ea.Interface(), eb.Interface(), seen) {
+			return false, ka, eb
+		}
+	}
+	return true, reflect.Value{}, reflect.Value{}
 }
 
 // mapEqual does O(N^2) comparisons to check that all the keys present in the

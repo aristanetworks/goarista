@@ -23,10 +23,10 @@ func Diff(a, b interface{}) string {
 		return ""
 	}
 
-	return diffImpl(a, b)
+	return diffImpl(a, b, make(map[edge]struct{}))
 }
 
-func diffImpl(a, b interface{}) string {
+func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 	av := reflect.ValueOf(a)
 	bv := reflect.ValueOf(b)
 	// Check if nil
@@ -87,7 +87,8 @@ func diffImpl(a, b interface{}) string {
 				l, bv.Len())
 		}
 		for i := 0; i < l; i++ {
-			diff := diffImpl(av.Index(i).Interface(), bv.Index(i).Interface())
+			diff := diffImpl(av.Index(i).Interface(), bv.Index(i).Interface(),
+				seen)
 			if len(diff) > 0 {
 				diff = fmt.Sprintf(
 					"In arrays, values are different at index %d: %s",
@@ -106,35 +107,14 @@ func diffImpl(a, b interface{}) string {
 		}
 		for _, ka := range av.MapKeys() {
 			ae := av.MapIndex(ka)
-			var be reflect.Value
-			// Find the corresponding entry in b
-			ok := false
-			for _, kb := range bv.MapKeys() {
-				if ka.Kind() == reflect.Ptr {
-					if diff := diffImpl(ka.Elem(), kb.Elem()); len(diff) == 0 {
-						be = bv.MapIndex(kb)
-						ok = true
-						break
-					}
-				} else if diff := diffImpl(
-					ka.Interface(), kb.Interface()); len(diff) == 0 {
-					be = bv.MapIndex(kb)
-					ok = true
-					break
-				}
+			if k := ka.Kind(); k == reflect.Ptr || k == reflect.Interface {
+				return diffComplexKeyMap(av, bv, seen)
 			}
-			if !ok {
+			be := bv.MapIndex(ka)
+			if !be.IsValid() {
 				return fmt.Sprintf(
 					"key %s in map is missing in the second map",
 					prettyPrint(ka, ptrSet{}, prettyPrintDepth))
-			}
-			if !be.IsValid() {
-				return fmt.Sprintf(
-					"for key %s in map, values are different: %s vs %s "+
-						"(the \"nil\" entry might be a missing entry)",
-					prettyPrint(ka, ptrSet{}, prettyPrintDepth),
-					prettyPrint(ae, ptrSet{}, prettyPrintDepth),
-					prettyPrint(be, ptrSet{}, prettyPrintDepth))
 			}
 			if !ae.CanInterface() {
 				return fmt.Sprintf(
@@ -148,7 +128,7 @@ func diffImpl(a, b interface{}) string {
 					prettyPrint(ka, ptrSet{}, prettyPrintDepth),
 					prettyPrint(be, ptrSet{}, prettyPrintDepth))
 			}
-			if diff := diffImpl(ae.Interface(), be.Interface()); len(diff) > 0 {
+			if diff := diffImpl(ae.Interface(), be.Interface(), seen); len(diff) > 0 {
 				return fmt.Sprintf(
 					"for key %s in map, values are different: %s",
 					prettyPrint(ka, ptrSet{}, prettyPrintDepth), diff)
@@ -159,7 +139,18 @@ func diffImpl(a, b interface{}) string {
 		if c, d := isNilCheck(av, bv); c {
 			return d
 		}
-		return diffImpl(av.Elem().Interface(), bv.Elem().Interface())
+		av = av.Elem()
+		bv = bv.Elem()
+
+		if av.CanAddr() && bv.CanAddr() {
+			e := edge{from: av.UnsafeAddr(), to: bv.UnsafeAddr()}
+			// Detect and prevent cycles.
+			if _, ok := seen[e]; ok {
+				return ""
+			}
+			seen[e] = struct{}{}
+		}
+		return diffImpl(av.Interface(), bv.Interface(), seen)
 
 	case reflect.String:
 		if av.String() != bv.String() {
@@ -167,17 +158,37 @@ func diffImpl(a, b interface{}) string {
 		}
 
 	case reflect.Struct:
-		if a == b {
-			return ""
+		typ := av.Type()
+		for i, n := 0, av.NumField(); i < n; i++ {
+			if typ.Field(i).Tag.Get("deepequal") == "ignore" {
+				continue
+			}
+			af := forceExport(av.Field(i))
+			bf := forceExport(bv.Field(i))
+			if diff := diffImpl(af.Interface(), bf.Interface(), seen); len(diff) > 0 {
+				return fmt.Sprintf("attributes %q are different: %s",
+					av.Type().Field(i).Name, diff)
+			}
 		}
-		return fmt.Sprintf("Structs types are different: %s vs %s",
-			PrettyPrint(a), PrettyPrint(b))
 
 	default:
 		return fmt.Sprintf("Unknown or unsupported type: %T", a)
 	}
 
 	return ""
+}
+
+func diffComplexKeyMap(av, bv reflect.Value, seen map[edge]struct{}) string {
+	ok, ka, be := complexKeyMapEqual(av, bv, seen)
+	if ok {
+		return ""
+	} else if be.IsValid() {
+		return fmt.Sprintf("for complex key %s in map, values are different: %s",
+			prettyPrint(ka, ptrSet{}, prettyPrintDepth),
+			diffImpl(av.MapIndex(ka).Interface(), be.Interface(), seen))
+	}
+	return fmt.Sprintf("complex key %s in map is missing in the second map",
+		prettyPrint(ka, ptrSet{}, prettyPrintDepth))
 }
 
 func isNilCheck(a, b reflect.Value) (bool /*checked*/, string) {

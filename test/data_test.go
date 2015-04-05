@@ -12,6 +12,32 @@ type builtinCompare struct {
 	b string
 }
 
+type complexCompare struct {
+	m map[builtinCompare]int8
+	p *complexCompare
+}
+
+type partialCompare struct {
+	a uint32
+	b string `deepequal:"ignore"`
+}
+
+type keyInterface interface {
+	Key() interface{}
+}
+
+type keyImpl struct {
+	k interface{}
+}
+
+func (k keyImpl) Key() interface{} {
+	return k.k
+}
+
+func mkKey(v interface{}) keyInterface {
+	return keyImpl{k: v}
+}
+
 type deepEqualTestCase struct {
 	a, b  interface{}
 	equal bool
@@ -21,6 +47,8 @@ type deepEqualTestCase struct {
 var deepEqualNullMapString map[string]interface{}
 
 func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
+	recursive := &complexCompare{}
+	recursive.p = recursive
 	return []deepEqualTestCase{
 		{
 			a:     nil,
@@ -178,17 +206,17 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			a:     map[interface{}]interface{}{&map[string]interface{}{"a": "foo", "b": uint32(8)}: "foo"},
 			b:     map[interface{}]interface{}{&map[string]interface{}{"a": "foo", "b": uint32(8)}: "fox"},
 			equal: false,
-			diff:  "for key *map[string]interface {}{\"a\":\"foo\", \"b\":uint32(8)} in map, values are different: Strings different: \"foo\" vs \"fox\"",
+			diff:  `for complex key *map[string]interface {}{"a":"foo", "b":uint32(8)} in map, values are different: Strings different: "foo" vs "fox"`,
 		}, {
 			a:     map[interface{}]interface{}{&map[string]interface{}{"a": "foo", "b": uint32(8)}: "foo"},
 			b:     map[interface{}]interface{}{&map[string]interface{}{"a": "foo", "b": uint32(5)}: "foo"},
 			equal: false,
-			diff:  "key *map[string]interface {}{\"a\":\"foo\", \"b\":uint32(8)} in map is missing in the second map",
+			diff:  `complex key *map[string]interface {}{"a":"foo", "b":uint32(8)} in map is missing in the second map`,
 		}, {
 			a:     map[interface{}]interface{}{&map[string]interface{}{"a": "foo", "b": uint32(8)}: "foo"},
 			b:     map[interface{}]interface{}{&map[string]interface{}{"a": "foo"}: "foo"},
 			equal: false,
-			diff:  "key *map[string]interface {}{\"a\":\"foo\", \"b\":uint32(8)} in map is missing in the second map",
+			diff:  `complex key *map[string]interface {}{"a":"foo", "b":uint32(8)} in map is missing in the second map`,
 		}, {
 			a: map[interface{}]interface{}{
 				&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo",
@@ -209,7 +237,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 				&map[string]interface{}{"a": "foo", "b": int8(5)}:  "foo",
 			},
 			equal: false,
-			diff:  "key *map[string]interface {}{\"a\":\"foo\", \"b\":int8(8)} in map is missing in the second map",
+			diff:  `complex key *map[string]interface {}{"a":"foo", "b":int8(8)} in map is missing in the second map`,
 		}, {
 			a: map[interface{}]interface{}{
 				&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo",
@@ -220,7 +248,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 				&map[string]interface{}{"a": "foo", "b": int32(8)}: "foo",
 			},
 			equal: false,
-			diff:  "key *map[string]interface {}{\"a\":\"foo\", \"b\":int8(8)} in map is missing in the second map",
+			diff:  `complex key *map[string]interface {}{"a":"foo", "b":int8(8)} in map is missing in the second map`,
 		}, {
 			a: map[interface{}]interface{}{
 				&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo",
@@ -388,7 +416,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			a:     builtinCompare{a: 42, b: "foo"},
 			b:     builtinCompare{a: 42, b: "bar"},
 			equal: false,
-			diff:  "Structs types are different: test.builtinCompare{a:uint32(42), b:\"foo\"} vs test.builtinCompare{a:uint32(42), b:\"bar\"}",
+			diff:  `attributes "b" are different: Strings different: "foo" vs "bar"`,
 		}, {
 			a:     map[int8]int8{2: 3, 3: 4},
 			b:     map[int8]int8{2: 3, 3: 4},
@@ -398,5 +426,95 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			b:     map[int8]int8{2: 3, 3: 5},
 			equal: false,
 			diff:  "for key int8(3) in map, values are different: Ints different: 4, 5",
+		}, {
+			a:     complexCompare{},
+			b:     complexCompare{},
+			equal: true,
+		}, {
+			a: complexCompare{
+				m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			b: complexCompare{
+				m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			equal: true,
+		}, {
+			a: complexCompare{
+				m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			b: complexCompare{
+				m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 51}},
+			equal: false,
+			diff: `attributes "m" are different: for key test.builtinCompare{a:uint32(1),` +
+				` b:"foo"} in map, values are different: Ints different: 42, 51`,
+		}, {
+			a: complexCompare{
+				m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			b: complexCompare{
+				m: map[builtinCompare]int8{builtinCompare{1, "bar"}: 42}},
+			equal: false,
+			diff: `attributes "m" are different: key test.builtinCompare{a:uint32(1),` +
+				` b:"foo"} in map is missing in the second map`,
+		}, {
+			a:     recursive,
+			b:     recursive,
+			equal: true,
+		}, {
+			a:     complexCompare{p: recursive},
+			b:     complexCompare{p: recursive},
+			equal: true,
+		}, {
+			a:     complexCompare{p: &complexCompare{p: recursive}},
+			b:     complexCompare{p: &complexCompare{p: recursive}},
+			equal: true,
+		}, {
+			a:     []complexCompare{complexCompare{p: &complexCompare{p: recursive}}},
+			b:     []complexCompare{complexCompare{p: &complexCompare{p: recursive}}},
+			equal: true,
+		}, {
+			a:     []complexCompare{complexCompare{p: &complexCompare{p: recursive}}},
+			b:     []complexCompare{complexCompare{p: &complexCompare{p: nil}}},
+			equal: false,
+			diff: `In arrays, values are different at index 0: attributes "p" are` +
+				` different: attributes "p" are different: one value is nil and ` +
+				`the other is not nil: *test.complexCompare{m:map[test.` +
+				`builtinCompare]int8{}, p:*test.complexCompare{` +
+				`<circular dependency>}}`,
+		}, {
+			a:     partialCompare{a: 42},
+			b:     partialCompare{a: 42},
+			equal: true,
+		}, {
+			a:     partialCompare{a: 42},
+			b:     partialCompare{a: 51},
+			equal: false,
+			diff:  `attributes "a" are different: Uints different: 42, 51`,
+		}, {
+			a:     partialCompare{a: 42, b: "foo"},
+			b:     partialCompare{a: 42, b: "bar"},
+			equal: true,
+		}, {
+			a:     map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
+			b:     map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
+			equal: true,
+		}, {
+			a:     map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
+			b:     map[*builtinCompare]uint32{&builtinCompare{2, "foo"}: 42},
+			equal: false,
+			diff:  `complex key *test.builtinCompare{a:uint32(1), b:"foo"} in map is missing in the second map`,
+		}, {
+			a:     map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
+			b:     map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 51},
+			equal: false,
+			diff:  `for complex key *test.builtinCompare{a:uint32(1), b:"foo"} in map, values are different: Uints different: 42, 51`,
+		}, {
+			a:     mkKey("a"),
+			b:     mkKey("a"),
+			equal: true,
+		}, {
+			a:     map[keyInterface]string{mkKey("a"): "b"},
+			b:     map[keyInterface]string{mkKey("a"): "b"},
+			equal: true,
+		}, {
+			a:     map[keyInterface]string{mkKey(&map[string]interface{}{"a": true}): "b"},
+			b:     map[keyInterface]string{mkKey(&map[string]interface{}{"a": true}): "b"},
+			equal: true,
 		}}
 }
