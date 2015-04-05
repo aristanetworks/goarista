@@ -42,6 +42,18 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		return fmt.Sprintf("types are different: %T vs %T", a, b)
 	}
 
+	switch a := a.(type) {
+	case bool,
+		int8, int16, int32, int64,
+		uint8, uint16, uint32, uint64,
+		float32, float64:
+		if a != b {
+			typ := reflect.TypeOf(a).Name()
+			return fmt.Sprintf("%s(%v) != %s(%v)", typ, a, typ, b)
+		}
+		return ""
+	}
+
 	if ac, ok := a.(diffable); ok {
 		return ac.Diff(b.(diffable))
 	}
@@ -55,31 +67,6 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 	}
 
 	switch av.Kind() {
-	case reflect.Bool:
-		if av.Bool() != bv.Bool() {
-			return fmt.Sprintf("Booleans different: %v, %v", a, b)
-		}
-
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if av.Int() != bv.Int() {
-			return fmt.Sprintf("Ints different: %v, %v", a, b)
-		}
-
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if av.Uint() != bv.Uint() {
-			return fmt.Sprintf("Uints different: %v, %v", a, b)
-		}
-
-	case reflect.Float32, reflect.Float64:
-		if av.Float() != bv.Float() {
-			return fmt.Sprintf("Floats different: %v, %v", a, b)
-		}
-
-	case reflect.Complex64, reflect.Complex128:
-		if av.Complex() != bv.Complex() {
-			return fmt.Sprintf("Complexes different: %v, %v", a, b)
-		}
-
 	case reflect.Array, reflect.Slice:
 		l := av.Len()
 		if l != bv.Len() {

@@ -43,9 +43,8 @@ type deepEqualTestCase struct {
 	diff string
 }
 
-var deepEqualNullMapString map[string]interface{}
-
 func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
+	var deepEqualNullMapString map[string]interface{}
 	recursive := &complexCompare{}
 	recursive.p = recursive
 	return []deepEqualTestCase{{
@@ -65,7 +64,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    uint16(1),
 		b:    uint16(2),
-		diff: "Uints different: 1, 2",
+		diff: "uint16(1) != uint16(2)",
 	}, {
 		a:    int8(1),
 		b:    int16(1),
@@ -79,14 +78,14 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    float32(3.1415),
 		b:    float32(3.1416),
-		diff: "Floats different: 3.1415, 3.1416",
+		diff: "float32(3.1415) != float32(3.1416)",
 	}, {
 		a: float64(3.14159265),
 		b: float64(3.14159265),
 	}, {
 		a:    float64(3.14159265),
 		b:    float64(3.14159266),
-		diff: "Floats different: 3.14159265, 3.14159266",
+		diff: "float64(3.14159265) != float64(3.14159266)",
 	}, {
 		a: deepEqualNullMapString,
 		b: deepEqualNullMapString,
@@ -107,7 +106,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    map[string]interface{}{"a": int32(42)},
 		b:    map[string]interface{}{"a": int32(51)},
-		diff: `for key "a" in map, values are different: Ints different: 42, 51`,
+		diff: `for key "a" in map, values are different: int32(42) != int32(51)`,
 	}, {
 		a:    map[string]interface{}{"a": uint32(42)},
 		b:    map[string]interface{}{},
@@ -289,7 +288,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    []uint32{42, 51},
 		b:    []uint32{42, 88},
-		diff: "In arrays, values are different at index 1: Uints different: 51, 88",
+		diff: "In arrays, values are different at index 1: uint32(51) != uint32(88)",
 	}, {
 		a:    []uint32{42, 51},
 		b:    []uint32{42},
@@ -312,7 +311,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    []uint64{42, 51},
 		b:    []uint64{42, 88},
-		diff: "In arrays, values are different at index 1: Uints different: 51, 88",
+		diff: "In arrays, values are different at index 1: uint64(51) != uint64(88)",
 	}, {
 		a: []interface{}{"foo", uint32(42)},
 		b: []interface{}{"foo", uint32(42)},
@@ -367,7 +366,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    map[int8]int8{2: 3, 3: 4},
 		b:    map[int8]int8{2: 3, 3: 5},
-		diff: "for key int8(3) in map, values are different: Ints different: 4, 5",
+		diff: "for key int8(3) in map, values are different: int8(4) != int8(5)",
 	}, {
 		a: complexCompare{},
 		b: complexCompare{},
@@ -382,7 +381,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b: complexCompare{
 			m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 51}},
 		diff: `attributes "m" are different: for key test.builtinCompare{a:uint32(1),` +
-			` b:"foo"} in map, values are different: Ints different: 42, 51`,
+			` b:"foo"} in map, values are different: int8(42) != int8(51)`,
 	}, {
 		a: complexCompare{
 			m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
@@ -416,7 +415,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    partialCompare{a: 42},
 		b:    partialCompare{a: 51},
-		diff: `attributes "a" are different: Uints different: 42, 51`,
+		diff: `attributes "a" are different: uint32(42) != uint32(51)`,
 	}, {
 		a: partialCompare{a: 42, b: "foo"},
 		b: partialCompare{a: 42, b: "bar"},
@@ -432,7 +431,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
 		b: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 51},
 		diff: `for complex key *test.builtinCompare{a:uint32(1), b:"foo"}` +
-			` in map, values are different: Uints different: 42, 51`,
+			` in map, values are different: uint32(42) != uint32(51)`,
 	}, {
 		a: mkKey("a"),
 		b: mkKey("a"),
