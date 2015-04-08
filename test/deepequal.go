@@ -219,8 +219,10 @@ func DeepEqual(a, b interface{}) bool {
 
 // mapEqual does O(N^2) comparisons to check that all the keys present in the
 // first map are also present in the second map and have identical values.
-// Note that this function only compares a to b, but not b to a.
 func mapEqual(a, b map[interface{}]interface{}) bool {
+	if len(a) != len(b) {
+		return false
+	}
 	for akey, avalue := range a {
 		found := false
 		for bkey, bvalue := range b {
