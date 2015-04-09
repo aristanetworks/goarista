@@ -334,7 +334,10 @@ func mapEqual(a, b map[interface{}]interface{}) bool {
 	for akey, avalue := range a {
 		found := false
 		for bkey, bvalue := range b {
-			if DeepEqual(akey, bkey) && DeepEqual(avalue, bvalue) {
+			if DeepEqual(akey, bkey) {
+				if !DeepEqual(avalue, bvalue) {
+					return false
+				}
 				found = true
 				break
 			}
