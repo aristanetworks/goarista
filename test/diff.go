@@ -6,6 +6,8 @@ package test
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strings"
 )
 
 // diffable types have a method that returns the diff
@@ -89,8 +91,8 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 			return d
 		}
 		if av.Len() != bv.Len() {
-			return fmt.Sprintf("Maps have different size: %d != %d",
-				av.Len(), bv.Len())
+			return fmt.Sprintf("Maps have different size: %d != %d (%s)",
+				av.Len(), bv.Len(), diffMapKeys(av, bv))
 		}
 		for _, ka := range av.MapKeys() {
 			ae := av.MapIndex(ka)
@@ -178,6 +180,27 @@ func diffComplexKeyMap(av, bv reflect.Value, seen map[edge]struct{}) string {
 	}
 	return fmt.Sprintf("complex key %s in map is missing in the second map",
 		prettyPrint(ka, ptrSet{}, prettyPrintDepth))
+}
+
+func diffMapKeys(av, bv reflect.Value) string {
+	var diffs []string
+	// TODO: We produce extraneous diffs for composite keys.
+	for _, ka := range av.MapKeys() {
+		be := bv.MapIndex(ka)
+		if !be.IsValid() {
+			diffs = append(diffs, fmt.Sprintf("missing key: %s",
+				PrettyPrint(ka.Interface())))
+		}
+	}
+	for _, kb := range bv.MapKeys() {
+		ae := av.MapIndex(kb)
+		if !ae.IsValid() {
+			diffs = append(diffs, fmt.Sprintf("extra key: %s",
+				PrettyPrint(kb.Interface())))
+		}
+	}
+	sort.Strings(diffs)
+	return strings.Join(diffs, ", ")
 }
 
 func isNilCheck(a, b reflect.Value) (bool /*checked*/, string) {
