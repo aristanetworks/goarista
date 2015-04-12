@@ -46,27 +46,16 @@ func prettyPrintWithType(v reflect.Value, done ptrSet, depth int, showType bool)
 		return "nil"
 	case reflect.Bool:
 		return fmt.Sprintf("%t", v.Bool())
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Float32, reflect.Float64,
+		reflect.Int, reflect.Uint, reflect.Uintptr,
+		reflect.Complex64, reflect.Complex128:
+		i := forceExport(v).Interface()
 		if showType {
-			return fmt.Sprintf("%s(%d)", v.Type(), v.Int())
+			return fmt.Sprintf("%s(%v)", v.Type().Name(), i)
 		}
-		return fmt.Sprintf("%d", v.Int())
-	case reflect.Uint, reflect.Uintptr,
-		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if showType {
-			return fmt.Sprintf("%s(%d)", v.Type(), v.Uint())
-		}
-		return fmt.Sprintf("%d", v.Uint())
-	case reflect.Float32, reflect.Float64:
-		if showType {
-			return fmt.Sprintf("%s(%g)", v.Type(), v.Float())
-		}
-		return fmt.Sprintf("%g", v.Float())
-	case reflect.Complex64, reflect.Complex128:
-		if showType {
-			return fmt.Sprintf("%s(%g)", v.Type(), v.Complex())
-		}
-		return fmt.Sprintf("%g", v.Complex())
+		return fmt.Sprintf("%v", i)
 	case reflect.String:
 		return fmt.Sprintf("%q", v.String())
 	case reflect.Ptr:
