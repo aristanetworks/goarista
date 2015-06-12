@@ -18,14 +18,15 @@ type diffable interface {
 	Diff(other interface{}) string
 }
 
-// Diff returns the difference of two objects in a human readable format
-// Empty string is returned when there is no difference
-func Diff(a, b interface{}) string {
-	if DeepEqual(a, b) {
+// Diff returns the difference of two objects in a human readable format.
+// An empty string is returned when there is no difference.
+// To avoid confusing diffs, make sure you pass the expected value first.
+func Diff(expected, actual interface{}) string {
+	if DeepEqual(expected, actual) {
 		return ""
 	}
 
-	return diffImpl(a, b, nil)
+	return diffImpl(expected, actual, nil)
 }
 
 func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
@@ -36,12 +37,12 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		if !bv.IsValid() {
 			return "" // Both are "nil" with no type
 		}
-		return fmt.Sprintf("one value is nil and the other is of type: %T", b)
+		return fmt.Sprintf("expected nil but got a %T: %#v", b, b)
 	} else if !bv.IsValid() {
-		return fmt.Sprintf("one value is nil and the other is of type: %T", a)
+		return fmt.Sprintf("expected a %T (%#v) but got nil", a, a)
 	}
 	if av.Type() != bv.Type() {
-		return fmt.Sprintf("types are different: %T vs %T", a, b)
+		return fmt.Sprintf("expected a %T but got a %T", a, b)
 	}
 
 	switch a := a.(type) {
@@ -72,17 +73,14 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 	case reflect.Array, reflect.Slice:
 		l := av.Len()
 		if l != bv.Len() {
-			return fmt.Sprintf("Arrays have different size: %d != %d",
+			return fmt.Sprintf("Expected an array of size %d but got %d",
 				l, bv.Len())
 		}
 		for i := 0; i < l; i++ {
 			diff := diffImpl(av.Index(i).Interface(), bv.Index(i).Interface(),
 				seen)
 			if len(diff) > 0 {
-				diff = fmt.Sprintf(
-					"In arrays, values are different at index %d: %s",
-					i, diff)
-				return diff
+				return fmt.Sprintf("In arrays, values are different at index %d: %s", i, diff)
 			}
 		}
 
@@ -102,7 +100,7 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 			be := bv.MapIndex(ka)
 			if !be.IsValid() {
 				return fmt.Sprintf(
-					"key %s in map is missing in the second map",
+					"key %s in map is missing in the actual map",
 					prettyPrint(ka, ptrSet{}, prettyPrintDepth))
 			}
 			if !ae.CanInterface() {
@@ -145,7 +143,7 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 
 	case reflect.String:
 		if av.String() != bv.String() {
-			return fmt.Sprintf("Strings different: %q vs %q", a, b)
+			return fmt.Sprintf("Expected string %q but got %q", a, b)
 		}
 
 	case reflect.Struct:
@@ -163,7 +161,7 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		}
 
 	default:
-		return fmt.Sprintf("Unknown or unsupported type: %T", a)
+		return fmt.Sprintf("Unknown or unsupported type: %T: %#v", a, a)
 	}
 
 	return ""
@@ -178,7 +176,7 @@ func diffComplexKeyMap(av, bv reflect.Value, seen map[edge]struct{}) string {
 			prettyPrint(ka, ptrSet{}, prettyPrintDepth),
 			diffImpl(av.MapIndex(ka).Interface(), be.Interface(), seen))
 	}
-	return fmt.Sprintf("complex key %s in map is missing in the second map",
+	return fmt.Sprintf("complex key %s in map is missing in the actual map",
 		prettyPrint(ka, ptrSet{}, prettyPrintDepth))
 }
 
@@ -208,10 +206,10 @@ func isNilCheck(a, b reflect.Value) (bool /*checked*/, string) {
 		if b.IsNil() {
 			return true, ""
 		}
-		return true, fmt.Sprintf("one value is nil and the other is not nil: %s",
+		return true, fmt.Sprintf("expected nil but got %s",
 			prettyPrint(b, ptrSet{}, prettyPrintDepth))
 	} else if b.IsNil() {
-		return true, fmt.Sprintf("one value is nil and the other is not nil: %s",
+		return true, fmt.Sprintf("got nil instead of %s",
 			prettyPrint(a, ptrSet{}, prettyPrintDepth))
 	}
 	return false, ""

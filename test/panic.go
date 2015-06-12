@@ -31,7 +31,7 @@ func ShouldPanicWith(t *testing.T, msg interface{}, fn func()) {
 			t.Errorf("%sThe function %#v should have panicked",
 				getCallerInfo(),
 				fn)
-		} else if d := Diff(r, msg); len(d) != 0 {
+		} else if d := Diff(msg, r); len(d) != 0 {
 			t.Errorf("%sThe function %#v panicked with the wrong message.\n"+
 				"Expected: %#v\nReceived: %#v\nDiff:%s",
 				getCallerInfo(),

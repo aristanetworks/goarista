@@ -56,11 +56,11 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    nil,
 		b:    uint8(5),
-		diff: "one value is nil and the other is of type: uint8",
+		diff: "expected nil but got a uint8: 0x5",
 	}, {
 		a:    uint8(5),
 		b:    nil,
-		diff: "one value is nil and the other is of type: uint8",
+		diff: "expected a uint8 (0x5) but got nil",
 	}, {
 		a:    uint16(1),
 		b:    uint16(2),
@@ -68,7 +68,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    int8(1),
 		b:    int16(1),
-		diff: "types are different: int8 vs int16",
+		diff: "expected a int8 but got a int16",
 	}, {
 		a: true,
 		b: true,
@@ -95,11 +95,11 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    deepEqualNullMapString,
 		b:    &deepEqualNullMapString,
-		diff: "types are different: map[string]interface {} vs *map[string]interface {}",
+		diff: "expected a map[string]interface {} but got a *map[string]interface {}",
 	}, {
 		a:    &deepEqualNullMapString,
 		b:    deepEqualNullMapString,
-		diff: "types are different: *map[string]interface {} vs map[string]interface {}",
+		diff: "expected a *map[string]interface {} but got a map[string]interface {}",
 	}, {
 		a: map[string]interface{}{"a": uint32(42)},
 		b: map[string]interface{}{"a": uint32(42)},
@@ -129,7 +129,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    map[uint32]interface{}{uint32(42): "foo"},
 		b:    map[uint32]interface{}{uint32(51): "foo"},
-		diff: "key uint32(42) in map is missing in the second map",
+		diff: "key uint32(42) in map is missing in the actual map",
 	}, {
 		a:    map[uint32]interface{}{uint32(42): "foo"},
 		b:    map[uint32]interface{}{uint32(42): "foo", uint32(51): "bar"},
@@ -137,28 +137,26 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    map[uint32]interface{}{uint32(42): "foo"},
 		b:    map[uint64]interface{}{uint64(42): "foo"},
-		diff: "types are different: map[uint32]interface {} vs map[uint64]interface {}",
+		diff: "expected a map[uint32]interface {} but got a map[uint64]interface {}",
 	}, {
 		a: map[uint64]interface{}{uint64(42): "foo"},
 		b: map[uint64]interface{}{uint64(42): "foo"},
 	}, {
 		a:    map[uint64]interface{}{uint64(42): "foo"},
 		b:    map[uint64]interface{}{uint64(51): "foo"},
-		diff: "key uint64(42) in map is missing in the second map",
+		diff: "key uint64(42) in map is missing in the actual map",
 	}, {
 		a:    map[uint64]interface{}{uint64(42): "foo"},
 		b:    map[uint64]interface{}{uint64(42): "foo", uint64(51): "bar"},
 		diff: `Maps have different size: 1 != 2 (extra key: uint64(51))`,
 	}, {
-		a: map[uint64]interface{}{uint64(42): "foo"},
-		b: map[interface{}]interface{}{uint32(42): "foo"},
-		diff: "types are different: map[uint64]interface {} vs" +
-			" map[interface {}]interface {}",
+		a:    map[uint64]interface{}{uint64(42): "foo"},
+		b:    map[interface{}]interface{}{uint32(42): "foo"},
+		diff: "expected a map[uint64]interface {} but got a map[interface {}]interface {}",
 	}, {
-		a: map[interface{}]interface{}{"a": uint32(42)},
-		b: map[string]interface{}{"a": uint32(42)},
-		diff: "types are different: map[interface {}]interface {} vs" +
-			" map[string]interface {}",
+		a:    map[interface{}]interface{}{"a": uint32(42)},
+		b:    map[string]interface{}{"a": uint32(42)},
+		diff: "expected a map[interface {}]interface {} but got a map[string]interface {}",
 	}, {
 		a: map[interface{}]interface{}{},
 		b: map[interface{}]interface{}{},
@@ -176,21 +174,21 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": uint32(8)}: "fox"},
 		diff: `for complex key *map[string]interface {}{"a":"foo", "b":uint32(8)}` +
-			` in map, values are different: Strings different: "foo" vs "fox"`,
+			` in map, values are different: Expected string "foo" but got "fox"`,
 	}, {
 		a: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": uint32(8)}: "foo"},
 		b: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": uint32(5)}: "foo"},
 		diff: `complex key *map[string]interface {}{"a":"foo", "b":uint32(8)}` +
-			` in map is missing in the second map`,
+			` in map is missing in the actual map`,
 	}, {
 		a: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": uint32(8)}: "foo"},
 		b: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo"}: "foo"},
 		diff: `complex key *map[string]interface {}{"a":"foo", "b":uint32(8)}` +
-			` in map is missing in the second map`,
+			` in map is missing in the actual map`,
 	}, {
 		a: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo",
@@ -210,7 +208,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			&map[string]interface{}{"a": "foo", "b": int8(5)}:  "foo",
 		},
 		diff: `complex key *map[string]interface {}{"a":"foo", "b":int8(8)}` +
-			` in map is missing in the second map`,
+			` in map is missing in the actual map`,
 	}, {
 		a: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo",
@@ -221,7 +219,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			&map[string]interface{}{"a": "foo", "b": int32(8)}: "foo",
 		},
 		diff: `complex key *map[string]interface {}{"a":"foo", "b":int8(8)}` +
-			` in map is missing in the second map`,
+			` in map is missing in the actual map`,
 	}, {
 		a: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": int16(8)}: "foo",
@@ -255,20 +253,20 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    []string{"foo", "bar"},
 		b:    []string{"foo"},
-		diff: "Arrays have different size: 2 != 1",
+		diff: "Expected an array of size 2 but got 1",
 	}, {
 		a:    []string{"foo"},
 		b:    []string{"foo", "bar"},
-		diff: "Arrays have different size: 1 != 2",
+		diff: "Expected an array of size 1 but got 2",
 	}, {
 		a: []string{"foo", "bar"},
 		b: []string{"bar", "foo"},
 		diff: `In arrays, values are different at index 0:` +
-			` Strings different: "foo" vs "bar"`,
+			` Expected string "foo" but got "bar"`,
 	}, {
 		a:    &[]string{},
 		b:    []string{},
-		diff: "types are different: *[]string vs []string",
+		diff: "expected a *[]string but got a []string",
 	}, {
 		a: &[]string{},
 		b: &[]string{},
@@ -278,16 +276,16 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    &[]string{"foo", "bar"},
 		b:    &[]string{"foo"},
-		diff: "Arrays have different size: 2 != 1",
+		diff: "Expected an array of size 2 but got 1",
 	}, {
 		a:    &[]string{"foo"},
 		b:    &[]string{"foo", "bar"},
-		diff: "Arrays have different size: 1 != 2",
+		diff: "Expected an array of size 1 but got 2",
 	}, {
 		a: &[]string{"foo", "bar"},
 		b: &[]string{"bar", "foo"},
 		diff: `In arrays, values are different at index 0:` +
-			` Strings different: "foo" vs "bar"`,
+			` Expected string "foo" but got "bar"`,
 	}, {
 		a: []uint32{42, 51},
 		b: []uint32{42, 51},
@@ -298,22 +296,22 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    []uint32{42, 51},
 		b:    []uint32{42},
-		diff: "Arrays have different size: 2 != 1",
+		diff: "Expected an array of size 2 but got 1",
 	}, {
 		a:    []uint32{42, 51},
 		b:    []uint64{42, 51},
-		diff: "types are different: []uint32 vs []uint64",
+		diff: "expected a []uint32 but got a []uint64",
 	}, {
 		a:    []uint64{42, 51},
 		b:    []uint32{42, 51},
-		diff: "types are different: []uint64 vs []uint32",
+		diff: "expected a []uint64 but got a []uint32",
 	}, {
 		a: []uint64{42, 51},
 		b: []uint64{42, 51},
 	}, {
 		a:    []uint64{42, 51},
 		b:    []uint64{42},
-		diff: "Arrays have different size: 2 != 1",
+		diff: "Expected an array of size 2 but got 1",
 	}, {
 		a:    []uint64{42, 51},
 		b:    []uint64{42, 88},
@@ -324,27 +322,27 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    []interface{}{"foo", uint32(42)},
 		b:    []interface{}{"foo"},
-		diff: "Arrays have different size: 2 != 1",
+		diff: "Expected an array of size 2 but got 1",
 	}, {
 		a:    []interface{}{"foo"},
 		b:    []interface{}{"foo", uint32(42)},
-		diff: "Arrays have different size: 1 != 2",
+		diff: "Expected an array of size 1 but got 2",
 	}, {
 		a: []interface{}{"foo", uint32(42)},
 		b: []interface{}{"foo", uint8(42)},
 		diff: "In arrays, values are different at index 1:" +
-			" types are different: uint32 vs uint8",
+			" expected a uint32 but got a uint8",
 	}, {
 		a:    []interface{}{"foo", "bar"},
 		b:    []string{"foo", "bar"},
-		diff: "types are different: []interface {} vs []string",
+		diff: "expected a []interface {} but got a []string",
 	}, {
 		a: &[]interface{}{"foo", uint32(42)},
 		b: &[]interface{}{"foo", uint32(42)},
 	}, {
 		a:    &[]interface{}{"foo", uint32(42)},
 		b:    []interface{}{"foo", uint32(42)},
-		diff: "types are different: *[]interface {} vs []interface {}",
+		diff: "expected a *[]interface {} but got a []interface {}",
 	}, {
 		a: comparableStruct{a: 42},
 		b: comparableStruct{a: 42},
@@ -365,7 +363,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    builtinCompare{a: 42, b: "foo"},
 		b:    builtinCompare{a: 42, b: "bar"},
-		diff: `attributes "b" are different: Strings different: "foo" vs "bar"`,
+		diff: `attributes "b" are different: Expected string "foo" but got "bar"`,
 	}, {
 		a: map[int8]int8{2: 3, 3: 4},
 		b: map[int8]int8{2: 3, 3: 4},
@@ -394,7 +392,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b: complexCompare{
 			m: map[builtinCompare]int8{builtinCompare{1, "bar"}: 42}},
 		diff: `attributes "m" are different: key test.builtinCompare{a:uint32(1),` +
-			` b:"foo"} in map is missing in the second map`,
+			` b:"foo"} in map is missing in the actual map`,
 	}, {
 		a: recursive,
 		b: recursive,
@@ -411,10 +409,9 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: []complexCompare{complexCompare{p: &complexCompare{p: recursive}}},
 		b: []complexCompare{complexCompare{p: &complexCompare{p: nil}}},
 		diff: `In arrays, values are different at index 0: attributes "p" are` +
-			` different: attributes "p" are different: one value is nil and ` +
-			`the other is not nil: *test.complexCompare{m:map[test.` +
-			`builtinCompare]int8{}, p:*test.complexCompare{` +
-			`<circular dependency>}}`,
+			` different: attributes "p" are different: got nil instead of ` +
+			`*test.complexCompare{m:map[test.builtinCompare]int8{},` +
+			` p:*test.complexCompare{<circular dependency>}}`,
 	}, {
 		a: partialCompare{a: 42},
 		b: partialCompare{a: 42},
@@ -432,7 +429,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
 		b: map[*builtinCompare]uint32{&builtinCompare{2, "foo"}: 42},
 		diff: `complex key *test.builtinCompare{a:uint32(1), b:"foo"}` +
-			` in map is missing in the second map`,
+			` in map is missing in the actual map`,
 	}, {
 		a: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
 		b: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 51},
