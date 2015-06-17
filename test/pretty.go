@@ -124,6 +124,13 @@ func prettyPrintWithType(v reflect.Value, done ptrSet, depth int, showType bool)
 	case reflect.Array, reflect.Slice:
 		l := v.Len()
 		var r []byte
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			b := v.Interface().([]byte)
+			r = append(r, []byte(`[]byte(`)...)
+			r = append(r, []byte(fmt.Sprintf("%q", b))...)
+			r = append(r, ')')
+			return string(r)
+		}
 		r = append(r, []byte(v.Type().String())...)
 		r = append(r, '{')
 		for i := 0; i < l; i++ {
