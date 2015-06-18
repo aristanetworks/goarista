@@ -124,21 +124,6 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b:    map[string]interface{}{"a": uint64(42), "b": "extra"},
 		diff: `Maps have different size: 1 != 2 (extra key: "b")`,
 	}, {
-		a: map[uint32]interface{}{uint32(42): "foo"},
-		b: map[uint32]interface{}{uint32(42): "foo"},
-	}, {
-		a:    map[uint32]interface{}{uint32(42): "foo"},
-		b:    map[uint32]interface{}{uint32(51): "foo"},
-		diff: "key uint32(42) in map is missing in the actual map",
-	}, {
-		a:    map[uint32]interface{}{uint32(42): "foo"},
-		b:    map[uint32]interface{}{uint32(42): "foo", uint32(51): "bar"},
-		diff: `Maps have different size: 1 != 2 (extra key: uint32(51))`,
-	}, {
-		a:    map[uint32]interface{}{uint32(42): "foo"},
-		b:    map[uint64]interface{}{uint64(42): "foo"},
-		diff: "expected a map[uint32]interface {} but got a map[uint64]interface {}",
-	}, {
 		a: map[uint64]interface{}{uint64(42): "foo"},
 		b: map[uint64]interface{}{uint64(42): "foo"},
 	}, {

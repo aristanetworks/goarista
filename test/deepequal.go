@@ -93,17 +93,6 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 		v, ok := b.([]byte)
 		return ok && bytes.Equal(a, v)
 
-	case map[uint32]interface{}:
-		v, ok := b.(map[uint32]interface{})
-		if !ok || len(a) != len(v) {
-			return false
-		}
-		for key, value := range a {
-			if other, ok := v[key]; !ok || !deepEqual(value, other, seen) {
-				return false
-			}
-		}
-		return true
 	case map[uint64]interface{}:
 		v, ok := b.(map[uint64]interface{})
 		if !ok || len(a) != len(v) {
