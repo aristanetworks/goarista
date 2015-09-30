@@ -112,7 +112,7 @@ func TestIsHashable(t *testing.T) {
 	}}
 
 	for _, tcase := range tests {
-		if NewKey(tcase.k).(keyImpl).isHashable() != tcase.h {
+		if NewKey(tcase.k).IsHashable() != tcase.h {
 			t.Errorf("Wrong result for case:\nk: %#v",
 				tcase.k)
 

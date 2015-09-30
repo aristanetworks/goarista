@@ -17,6 +17,11 @@ type Key interface {
 	String() string
 	Equal(other interface{}) bool
 
+	// IsHashable is true if this key is hashable and can be accessed in O(1) in a Go map.
+	// If false, then a O(N) lookup is required to find this key in a Go map.
+	// The only kind of unhashable key currently supported is map[string]interface{}.
+	IsHashable() bool
+
 	// Helper methods to manipulate maps keyed by `Key'.
 
 	// GetFromMap returns the value for the entry of this Key.
@@ -64,11 +69,12 @@ func (k keyImpl) String() string {
 
 func isHashableMap(m map[Key]interface{}) bool {
 	for k := range m {
-		return k.(keyImpl).isHashable()
+		return k.IsHashable()
 	}
-	return false
+	return true
 }
-func (k keyImpl) isHashable() bool {
+
+func (k keyImpl) IsHashable() bool {
 	_, ok := k.key.(*map[string]interface{})
 	return !ok
 }
