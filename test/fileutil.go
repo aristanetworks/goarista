@@ -5,7 +5,7 @@
 package test
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 )
@@ -17,12 +17,12 @@ func CopyFile(t *testing.T, srcPath, dstPath string) {
 		t.Fatal(err)
 	}
 	defer src.Close()
-	// This loads the entire file in memory, which is fine for small-ish files.
-	input, err := ioutil.ReadAll(src)
+	dst, err := os.Create(dstPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ioutil.WriteFile(dstPath, input, os.FileMode(0600))
+	defer dst.Close()
+	_, err = io.Copy(dst, src)
 	if err != nil {
 		t.Fatal(err)
 	}
