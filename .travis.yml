@@ -1,0 +1,10 @@
+language: go
+go:
+  - 1.5.1
+before_install:
+  - go get golang.org/x/tools/cmd/cover github.com/golang/lint/golint
+after_success:
+  - make coverdata
+  - bash <(curl -s https://codecov.io/bash)
+script:
+  - make -j4 check GOTEST_FLAGS=-v
