@@ -151,7 +151,7 @@ func keyEqual(a, b interface{}) bool {
 			return false
 		}
 		for k, av := range a {
-			if bv, ok := (b)[k]; !ok || !keyEqual(av, bv) {
+			if bv, ok := b[k]; !ok || !keyEqual(av, bv) {
 				return false
 			}
 		}
