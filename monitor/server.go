@@ -7,11 +7,13 @@
 package monitor
 
 import (
-	_ "expvar" // Go documentation recommended usage
+	"expvar"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	_ "net/http/pprof" // Go documentation recommended usage
+	"strings"
 )
 
 // Server represents a monitoring server
@@ -47,9 +49,28 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, indexTmpl)
 }
 
+// Pretty prints the latency histograms
+func latencyHandler(w http.ResponseWriter, r *http.Request) {
+	expvar.Do(func(kv expvar.KeyValue) {
+		if strings.HasSuffix(kv.Key, "Histogram") {
+			template.Must(template.New("latency").Parse(
+				`<html>
+					<head>
+						<title>/debug/latency</title>
+					</head>
+					<body>
+						<pre>{{.}}</pre>
+					</body>
+				</html>
+			`)).Execute(w, template.HTML(strings.Replace(kv.Value.String(), "\\n", "<br />", -1)))
+		}
+	})
+}
+
 // Run sets up the HTTP server and any handlers
 func (s *server) Run() {
 	http.HandleFunc("/debug", debugHandler)
+	http.HandleFunc("/debug/latency", latencyHandler)
 
 	// monitoring server
 	err := http.ListenAndServe(s.serverName, nil)
