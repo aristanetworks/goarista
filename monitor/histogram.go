@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc/benchmark/stats"
+	"github.com/aristanetworks/goarista/monitor/stats"
 )
 
 // Histogram contains the data needed to properly export itself to expvar
