@@ -4,6 +4,8 @@
 
 package errs
 
+import "fmt"
+
 type errorType string
 
 // Source: RFC6241 section 4.3
@@ -76,8 +78,12 @@ const (
 	// TagOperationFailed indicates that the request could not be completed because the
 	// requested operation failed for some reason not covered by any other error condition
 	TagOperationFailed errorTag = "operation-failed"
+	// TagPartialOperation not supported because it is obselete and SHOULD NOT be sent by
+	// servers conforming to RFC6241
+
 	// TagMalformedMessage indicates that a message could not be handled because it failed to
 	// be parsed correctly.
+	// This error-tag is new in :base:1.1 and MUST NOT be sent to old clients.
 	TagMalformedMessage errorTag = "malformed-message"
 )
 
@@ -97,19 +103,16 @@ type errorInfoType string
 
 // Source: RFC6241 Appendix A
 const (
-	ETypeNone         errorInfoType = "none"
 	ETypeSessionID    errorInfoType = "session-id"
 	ETypeBadAttribute errorInfoType = "bad-attribute"
 	ETypeBadElement   errorInfoType = "bad-element"
-	ETypeOkElement    errorInfoType = "ok-element"
-	ETypeErrElement   errorInfoType = "err-element"
-	ETypeNoopElement  errorInfoType = "noop-element"
+	ETypeBadNamespace errorInfoType = "bad-namespace"
 )
 
 // NetconfError defines a custom error struct
 type NetconfError struct {
 	// Type defines the conceptual layer that the error occurred in.
-	Type []errorType `json:"error-type" xml:"error-type"`
+	Type errorType `json:"error-type" xml:"error-type"`
 	// Tag contains a string identifying the error condition
 	Tag errorTag `json:"error-tag" xml:"error-tag"`
 	// Severity contains a string identifying the error severity
@@ -123,38 +126,318 @@ type NetconfError struct {
 	// Message contains a string suitable for human display that describes the error condition
 	Message string `json:"error-message" xml:"error-message"`
 	// Info contains protocol- or data-model-specific error content
-	Info map[errorInfoType][]string `json:"error-info" xml:"error-info"`
+	Info map[errorInfoType]string `json:"error-info" xml:"error-info"`
 	// eDescription describes the error being reported
 	Description string `json:"error-description" xml:"error-description"`
 }
 
-func (e NetconfError) Error() string {
+func (e *NetconfError) Error() string {
 	return e.Message
 }
 
-// AddType adds an errorType to the slice 'Type' in NetconfError
-func (e *NetconfError) AddType(eType errorType) {
-	e.Type = append(e.Type, eType)
-}
-
-// AddErrorInfo adds string data for an errorInfoType to the map 'Info' in NetconfError
-func (e *NetconfError) AddErrorInfo(eInfoType errorInfoType, data string) {
-	e.Info[eInfoType] = append(e.Info[eInfoType], data)
-}
-
-// New creates a new NetconfError err with the provided message.
-func New(message string) *NetconfError {
-	err := &NetconfError{
-		Type:        []errorType{},
-		Tag:         TagNone,
-		Severity:    SevNone,
-		AppTag:      "",
-		Path:        "",
-		Message:     message,
-		Info:        map[errorInfoType][]string{},
-		Description: "",
+// NewInUse creates the Netconf error of this type. Valid error-type for this type of error is
+// protocol or application
+func NewInUse(resourceInUse string, eType errorType) *NetconfError {
+	return &NetconfError{
+		Type:        eType,
+		Tag:         TagInUse,
+		Severity:    SevError,
+		Message:     fmt.Sprintf("Resource %q is already in use", resourceInUse),
+		Info:        map[errorInfoType]string{},
+		Description: "The request requires a resource that already is in use.",
 	}
-	return err
+}
+
+// NewInvalidValue creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol or application
+func NewInvalidValue(invalidParam string, invalidValue string, eType errorType) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagInvalidValue,
+		Severity: SevError,
+		Message: fmt.Sprintf("Parameter %q has invalid value: %s", invalidParam,
+			invalidValue),
+		Info: map[errorInfoType]string{},
+		Description: "The request specifies an unacceptable value for one or more " +
+			"parameters.",
+	}
+}
+
+// NewTooBig creates the Netconf error of this type. All four error-types are valid for this error
+func NewTooBig(eType errorType) *NetconfError {
+	description := "The request or response (that would be generated) is too large for " +
+		"the implementation to handle."
+	return &NetconfError{
+		Type:        eType,
+		Tag:         TagTooBig,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
+}
+
+// NewMissingAttribute creates the Netconf error of this type.
+// Except transport error-type, other three error-types are valid for this error
+func NewMissingAttribute(eType errorType, attrName string, elemName string) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagMissingAttribute,
+		Severity: SevError,
+		Message: fmt.Sprintf("Expected attribute %q is missing from element %q",
+			attrName, elemName),
+		Info: map[errorInfoType]string{
+			// name of the missing attribute
+			ETypeBadAttribute: attrName,
+			// name of the element that is supposed to contain the missing attribute
+			ETypeBadElement: elemName,
+		},
+		Description: "An expected attribute is missing.",
+	}
+}
+
+// NewBadAttribute creates the Netconf error of this type.
+// Except transport error-type, other three error-types are valid for this error
+func NewBadAttribute(eType errorType, attrName string, elemName string) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagBadAttribute,
+		Severity: SevError,
+		Message: fmt.Sprintf("Element %q contains a bad value for attribute %q",
+			attrName, elemName),
+		Info: map[errorInfoType]string{
+			// name of the attribute with bad value
+			ETypeBadAttribute: attrName,
+			// name of the element that contains the attribute with the bad value
+			ETypeBadElement: elemName,
+		},
+		Description: "An attribute value is not correct; e.g., wrong type, out of range, " +
+			"pattern mismatch.",
+	}
+}
+
+// NewUnknownAttribute creates the Netconf error of this type.
+// Except transport error-type, other three error-types are valid for this error
+func NewUnknownAttribute(eType errorType, attrName string, elemName string) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagUnknownAttribute,
+		Severity: SevError,
+		Message: fmt.Sprintf("Element %q contains an unknown attribute %q",
+			elemName, attrName),
+		Info: map[errorInfoType]string{
+			// name of the unexpected attribute
+			ETypeBadAttribute: attrName,
+			// name of the element that contains the unexpected attribute
+			ETypeBadElement: elemName,
+		},
+		Description: "An unexpected attribute is present.",
+	}
+}
+
+// NewMissingElement creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol or application
+func NewMissingElement(eType errorType, elemName string) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagMissingElement,
+		Severity: SevError,
+		Message:  fmt.Sprintf("Expected element %q is missing", elemName),
+		Info: map[errorInfoType]string{
+			// name of the missing element
+			ETypeBadElement: elemName,
+		},
+		Description: "An expected element is missing.",
+	}
+}
+
+// NewBadElement creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol or application
+func NewBadElement(eType errorType, elemName string) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagBadElement,
+		Severity: SevError,
+		Message:  fmt.Sprintf("Bad Value present for element %q", elemName),
+		Info: map[errorInfoType]string{
+			// name of the element with bad value
+			ETypeBadElement: elemName,
+		},
+		Description: "An element value is not correct; e.g., wrong type, out of range, " +
+			"pattern mismatch.",
+	}
+}
+
+// NewUnknownElement creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol or application
+func NewUnknownElement(eType errorType, elemName string) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagUnknownElement,
+		Severity: SevError,
+		Message:  fmt.Sprintf("An unexpected element %q is present", elemName),
+		Info: map[errorInfoType]string{
+			// name of the unexpected element
+			ETypeBadElement: elemName,
+		},
+		Description: "An unexpected element is present.",
+	}
+}
+
+// NewUnknownNamespace creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol or application
+func NewUnknownNamespace(eType errorType, elemName string, namespace string) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagUnknownNamespace,
+		Severity: SevError,
+		Message: fmt.Sprintf("An unexpected namespace %q is present in the element %q",
+			namespace, elemName),
+		Info: map[errorInfoType]string{
+			// name of the element that contains the unexpected namespace
+			ETypeBadElement: elemName,
+			// name of the unexpected namespace
+			ETypeBadNamespace: namespace,
+		},
+		Description: "An unexpected namespace is present.",
+	}
+}
+
+// NewAccessDenied creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol or application
+func NewAccessDenied(eType errorType) *NetconfError {
+	return &NetconfError{
+		Type:     eType,
+		Tag:      TagAccessDenied,
+		Severity: SevError,
+		Message:  fmt.Sprintf("Authorization denied"),
+		Info:     map[errorInfoType]string{},
+		Description: "Access to the requested protocol operation or data model is denied " +
+			"because authorization failed.",
+	}
+}
+
+// NewLockDenied creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol
+func NewLockDenied(sessionID string) *NetconfError {
+	return &NetconfError{
+		Type:     TypeProtocol,
+		Tag:      TagLockDenied,
+		Severity: SevError,
+		Message:  fmt.Sprintf("Lock already held by session ID %s", sessionID),
+		Info: map[errorInfoType]string{
+			ETypeSessionID: sessionID,
+		},
+		Description: "Access to the requested lock is denied because the lock is " +
+			"currently held by another entity.",
+	}
+}
+
+// NewResourceDenied creates the Netconf error of this type.
+// All four error-types are valid for this error.
+func NewResourceDenied(eType errorType) *NetconfError {
+	description := "Request could not be completed because of insufficient resources."
+	return &NetconfError{
+		Type:        eType,
+		Tag:         TagResourceDenied,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
+}
+
+// NewRollbackFailed creates the Netconf error of this type. Valid error-type for this type of
+// error is protocol or application
+func NewRollbackFailed(eType errorType) *NetconfError {
+	description := "Request to roll back some configuration change (via rollback-on-error " +
+		"or <discard-changes> operations) was not completed for some reason."
+	return &NetconfError{
+		Type:        eType,
+		Tag:         TagRollbackFailed,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
+}
+
+// NewDataExists creates the Netconf error of this type. Valid error-type for this type of
+// error is application
+func NewDataExists() *NetconfError {
+	description := "Request could not be completed because the relevant data model " +
+		"content already exists.  For example, a 'create' operation was attempted " +
+		"on data that already exists."
+	return &NetconfError{
+		Type:        TypeApplication,
+		Tag:         TagDataExists,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
+}
+
+// NewDataMissing creates the Netconf error of this type. Valid error-type for this type of
+// error is application
+func NewDataMissing() *NetconfError {
+	description := "Request could not be completed because the relevant data model " +
+		"content does not exist.  For example, a 'delete' operation was " +
+		"attempted on data that does not exist."
+	return &NetconfError{
+		Type:        TypeApplication,
+		Tag:         TagDataMissing,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
+}
+
+// NewOperationNotSupported creates the Netconf error of this type. Valid error-type for
+// this type of error is protocol or application
+func NewOperationNotSupported(eType errorType) *NetconfError {
+	description := "Request could not be completed because the requested operation " +
+		"is not supported by this implementation."
+	return &NetconfError{
+		Type:        eType,
+		Tag:         TagOperationNotSupported,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
+}
+
+// NewOperationFailed creates the Netconf error of this type.
+// Except transport error-type, other three error-types are valid for this error
+func NewOperationFailed(eType errorType) *NetconfError {
+	description := "Request could not be completed because the requested operation " +
+		"failed for some reason not covered by any other error condition."
+	return &NetconfError{
+		Type:        eType,
+		Tag:         TagOperationFailed,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
+}
+
+// NewMalformedMessage creates the Netconf error of this type.
+// Valid error-type for this type of error is rpc
+func NewMalformedMessage() *NetconfError {
+	description := "A message could not be handled because it failed to be parsed " +
+		"correctly.  For example, the message is not well-formed XML or it uses " +
+		"an invalid character set."
+	return &NetconfError{
+		Type:        TypeRPC,
+		Tag:         TagMalformedMessage,
+		Severity:    SevError,
+		Message:     description,
+		Info:        map[errorInfoType]string{},
+		Description: description,
+	}
 }
 
 // IsNetconfError allows receivers of a generic error to see if it's one of the
