@@ -44,9 +44,10 @@ type keyImpl struct {
 	key interface{}
 }
 
-// NewKey returns a Key object implementing the Key interface
-// to wrapped the key passed in
-func NewKey(intf interface{}) Key {
+// New wraps the given value in a Key.
+// This function panics if the value passed in isn't allowed in a Key or
+// doesn't implement Keyable.
+func New(intf interface{}) Key {
 	switch t := intf.(type) {
 	case map[string]interface{}:
 		intf = &t
@@ -133,7 +134,7 @@ func (k keyImpl) SetToMap(m map[Key]interface{}, value interface{}) {
 }
 
 func (k keyImpl) GoString() string {
-	return fmt.Sprintf("types.NewKey(%#v)", k.Key())
+	return fmt.Sprintf("key.New(%#v)", k.Key())
 }
 
 func (k keyImpl) MarshalJSON() ([]byte, error) {
