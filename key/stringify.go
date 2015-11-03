@@ -10,10 +10,10 @@ import (
 	"strconv"
 )
 
-// StringifyInterface transforms an arbitrary interface into its string
+// Stringify transforms an arbitrary interface into its string
 // representation.  We need to do this because some entities use the string
 // representation of their keys as their names.
-func StringifyInterface(key interface{}) (string, error) {
+func Stringify(key interface{}) (string, error) {
 	if key == nil {
 		return "", errors.New("Unable to stringify nil")
 	}
@@ -50,14 +50,14 @@ func StringifyInterface(key interface{}) (string, error) {
 			if len(str) > 0 {
 				str += "_"
 			}
-			s, err := StringifyInterface(v)
+			s, err := Stringify(v)
 			if err != nil {
 				return str, err
 			}
 			str += s
 		}
 	case *map[string]interface{}:
-		return StringifyInterface(*key)
+		return Stringify(*key)
 	case Keyable:
 		return key.KeyString(), nil
 

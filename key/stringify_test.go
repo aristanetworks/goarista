@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestStringifyInterface(t *testing.T) {
+func TestStringify(t *testing.T) {
 
 	testcases := []struct {
 		name   string
@@ -104,7 +104,7 @@ func TestStringifyInterface(t *testing.T) {
 			continue
 		}
 
-		result, err := StringifyInterface(tcase.input)
+		result, err := Stringify(tcase.input)
 		if err != nil {
 			if err.Error() != tcase.output {
 				t.Errorf("Test %s: Error returned: %s", tcase.name, err.Error())
