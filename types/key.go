@@ -33,6 +33,13 @@ type Key interface {
 	SetToMap(m map[Key]interface{}, value interface{})
 }
 
+// Keyable is an interface that should be applied to hashable values
+// that can be wrapped as Key's.
+type Keyable interface {
+	// KeyString returns the string representation of this key.
+	KeyString() string
+}
+
 type keyImpl struct {
 	key interface{}
 }
@@ -45,7 +52,8 @@ func NewKey(intf interface{}) Key {
 		intf = &t
 	case int8, int16, int32, int64,
 		uint8, uint16, uint32, uint64,
-		float32, float64, string, bool:
+		float32, float64, string, bool,
+		Keyable:
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}
@@ -144,8 +152,15 @@ func (k keyImpl) Equal(other interface{}) bool {
 	return keyEqual(k.key, o.Key())
 }
 
+// comparable types have an equality-testing method.
+type comparable interface {
+	// Equal returns true if this object is equal to the other one.
+	Equal(other interface{}) bool
+}
+
 func keyEqual(a, b interface{}) bool {
-	if a, ok := a.(map[string]interface{}); ok {
+	switch a := a.(type) {
+	case map[string]interface{}:
 		b, ok := b.(map[string]interface{})
 		if !ok || len(a) != len(b) {
 			return false
@@ -156,6 +171,8 @@ func keyEqual(a, b interface{}) bool {
 			}
 		}
 		return true
+	case comparable:
+		return a.Equal(b)
 	}
 
 	return a == b

@@ -58,6 +58,8 @@ func StringifyInterface(key interface{}) (string, error) {
 		}
 	case *map[string]interface{}:
 		return StringifyInterface(*key)
+	case Keyable:
+		return key.KeyString(), nil
 
 	default:
 		return "", fmt.Errorf("Unable to stringify type %T", key)
