@@ -1,14 +1,14 @@
 // Copyright (c) 2015 Arista Networks, Inc.  All rights reserved.
 // Arista Networks, Inc. Confidential and Proprietary.
 
-package types_test
+package key_test
 
 import (
 	"fmt"
 	"testing"
 
+	. "github.com/aristanetworks/goarista/key"
 	"github.com/aristanetworks/goarista/test"
-	. "github.com/aristanetworks/goarista/types"
 )
 
 func TestKeyEqual(t *testing.T) {

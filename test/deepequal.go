@@ -10,10 +10,10 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/aristanetworks/goarista/types"
+	"github.com/aristanetworks/goarista/key"
 )
 
-var comparableType = reflect.TypeOf((*types.Comparable)(nil)).Elem()
+var comparableType = reflect.TypeOf((*key.Comparable)(nil)).Elem()
 
 // DeepEqual is a faster implementation of reflect.DeepEqual that:
 //   - Has a reflection-free fast-path for all the common types we use.
@@ -108,7 +108,7 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			return ok && a == v
 		}
 		return deepEqual(*a, *v, seen)
-	case types.Comparable:
+	case key.Comparable:
 		return a.Equal(b)
 
 	case []uint32:
@@ -239,7 +239,7 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 	case reflect.Struct:
 		typ := av.Type()
 		if typ.Implements(comparableType) {
-			return av.Interface().(types.Comparable).Equal(bv.Interface())
+			return av.Interface().(key.Comparable).Equal(bv.Interface())
 		}
 		for i, n := 0, av.NumField(); i < n; i++ {
 			if typ.Field(i).Tag.Get("deepequal") == "ignore" {
