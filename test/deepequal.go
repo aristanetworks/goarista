@@ -9,15 +9,11 @@ import (
 	"math"
 	"reflect"
 	"unsafe"
+
+	"github.com/aristanetworks/goarista/types"
 )
 
-// comparable types have an equality-testing method.
-type comparable interface {
-	// Equal returns true if this object is equal to the other one.
-	Equal(other interface{}) bool
-}
-
-var comparableType = reflect.TypeOf((*comparable)(nil)).Elem()
+var comparableType = reflect.TypeOf((*types.Comparable)(nil)).Elem()
 
 // DeepEqual is a faster implementation of reflect.DeepEqual that:
 //   - Has a reflection-free fast-path for all the common types we use.
@@ -112,7 +108,7 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			return ok && a == v
 		}
 		return deepEqual(*a, *v, seen)
-	case comparable:
+	case types.Comparable:
 		return a.Equal(b)
 
 	case []uint32:
@@ -183,11 +179,6 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 	}
 
 	switch av.Kind() {
-	case reflect.Interface:
-		if av.Type().Implements(comparableType) {
-			return av.Interface().(comparable).Equal(bv.Interface())
-		}
-		fallthrough
 	case reflect.Ptr:
 		if av.IsNil() || bv.IsNil() {
 			return a == b
@@ -248,7 +239,7 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 	case reflect.Struct:
 		typ := av.Type()
 		if typ.Implements(comparableType) {
-			return av.Interface().(comparable).Equal(bv.Interface())
+			return av.Interface().(types.Comparable).Equal(bv.Interface())
 		}
 		for i, n := 0, av.NumField(); i < n; i++ {
 			if typ.Field(i).Tag.Get("deepequal") == "ignore" {

@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/aristanetworks/goarista/types"
 )
 
 // diffable types have a method that returns the diff
@@ -62,8 +64,8 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		return ac.Diff(b.(diffable))
 	}
 
-	if ac, ok := a.(comparable); ok {
-		if ac.Equal(b.(comparable)) {
+	if ac, ok := a.(types.Comparable); ok {
+		if ac.Equal(b.(types.Comparable)) {
 			return ""
 		}
 		return fmt.Sprintf("Comparable types are different: %s vs %s",

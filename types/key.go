@@ -152,8 +152,8 @@ func (k keyImpl) Equal(other interface{}) bool {
 	return keyEqual(k.key, o.Key())
 }
 
-// comparable types have an equality-testing method.
-type comparable interface {
+// Comparable types have an equality-testing method.
+type Comparable interface {
 	// Equal returns true if this object is equal to the other one.
 	Equal(other interface{}) bool
 }
@@ -171,7 +171,7 @@ func keyEqual(a, b interface{}) bool {
 			}
 		}
 		return true
-	case comparable:
+	case Comparable:
 		return a.Equal(b)
 	}
 
