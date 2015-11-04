@@ -202,10 +202,6 @@ func TestDeleteFromMap(t *testing.T) {
 		r: map[Key]interface{}{New(uint32(35)): "c"},
 	}, {
 		k: New(uint32(37)),
-		m: map[Key]interface{}{New(uint32(36)): "c"},
-		r: map[Key]interface{}{New(uint32(36)): "c"},
-	}, {
-		k: New(uint32(37)),
 		m: map[Key]interface{}{},
 		r: map[Key]interface{}{},
 	}, {
