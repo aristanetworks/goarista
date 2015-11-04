@@ -17,12 +17,12 @@ install:
 
 check: vet test fmtcheck lint
 
-COVER_PKGS := .
+COVER_PKGS := key test
 COVER_MODE := count
 coverdata:
 	echo 'mode: $(COVER_MODE)' >coverage.out
 	for dir in $(COVER_PKGS); do \
-	  $(GO) test -covermode=$(COVER_MODE) -coverprofile=cov.out-t $$dir || exit; \
+	  $(GO) test -covermode=$(COVER_MODE) -coverprofile=cov.out-t ./$$dir || exit; \
 	  tail -n +2 cov.out-t >> coverage.out && \
 	  rm cov.out-t; \
 	done;
