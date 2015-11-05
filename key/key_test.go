@@ -42,12 +42,32 @@ func TestKeyEqual(t *testing.T) {
 		b:      New(map[string]interface{}{"b": 4}),
 		result: false,
 	}, {
+		a:      New(map[string]interface{}{"a": 4, "b": 5}),
+		b:      New(map[string]interface{}{"a": 4}),
+		result: false,
+	}, {
 		a:      New(map[string]interface{}{"a": 3}),
 		b:      New(map[string]interface{}{"a": 4}),
 		result: false,
 	}, {
 		a:      New(map[string]interface{}{"a": 3}),
 		b:      New(map[string]interface{}{"a": 3}),
+		result: true,
+	}, {
+		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 3}}),
+		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
+		result: false,
+	}, {
+		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4, New("c"): 5}}),
+		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
+		result: false,
+	}, {
+		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4, New("c"): 5}}),
+		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4, New("c"): 5}}),
+		result: true,
+	}, {
+		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
+		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
 		result: true,
 	}}
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 )
 
 // Stringify transforms an arbitrary interface into its string
@@ -46,19 +47,37 @@ func Stringify(key interface{}) (string, error) {
 		str = key
 	case map[string]interface{}:
 		keys := SortedKeys(key)
-		for _, k := range keys {
+		var err error
+		for i, k := range keys {
 			v := key[k]
-			if len(str) > 0 {
-				str += "_"
-			}
-			s, err := Stringify(v)
+			keys[i], err = Stringify(v)
 			if err != nil {
 				return str, err
 			}
-			str += s
 		}
+		str = strings.Join(keys, "_")
 	case *map[string]interface{}:
 		return Stringify(*key)
+	case map[Key]interface{}:
+		m := make(map[string]interface{}, len(key))
+		for k, v := range key {
+			m[k.String()] = v
+		}
+		keys := SortedKeys(m)
+		for i, k := range keys {
+			v := m[k]
+			sk, err := Stringify(k)
+			if err != nil {
+				return str, err
+			}
+			sv, err := Stringify(v)
+			if err != nil {
+				return str, err
+			}
+			keys[i] = sk + "=" + sv
+		}
+		str = strings.Join(keys, "_")
+
 	case Keyable:
 		return key.KeyString(), nil
 

@@ -92,6 +92,14 @@ func TestStringify(t *testing.T) {
 		},
 		output: "foobar_43_45_barfoo",
 	}, {
+		name: "map[Key]interface{}",
+		input: map[Key]interface{}{
+			New(uint32(42)): true,
+			New("foo"):      "bar",
+			New(map[string]interface{}{"hello": "world"}): "yolo",
+		},
+		output: "42=true_foo=bar_world=yolo",
+	}, {
 		name: "nil inside map[string]interface{}",
 		input: map[string]interface{}{
 			"n": nil,

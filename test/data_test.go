@@ -416,5 +416,17 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a: map[key.Key]string{key.New(map[string]interface{}{"a": true}): "b"},
 		b: map[key.Key]string{key.New(map[string]interface{}{"a": true}): "b"},
+	}, {
+		a: key.New(map[string]interface{}{
+			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 42}): true}}),
+		b: key.New(map[string]interface{}{
+			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 42}): true}}),
+	}, {
+		a: key.New(map[string]interface{}{
+			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 42}): true}}),
+		b: key.New(map[string]interface{}{
+			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 51}): true}}),
+		diff: `Comparable types are different: key.keyImpl{key:*map[string]interface {}` +
+			`{"a":<max_depth>}} vs key.keyImpl{key:*map[string]interface {}{"a":<max_depth>}}`,
 	}}
 }

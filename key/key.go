@@ -173,6 +173,17 @@ func keyEqual(a, b interface{}) bool {
 			}
 		}
 		return true
+	case map[Key]interface{}:
+		b, ok := b.(map[Key]interface{})
+		if !ok || len(a) != len(b) {
+			return false
+		}
+		for k, av := range a {
+			if bv, ok := k.GetFromMap(b); !ok || !keyEqual(av, bv) {
+				return false
+			}
+		}
+		return true
 	case Comparable:
 		return a.Equal(b)
 	}
