@@ -6,6 +6,8 @@ package test
 
 import (
 	"testing"
+
+	"github.com/aristanetworks/goarista/key"
 )
 
 type builtinCompare struct {
@@ -21,22 +23,6 @@ type complexCompare struct {
 type partialCompare struct {
 	a uint32
 	b string `deepequal:"ignore"`
-}
-
-type keyInterface interface {
-	Key() interface{}
-}
-
-type keyImpl struct {
-	k interface{}
-}
-
-func (k keyImpl) Key() interface{} {
-	return k.k
-}
-
-func mkKey(v interface{}) keyInterface {
-	return keyImpl{k: v}
 }
 
 type deepEqualTestCase struct {
@@ -422,13 +408,13 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		diff: `for complex key *test.builtinCompare{a:uint32(1), b:"foo"}` +
 			` in map, values are different: uint32(42) != uint32(51)`,
 	}, {
-		a: mkKey("a"),
-		b: mkKey("a"),
+		a: key.New("a"),
+		b: key.New("a"),
 	}, {
-		a: map[keyInterface]string{mkKey("a"): "b"},
-		b: map[keyInterface]string{mkKey("a"): "b"},
+		a: map[key.Key]string{key.New("a"): "b"},
+		b: map[key.Key]string{key.New("a"): "b"},
 	}, {
-		a: map[keyInterface]string{mkKey(&map[string]interface{}{"a": true}): "b"},
-		b: map[keyInterface]string{mkKey(&map[string]interface{}{"a": true}): "b"},
+		a: map[key.Key]string{key.New(map[string]interface{}{"a": true}): "b"},
+		b: map[key.Key]string{key.New(map[string]interface{}{"a": true}): "b"},
 	}}
 }
