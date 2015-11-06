@@ -4,7 +4,10 @@
 
 package errs
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
 
 type errorType string
 
@@ -445,4 +448,27 @@ func NewMalformedMessage() *NetconfError {
 func IsNetconfError(e error) (ok bool) {
 	_, ok = e.(*NetconfError)
 	return
+}
+
+// MapTagToHTTPStatusCode maps the netconf error-tag to http status code as per
+// draft-ietf-netconf-restconf-07#section-7
+func MapTagToHTTPStatusCode(e *NetconfError) int {
+	switch e.Tag {
+	case TagInUse, TagLockDenied, TagResourceDenied, TagDataExists, TagDataMissing:
+		return http.StatusConflict
+	case TagInvalidValue, TagMissingAttribute, TagBadAttribute, TagUnknownAttribute,
+		TagMissingElement, TagBadElement, TagUnknownElement, TagUnknownNamespace,
+		TagMalformedMessage:
+		return http.StatusBadRequest
+	case TagTooBig:
+		return http.StatusRequestEntityTooLarge
+	case TagAccessDenied:
+		return http.StatusForbidden
+	case TagRollbackFailed, TagOperationFailed:
+		return http.StatusInternalServerError
+	case TagOperationNotSupported:
+		return http.StatusNotImplemented
+	default:
+		return 0
+	}
 }
