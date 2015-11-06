@@ -30,6 +30,10 @@ type deepEqualTestCase struct {
 	diff string
 }
 
+type code int32
+
+type message string
+
 func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	var deepEqualNullMapString map[string]interface{}
 	recursive := &complexCompare{}
@@ -146,7 +150,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": uint32(8)}: "fox"},
 		diff: `for complex key *map[string]interface {}{"a":"foo", "b":uint32(8)}` +
-			` in map, values are different: Expected string "foo" but got "fox"`,
+			` in map, values are different: string(foo) != string(fox)`,
 	}, {
 		a: map[interface{}]interface{}{
 			&map[string]interface{}{"a": "foo", "b": uint32(8)}: "foo"},
@@ -234,7 +238,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: []string{"foo", "bar"},
 		b: []string{"bar", "foo"},
 		diff: `In arrays, values are different at index 0:` +
-			` Expected string "foo" but got "bar"`,
+			` string(foo) != string(bar)`,
 	}, {
 		a:    &[]string{},
 		b:    []string{},
@@ -257,7 +261,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: &[]string{"foo", "bar"},
 		b: &[]string{"bar", "foo"},
 		diff: `In arrays, values are different at index 0:` +
-			` Expected string "foo" but got "bar"`,
+			` string(foo) != string(bar)`,
 	}, {
 		a: []uint32{42, 51},
 		b: []uint32{42, 51},
@@ -335,7 +339,7 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    builtinCompare{a: 42, b: "foo"},
 		b:    builtinCompare{a: 42, b: "bar"},
-		diff: `attributes "b" are different: Expected string "foo" but got "bar"`,
+		diff: `attributes "b" are different: string(foo) != string(bar)`,
 	}, {
 		a: map[int8]int8{2: 3, 3: 4},
 		b: map[int8]int8{2: 3, 3: 4},
@@ -428,5 +432,19 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 51}): true}}),
 		diff: `Comparable types are different: key.keyImpl{key:*map[string]interface {}` +
 			`{"a":<max_depth>}} vs key.keyImpl{key:*map[string]interface {}{"a":<max_depth>}}`,
+	}, {
+		a: code(42),
+		b: code(42),
+	}, {
+		a:    code(42),
+		b:    code(51),
+		diff: "code(42) != code(51)",
+	}, {
+		a: message("foo"),
+		b: message("foo"),
+	}, {
+		a:    message("foo"),
+		b:    message("bar"),
+		diff: `message("foo") != message("bar")`,
 	}}
 }

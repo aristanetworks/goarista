@@ -49,10 +49,12 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 	}
 
 	switch a := a.(type) {
-	case bool,
+	case string, bool,
 		int8, int16, int32, int64,
 		uint8, uint16, uint32, uint64,
-		float32, float64:
+		float32, float64,
+		complex64, complex128,
+		int, uint, uintptr:
 		if a != b {
 			typ := reflect.TypeOf(a).Name()
 			return fmt.Sprintf("%s(%v) != %s(%v)", typ, a, typ, b)
@@ -144,11 +146,6 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		}
 		return diffImpl(av.Interface(), bv.Interface(), seen)
 
-	case reflect.String:
-		if av.String() != bv.String() {
-			return fmt.Sprintf("Expected string %q but got %q", a, b)
-		}
-
 	case reflect.Struct:
 		typ := av.Type()
 		for i, n := 0, av.NumField(); i < n; i++ {
@@ -161,6 +158,33 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 				return fmt.Sprintf("attributes %q are different: %s",
 					av.Type().Field(i).Name, diff)
 			}
+		}
+
+		// The following cases are here to handle named types (aka type aliases).
+	case reflect.String:
+		if as, bs := av.String(), bv.String(); as != bs {
+			return fmt.Sprintf("%s(%q) != %s(%q)", av.Type().Name(), as, bv.Type().Name(), bs)
+		}
+	case reflect.Bool:
+		if ab, bb := av.Bool(), bv.Bool(); ab != bb {
+			return fmt.Sprintf("%s(%t) != %s(%t)", av.Type().Name(), ab, bv.Type().Name(), bb)
+		}
+	case reflect.Uint, reflect.Uintptr,
+		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if ai, bi := av.Uint(), bv.Uint(); ai != bi {
+			return fmt.Sprintf("%s(%d) != %s(%d)", av.Type().Name(), ai, bv.Type().Name(), bi)
+		}
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if ai, bi := av.Int(), bv.Int(); ai != bi {
+			return fmt.Sprintf("%s(%d) != %s(%d)", av.Type().Name(), ai, bv.Type().Name(), bi)
+		}
+	case reflect.Float32, reflect.Float64:
+		if af, bf := av.Float(), bv.Float(); af != bf {
+			return fmt.Sprintf("%s(%f) != %s(%f)", av.Type().Name(), af, bv.Type().Name(), bf)
+		}
+	case reflect.Complex64, reflect.Complex128:
+		if ac, bc := av.Complex(), bv.Complex(); ac != bc {
+			return fmt.Sprintf("%s(%f) != %s(%f)", av.Type().Name(), ac, bv.Type().Name(), bc)
 		}
 
 	default:
