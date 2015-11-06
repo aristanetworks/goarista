@@ -6,16 +6,14 @@ package key
 
 import (
 	"math"
-	"os"
 	"testing"
 )
 
 func TestStringify(t *testing.T) {
-
 	testcases := []struct {
 		name   string
 		input  interface{}
-		output string
+		output string // or expected panic error message.
 	}{{
 		name:   "nil",
 		input:  nil,
@@ -23,7 +21,7 @@ func TestStringify(t *testing.T) {
 	}, {
 		name:   "struct{}",
 		input:  struct{}{},
-		output: "Unable to stringify type struct {}",
+		output: "Unable to stringify type struct {}: struct {}{}",
 	}, {
 		name:   "string",
 		input:  "foobar",
@@ -107,20 +105,23 @@ func TestStringify(t *testing.T) {
 		output: "Unable to stringify nil",
 	}}
 
-	tcaseFilter := os.Getenv("TESTCASE")
 	for _, tcase := range testcases {
-		if tcaseFilter != "" && tcase.name != tcaseFilter {
-			continue
-		}
+		// Pardon the contraption used to catch panic's in error cases.
+		func() {
+			defer func() {
+				if e := recover(); e != nil {
+					if tcase.output != e.(error).Error() {
+						t.Errorf("Test %s: Error returned: %q but wanted %q",
+							tcase.name, e, tcase.output)
+					}
+				}
+			}()
 
-		result, err := Stringify(tcase.input)
-		if err != nil {
-			if err.Error() != tcase.output {
-				t.Errorf("Test %s: Error returned: %s", tcase.name, err.Error())
+			result := stringify(tcase.input)
+			if tcase.output != result {
+				t.Errorf("Test %s: Result is different\nReceived: %s\nExpected: %s",
+					tcase.name, result, tcase.output)
 			}
-		} else if tcase.output != result {
-			t.Errorf("Test %s: Result is different\nReceived: %s\nExpected: %s",
-				tcase.name, result, tcase.output)
-		}
+		}()
 	}
 }

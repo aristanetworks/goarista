@@ -70,11 +70,7 @@ func (k keyImpl) Key() interface{} {
 }
 
 func (k keyImpl) String() string {
-	str, err := Stringify(k.key)
-	if err != nil {
-		panic("Unable to stringify Key: " + err.Error())
-	}
-	return str
+	return stringify(k.key)
 }
 
 func isHashableMap(m map[Key]interface{}) bool {

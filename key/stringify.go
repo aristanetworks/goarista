@@ -12,12 +12,12 @@ import (
 	"strings"
 )
 
-// Stringify transforms an arbitrary interface into its string
+// stringify transforms an arbitrary interface into its string
 // representation.  We need to do this because some entities use the string
 // representation of their keys as their names.
-func Stringify(key interface{}) (string, error) {
+func stringify(key interface{}) string {
 	if key == nil {
-		return "", errors.New("Unable to stringify nil")
+		panic(errors.New("Unable to stringify nil"))
 	}
 	var str string
 	switch key := key.(type) {
@@ -47,17 +47,13 @@ func Stringify(key interface{}) (string, error) {
 		str = key
 	case map[string]interface{}:
 		keys := SortedKeys(key)
-		var err error
 		for i, k := range keys {
 			v := key[k]
-			keys[i], err = Stringify(v)
-			if err != nil {
-				return str, err
-			}
+			keys[i] = stringify(v)
 		}
 		str = strings.Join(keys, "_")
 	case *map[string]interface{}:
-		return Stringify(*key)
+		return stringify(*key)
 	case map[Key]interface{}:
 		m := make(map[string]interface{}, len(key))
 		for k, v := range key {
@@ -65,25 +61,16 @@ func Stringify(key interface{}) (string, error) {
 		}
 		keys := SortedKeys(m)
 		for i, k := range keys {
-			v := m[k]
-			sk, err := Stringify(k)
-			if err != nil {
-				return str, err
-			}
-			sv, err := Stringify(v)
-			if err != nil {
-				return str, err
-			}
-			keys[i] = sk + "=" + sv
+			keys[i] = stringify(k) + "=" + stringify(m[k])
 		}
 		str = strings.Join(keys, "_")
 
 	case Keyable:
-		return key.KeyString(), nil
+		return key.KeyString()
 
 	default:
-		return "", fmt.Errorf("Unable to stringify type %T", key)
+		panic(fmt.Errorf("Unable to stringify type %T: %#v", key, key))
 	}
 
-	return str, nil
+	return str
 }
