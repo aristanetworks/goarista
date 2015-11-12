@@ -10,10 +10,11 @@ import (
 	"expvar"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	_ "net/http/pprof" // Go documentation recommended usage
 	"strings"
+
+	"github.com/aristanetworks/glog"
 )
 
 // Server represents a monitoring server
@@ -75,6 +76,6 @@ func (s *server) Run() {
 	// monitoring server
 	err := http.ListenAndServe(s.serverName, nil)
 	if err != nil {
-		log.Printf("Could not start monitor server: %s", err)
+		glog.Errorf("Could not start monitor server: %s", err)
 	}
 }
