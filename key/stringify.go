@@ -12,12 +12,13 @@ import (
 	"strings"
 )
 
-// stringify transforms an arbitrary interface into its string
+// StringifyInterface transforms an arbitrary interface into its string
 // representation.  We need to do this because some entities use the string
 // representation of their keys as their names.
-func stringify(key interface{}) string {
+// Note: this API is deprecated and will be removed.
+func StringifyInterface(key interface{}) (string, error) {
 	if key == nil {
-		panic(errors.New("Unable to stringify nil"))
+		return "", errors.New("Unable to stringify nil")
 	}
 	var str string
 	switch key := key.(type) {
@@ -53,7 +54,7 @@ func stringify(key interface{}) string {
 		}
 		str = strings.Join(keys, "_")
 	case *map[string]interface{}:
-		return stringify(*key)
+		return StringifyInterface(*key)
 	case map[Key]interface{}:
 		m := make(map[string]interface{}, len(key))
 		for k, v := range key {
@@ -66,11 +67,19 @@ func stringify(key interface{}) string {
 		str = strings.Join(keys, "_")
 
 	case Keyable:
-		return key.KeyString()
+		return key.KeyString(), nil
 
 	default:
 		panic(fmt.Errorf("Unable to stringify type %T: %#v", key, key))
 	}
 
-	return str
+	return str, nil
+}
+
+func stringify(key interface{}) string {
+	s, err := StringifyInterface(key)
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
