@@ -5,6 +5,7 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"sort"
@@ -60,6 +61,10 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 			return fmt.Sprintf("%s(%v) != %s(%v)", typ, a, typ, b)
 		}
 		return ""
+	case []byte:
+		if !bytes.Equal(a, b.([]byte)) {
+			return fmt.Sprintf("[]byte(%q) != []byte(%q)", a, b)
+		}
 	}
 
 	if ac, ok := a.(diffable); ok {

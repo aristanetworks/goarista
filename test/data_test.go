@@ -446,5 +446,12 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a:    message("foo"),
 		b:    message("bar"),
 		diff: `message("foo") != message("bar")`,
+	}, {
+		a: []byte("foo"),
+		b: []byte("foo"),
+	}, {
+		a:    []byte("foo"),
+		b:    []byte("bar"),
+		diff: `[]byte("foo") != []byte("bar")`,
 	}}
 }
