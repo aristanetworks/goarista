@@ -23,7 +23,7 @@ func PrettyPrintWithDepth(v interface{}, depth int) string {
 	return prettyPrint(reflect.ValueOf(v), ptrSet{}, depth)
 }
 
-var prettyPrintDepth = 3
+var prettyPrintDepth = 8
 
 func init() {
 	d := os.Getenv("PPDEPTH")
