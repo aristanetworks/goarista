@@ -433,6 +433,7 @@ func BenchmarkSetToMapWithStringKey(b *testing.B) {
 		New("a17"): true,
 		New("a18"): true,
 	}
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		New(strconv.Itoa(i)).SetToMap(m, true)
@@ -461,6 +462,7 @@ func BenchmarkSetToMapWithUint64Key(b *testing.B) {
 		New(uint64(18)): true,
 		New(uint64(19)): true,
 	}
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		New(uint64(i)).SetToMap(m, true)
@@ -489,6 +491,7 @@ func BenchmarkGetFromMapWithMapKey(b *testing.B) {
 		New(map[string]interface{}{"r": true}): true,
 		New(map[string]interface{}{"s": true}): true,
 	}
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := New(map[string]interface{}{string('a' + i%19): true})
