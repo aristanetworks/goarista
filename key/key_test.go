@@ -5,12 +5,30 @@
 package key_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
 	. "github.com/aristanetworks/goarista/key"
 	"github.com/aristanetworks/goarista/test"
 )
+
+type compareMe struct {
+	i int
+}
+
+func (c compareMe) Equal(other interface{}) bool {
+	o, ok := other.(compareMe)
+	return ok && c == o
+}
+
+type customKey struct {
+	i int
+}
+
+func (c customKey) KeyString() string {
+	return fmt.Sprintf("customKey=%d", c.i)
+}
 
 func TestKeyEqual(t *testing.T) {
 	tests := []struct {
@@ -69,6 +87,18 @@ func TestKeyEqual(t *testing.T) {
 		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
 		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
 		result: true,
+	}, {
+		a:      New(map[string]interface{}{"a": compareMe{i: 3}}),
+		b:      New(map[string]interface{}{"a": compareMe{i: 3}}),
+		result: true,
+	}, {
+		a:      New(map[string]interface{}{"a": compareMe{i: 3}}),
+		b:      New(map[string]interface{}{"a": compareMe{i: 4}}),
+		result: false,
+	}, {
+		a:      New(customKey{i: 42}),
+		b:      New(customKey{i: 42}),
+		result: true,
 	}}
 
 	for _, tcase := range tests {
@@ -80,7 +110,7 @@ func TestKeyEqual(t *testing.T) {
 		}
 	}
 
-	if New("a").Equal(32) == true {
+	if New("a").Equal(32) {
 		t.Error("Wrong result for different types case")
 	}
 }
@@ -91,9 +121,6 @@ func TestIsHashable(t *testing.T) {
 		h bool
 	}{{
 		true,
-		true,
-	}, {
-		false,
 		true,
 	}, {
 		uint8(3),
@@ -173,6 +200,21 @@ func TestGetFromMap(t *testing.T) {
 		},
 		v:     "foo",
 		found: true,
+	}, {
+		k: New(map[string]interface{}{"a": "b", "c": uint64(4)}),
+		m: map[Key]interface{}{
+			New(map[string]interface{}{"a": "b", "c": uint64(5)}): "foo",
+		},
+		found: false,
+	}, {
+		k:     New(customKey{i: 42}),
+		m:     map[Key]interface{}{New(customKey{i: 42}): "c"},
+		v:     "c",
+		found: true,
+	}, {
+		k:     New(customKey{i: 42}),
+		m:     map[Key]interface{}{New(customKey{i: 43}): "c"},
+		found: false,
 	}}
 
 	for _, tcase := range tests {
@@ -230,6 +272,10 @@ func TestDeleteFromMap(t *testing.T) {
 		m: map[Key]interface{}{
 			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
 		},
+		r: map[Key]interface{}{},
+	}, {
+		k: New(customKey{i: 42}),
+		m: map[Key]interface{}{New(customKey{i: 42}): "c"},
 		r: map[Key]interface{}{},
 	}}
 
@@ -323,6 +369,11 @@ func TestSetToMap(t *testing.T) {
 			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
 			New(map[string]interface{}{"a": "b", "d": uint64(6)}): "barfoo",
 		},
+	}, {
+		k: New(customKey{i: 42}),
+		v: "foo",
+		m: map[Key]interface{}{},
+		r: map[Key]interface{}{New(customKey{i: 42}): "foo"},
 	}}
 
 	for i, tcase := range tests {
@@ -334,6 +385,28 @@ func TestSetToMap(t *testing.T) {
 				tcase.m,
 				tcase.r)
 		}
+	}
+}
+
+func TestMisc(t *testing.T) {
+	k := New(map[string]interface{}{"foo": true})
+	js, err := json.Marshal(k)
+	if err != nil {
+		t.Error("JSON encoding failed:", err)
+	} else if expected := `{"foo":true}`; string(js) != expected {
+		t.Errorf("Wanted JSON %q but got %q", expected, js)
+	}
+	expected := `key.New(map[string]interface {}{"foo":true})`
+	gostr := fmt.Sprintf("%#v", k)
+	if expected != gostr {
+		t.Errorf("Wanted Go representation %q but got %q", expected, gostr)
+	}
+
+	test.ShouldPanic(t, func() { New(42) })
+
+	k = New(customKey{i: 42})
+	if expected, str := "customKey=42", k.String(); expected != str {
+		t.Errorf("Wanted string representation %q but got %q", expected, str)
 	}
 }
 
