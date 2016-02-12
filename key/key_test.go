@@ -7,6 +7,7 @@ package key_test
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"testing"
 
 	. "github.com/aristanetworks/goarista/key"
@@ -434,7 +435,7 @@ func BenchmarkSetToMapWithStringKey(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		New(fmt.Sprintf("b%d", i)).SetToMap(m, true)
+		New(strconv.Itoa(i)).SetToMap(m, true)
 	}
 }
 
@@ -468,29 +469,29 @@ func BenchmarkSetToMapWithUint64Key(b *testing.B) {
 
 func BenchmarkGetFromMapWithMapKey(b *testing.B) {
 	m := map[Key]interface{}{
-		New(map[string]interface{}{"a0": true}):  true,
-		New(map[string]interface{}{"a1": true}):  true,
-		New(map[string]interface{}{"a2": true}):  true,
-		New(map[string]interface{}{"a3": true}):  true,
-		New(map[string]interface{}{"a4": true}):  true,
-		New(map[string]interface{}{"a5": true}):  true,
-		New(map[string]interface{}{"a6": true}):  true,
-		New(map[string]interface{}{"a7": true}):  true,
-		New(map[string]interface{}{"a8": true}):  true,
-		New(map[string]interface{}{"a9": true}):  true,
-		New(map[string]interface{}{"a10": true}): true,
-		New(map[string]interface{}{"a11": true}): true,
-		New(map[string]interface{}{"a12": true}): true,
-		New(map[string]interface{}{"a13": true}): true,
-		New(map[string]interface{}{"a14": true}): true,
-		New(map[string]interface{}{"a15": true}): true,
-		New(map[string]interface{}{"a16": true}): true,
-		New(map[string]interface{}{"a17": true}): true,
-		New(map[string]interface{}{"a18": true}): true,
+		New(map[string]interface{}{"a": true}): true,
+		New(map[string]interface{}{"b": true}): true,
+		New(map[string]interface{}{"c": true}): true,
+		New(map[string]interface{}{"d": true}): true,
+		New(map[string]interface{}{"e": true}): true,
+		New(map[string]interface{}{"f": true}): true,
+		New(map[string]interface{}{"g": true}): true,
+		New(map[string]interface{}{"h": true}): true,
+		New(map[string]interface{}{"i": true}): true,
+		New(map[string]interface{}{"j": true}): true,
+		New(map[string]interface{}{"k": true}): true,
+		New(map[string]interface{}{"l": true}): true,
+		New(map[string]interface{}{"m": true}): true,
+		New(map[string]interface{}{"n": true}): true,
+		New(map[string]interface{}{"o": true}): true,
+		New(map[string]interface{}{"p": true}): true,
+		New(map[string]interface{}{"q": true}): true,
+		New(map[string]interface{}{"r": true}): true,
+		New(map[string]interface{}{"s": true}): true,
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		key := New(map[string]interface{}{fmt.Sprintf("a%d", i%19): true})
+		key := New(map[string]interface{}{string('a' + i%19): true})
 		_, found := key.GetFromMap(m)
 		if !found {
 			b.Fatalf("WTF: %#v", key)
