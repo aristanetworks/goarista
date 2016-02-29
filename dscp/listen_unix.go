@@ -8,7 +8,8 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 func listenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) {
@@ -21,13 +22,13 @@ func listenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) 
 	fd := int(reflect.ValueOf(lsnr).Elem().FieldByName("fd").Elem().FieldByName("sysfd").Int())
 	var proto, optname int
 	if address.IP.To4() != nil {
-		proto = syscall.IPPROTO_IP
-		optname = syscall.IP_TOS
+		proto = unix.IPPROTO_IP
+		optname = unix.IP_TOS
 	} else {
-		proto = syscall.IPPROTO_IPV6
-		optname = syscall.IPV6_TCLASS
+		proto = unix.IPPROTO_IPV6
+		optname = unix.IPV6_TCLASS
 	}
-	err = syscall.SetsockoptInt(fd, proto, optname, int(tos))
+	err = unix.SetsockoptInt(fd, proto, optname, int(tos))
 	if err != nil {
 		lsnr.Close()
 		return nil, os.NewSyscallError("setsockopt", err)
