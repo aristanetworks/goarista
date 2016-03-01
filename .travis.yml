@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.5.3
+  - 1.6
 before_install:
   - go get -v -d golang.org/x/sys/unix golang.org/x/tools/cmd/cover github.com/golang/lint/golint
 after_success:
