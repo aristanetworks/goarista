@@ -12,12 +12,10 @@ import (
 
 // ShouldPanic will test is a function is panicking
 func ShouldPanic(t *testing.T, fn func()) {
-
 	defer func() {
 		if r := recover(); r == nil {
-			t.Errorf("%sThe function %#v should have panicked",
-				getCallerInfo(),
-				fn)
+			t.Errorf("%sThe function %p should have panicked",
+				getCallerInfo(), fn)
 		}
 	}()
 
@@ -26,17 +24,14 @@ func ShouldPanic(t *testing.T, fn func()) {
 
 // ShouldPanicWith will test is a function is panicking with a specific message
 func ShouldPanicWith(t *testing.T, msg interface{}, fn func()) {
-
 	defer func() {
 		if r := recover(); r == nil {
-			t.Errorf("%sThe function %#v should have panicked",
-				getCallerInfo(),
-				fn)
+			t.Errorf("%sThe function %p should have panicked",
+				getCallerInfo(), fn)
 		} else if d := Diff(msg, r); len(d) != 0 {
-			t.Errorf("%sThe function %#v panicked with the wrong message.\n"+
+			t.Errorf("%sThe function %p panicked with the wrong message.\n"+
 				"Expected: %#v\nReceived: %#v\nDiff:%s",
-				getCallerInfo(),
-				fn, msg, r, d)
+				getCallerInfo(), fn, msg, r, d)
 		}
 	}()
 
