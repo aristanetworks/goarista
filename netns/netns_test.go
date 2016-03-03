@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
@@ -23,11 +22,6 @@ func (mh mockHandle) fd() int {
 }
 
 func TestNetNs(t *testing.T) {
-	if runtime.GOOS == "darwin" {
-		// Network namespaces doesn't exist on OSX
-		return
-	}
-
 	setNsCallCount := 0
 
 	// Mock getNs

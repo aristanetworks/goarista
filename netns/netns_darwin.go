@@ -23,11 +23,3 @@ var getNs = func(nsName string) (handle, error) {
 var setNs = func(fd handle) error {
 	return nil
 }
-
-// Do takes a function and a network namespace.
-// This is a stub implementation and simply calls the callback immediately
-// because network namespaces don't exist on OSX
-func Do(destNs string, cb Callback) error {
-	cb()
-	return nil
-}
