@@ -5,6 +5,7 @@
 package errs
 
 import (
+	"encoding/xml"
 	"fmt"
 	"net/http"
 )
@@ -114,6 +115,9 @@ const (
 
 // NetconfError defines a custom error struct
 type NetconfError struct {
+	// XMLName is the XML element name (default: <rpc-error>)
+	XMLName xml.Name `xml:"rpc-error"`
+
 	// Type defines the conceptual layer that the error occurred in.
 	Type errorType `json:"error-type" xml:"error-type"`
 	// Tag contains a string identifying the error condition
@@ -129,9 +133,26 @@ type NetconfError struct {
 	// Message contains a string suitable for human display that describes the error condition
 	Message string `json:"error-message" xml:"error-message"`
 	// Info contains protocol- or data-model-specific error content
-	Info map[errorInfoType]string `json:"error-info" xml:"error-info"`
+	Info netconfInfo `json:"error-info" xml:"error-info"`
 	// eDescription describes the error being reported
 	Description string `json:"error-description" xml:"error-description"`
+}
+
+// netconfInfo is a string/string map of error-info elements. It is abstracted
+// from NetconfError to allow for custom XML marshaling
+type netconfInfo map[errorInfoType]string
+
+// MarshalXML marshals the netconfInfo map as an array of XML
+// <error-info> sub-elements
+func (info netconfInfo) MarshalXML(e *xml.Encoder, se xml.StartElement) error {
+	for key, value := range info {
+		name := string(key)
+		elem := xml.StartElement{Name: xml.Name{Local: name}}
+		if err := e.EncodeElement(value, elem); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *NetconfError) Error() string {
