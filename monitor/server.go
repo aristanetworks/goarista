@@ -28,8 +28,8 @@ type server struct {
 	serverName string
 }
 
-// NewMonitorServer creates a new server struct
-func NewMonitorServer(serverName string) Server {
+// NewServer creates a new server struct
+func NewServer(serverName string) Server {
 	return &server{
 		serverName: serverName,
 	}
