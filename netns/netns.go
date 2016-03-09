@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	defaultNs   = "default"
 	netNsRunDir = "/var/run/netns/"
 	selfNsFile  = "/proc/self/ns/net"
 )
@@ -55,8 +54,8 @@ func setNsByName(nsName string) error {
 // the given function.
 // The caller should check both the error of Do and any errors from the given function call.
 func Do(nsName string, cb Callback) error {
-	// If destNS is empty or defaultNS, the function is called in the caller's namespace
-	if nsName == "" || nsName == defaultNs {
+	// If destNS is empty, the function is called in the caller's namespace
+	if nsName == "" {
 		cb()
 		return nil
 	}

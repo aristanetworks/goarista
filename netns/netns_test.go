@@ -52,7 +52,7 @@ func TestNetNs(t *testing.T) {
 	nsName := filepath.Base(tmpfile.Name())
 
 	// Map of network namespace name to the number of times it should call setNs
-	cases := map[string]int{"": 0, "default": 0, nsName: 2}
+	cases := map[string]int{"": 0, "default": 2, nsName: 2}
 	for name, callCount := range cases {
 		var cbResult string
 		err = Do(name, func() {
