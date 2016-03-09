@@ -14,6 +14,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/kafka"
+	"github.com/aristanetworks/goarista/kafka/openconfig"
 	"github.com/aristanetworks/goarista/monitor"
 	"github.com/golang/protobuf/proto"
 )
@@ -95,7 +96,12 @@ func (p *producer) Run() {
 			if !open {
 				return
 			}
-			p.produceNotification(batch)
+			err := p.produceNotification(batch)
+			if err != nil {
+				if _, ok := err.(openconfig.UnhandledSubscribeResponseError); !ok {
+					panic(err)
+				}
+			}
 		case <-p.done:
 			return
 		}
