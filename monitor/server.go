@@ -10,11 +10,13 @@ import (
 	"expvar"
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
 	_ "net/http/pprof" // Go documentation recommended usage
 	"strings"
 
 	"github.com/aristanetworks/glog"
+	"github.com/aristanetworks/goarista/netns"
 )
 
 // Server represents a monitoring server
@@ -24,14 +26,20 @@ type Server interface {
 
 // server contains information for the monitoring server
 type server struct {
+	vrfName string
 	// Server name e.g. host[:port]
 	serverName string
 }
 
 // NewServer creates a new server struct
-func NewServer(serverName string) Server {
+func NewServer(address string) Server {
+	vrfName, addr, err := netns.ParseAddress(address)
+	if err != nil {
+		glog.Errorf("Failed to parse address: %s", err)
+	}
 	return &server{
-		serverName: serverName,
+		vrfName:    vrfName,
+		serverName: addr,
 	}
 }
 
@@ -73,9 +81,20 @@ func (s *server) Run() {
 	http.HandleFunc("/debug", debugHandler)
 	http.HandleFunc("/debug/latency", latencyHandler)
 
-	// monitoring server
-	err := http.ListenAndServe(s.serverName, nil)
+	var listener net.Listener
+	var listenErr error
+	err := netns.Do(s.vrfName, func() {
+		listener, listenErr = net.Listen("tcp", s.serverName)
+	})
 	if err != nil {
-		glog.Errorf("Could not start monitor server: %s", err)
+		glog.Fatalf("Failed to go to network namespace for vrf %s: %s", s.vrfName, err)
+	}
+	if listenErr != nil {
+		glog.Errorf("Could not start monitor server: %s", listenErr)
+	}
+
+	err = http.Serve(listener, nil)
+	if err != nil {
+		glog.Fatalf("http serve returned with error: %s", err)
 	}
 }
