@@ -49,7 +49,7 @@ func MessageEncoder(topic string, key sarama.Encoder,
 		return nil, err
 	}
 	return &sarama.ProducerMessage{
-		Topic: "occlient", // TODO: make this configurable
+		Topic: topic,
 		Key:   key,
 		Value: sarama.ByteEncoder(value),
 		// TODO: Add a monotonic clock source when one becomes available

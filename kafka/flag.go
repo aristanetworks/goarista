@@ -6,7 +6,11 @@ package kafka
 
 import (
 	"flag"
+	"os"
 )
 
 // Addresses is the flag for kafka's comma-separated addresses
-var Addresses = flag.String("kafka", "localhost:9092", "kafka's comma-separated addresses")
+var Addresses = flag.String("kafkaaddr", "localhost:9092", "kafka's comma-separated addresses")
+
+// Topic is the flag for kafka's topic
+var Topic = flag.String("kafkatopic", os.Args[0], "kafka's topic")

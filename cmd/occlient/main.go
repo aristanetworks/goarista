@@ -146,7 +146,7 @@ func main() {
 		}
 		kafkaChan = make(chan proto.Message)
 		key := sarama.StringEncoder(*addr)
-		p, err := producer.New(os.Args[0], kafkaChan, kafkaClient, key, openconfig.MessageEncoder)
+		p, err := producer.New(*kafka.Topic, kafkaChan, kafkaClient, key, openconfig.MessageEncoder)
 		if err != nil {
 			glog.Fatalf("Failed to create Kafka producer: %s", err)
 		}
