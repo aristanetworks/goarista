@@ -10,6 +10,7 @@ DEFAULT_GOPATH := $${GOPATH%%:*}
 GOPATH_BIN := $(DEFAULT_GOPATH)/bin
 GOPATH_PKG := $(DEFAULT_GOPATH)/pkg
 GOLINT := $(GOPATH_BIN)/golint
+GOFOLDERS := find . -type d ! -path "./.git/*"
 
 all: install
 
@@ -34,14 +35,13 @@ coverage: coverdata
 
 fmtcheck:
 	errors=`gofmt -l .`; if test -n "$$errors"; then echo Check these files for style errors:; echo "$$errors"; exit 1; fi
-	find . -name '*.go' ! -name "*.pb.go" -exec ./check_line_len.awk {} +
+	find . -name '*.go' ! -name '*.pb.go' -exec ./check_line_len.awk {} +
 
 vet:
 	$(GO) vet ./...
 
 lint:
-	find ./* -type d ! -name openconfig | xargs -L 1 $(GOLINT) &>lint; :
-	if test -s lint; then echo Check these packages for golint:; cat lint; rm lint; exit 1; else rm lint; fi
+	lint=`$(GOFOLDERS) | xargs -L 1 $(GOLINT) | fgrep -v .pb.go`; if test -n "$$lint"; then echo "$$lint"; exit 1; fi
 # The above is ugly, but unfortunately golint doesn't exit 1 when it finds
 # lint.  See https://github.com/golang/lint/issues/65
 

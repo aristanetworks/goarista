@@ -5,6 +5,7 @@
 package producer
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
 	"testing"
@@ -84,6 +85,13 @@ func TestKafkaProducer(t *testing.T) {
 			},
 		},
 	}
+	document := map[string]interface{}{
+		"": map[string]interface{}{
+			"foo": map[string]interface{}{
+				"bar": map[string]interface{}{},
+			},
+		},
+	}
 
 	toDB <- response
 
@@ -103,15 +111,14 @@ func TestKafkaProducer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error encoding value: %s", err)
 	}
-	result := pb.SubscribeResponse{}
-	err = proto.Unmarshal(valueBytes, &result)
+	var result interface{}
+	err = json.Unmarshal(valueBytes, &result)
 	if err != nil {
-		t.Fatalf("Error decoding into protobuf: %s", err)
+		t.Errorf("Error decoding into JSON: %s", err)
 	}
-
-	if !test.DeepEqual(response, &result) {
+	if !test.DeepEqual(document, result) {
 		t.Errorf("Protobuf sent from Kafka Producer does not match original.\nOriginal: %v\nNew:%v",
-			response, &result)
+			document, result)
 	}
 
 	toDBProducer.Stop()
