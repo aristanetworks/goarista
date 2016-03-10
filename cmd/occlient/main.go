@@ -13,13 +13,19 @@ import (
 	"flag"
 	"io"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
 	"golang.org/x/net/context"
 
+	"github.com/Shopify/sarama"
+	"github.com/aristanetworks/goarista/kafka"
+	"github.com/aristanetworks/goarista/kafka/openconfig"
+	"github.com/aristanetworks/goarista/kafka/producer"
+
 	"github.com/aristanetworks/glog"
-	"github.com/aristanetworks/goarista/openconfig"
+	pb "github.com/aristanetworks/goarista/openconfig"
 	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc"
@@ -28,7 +34,7 @@ import (
 )
 
 var addr = flag.String("addr", "localhost:6042",
-	"Address of the server")
+	"Address of the OpenConfig server")
 
 var certFile = flag.String("certfile", "",
 	"Path to client TLS certificate file")
@@ -88,7 +94,7 @@ func main() {
 		glog.Fatalf("fail to dial: %s", err)
 	}
 	defer conn.Close()
-	client := openconfig.NewOpenConfigClient(conn)
+	client := pb.NewOpenConfigClient(conn)
 
 	ctx := context.Background()
 	if *username != "" {
@@ -104,12 +110,12 @@ func main() {
 	defer stream.CloseSend()
 
 	for _, path := range strings.Split(*subscribe, ",") {
-		sub := &openconfig.SubscribeRequest{
-			Request: &openconfig.SubscribeRequest_Subscribe{
-				Subscribe: &openconfig.SubscriptionList{
-					Subscription: []*openconfig.Subscription{
-						&openconfig.Subscription{
-							Path: &openconfig.Path{Element: strings.Split(path, "/")},
+		sub := &pb.SubscribeRequest{
+			Request: &pb.SubscribeRequest_Subscribe{
+				Subscribe: &pb.SubscriptionList{
+					Subscription: []*pb.Subscription{
+						&pb.Subscription{
+							Path: &pb.Path{Element: strings.Split(path, "/")},
 						},
 					},
 				},
@@ -122,6 +128,30 @@ func main() {
 		}
 	}
 
+	var kafkaChan chan proto.Message
+	if *kafka.Addresses != "" {
+		kafkaAddresses := strings.Split(*kafka.Addresses, ",")
+		kafkaConfig := sarama.NewConfig()
+		hostname, err := os.Hostname()
+		if err != nil {
+			hostname = ""
+		}
+		kafkaConfig.ClientID = hostname
+		kafkaConfig.Producer.Compression = sarama.CompressionSnappy
+		kafkaConfig.Producer.Return.Successes = true
+
+		kafkaClient, err := sarama.NewClient(kafkaAddresses, kafkaConfig)
+		if err != nil {
+			glog.Fatalf("Failed to create Kafka client: %s", err)
+		}
+		kafkaChan = make(chan proto.Message)
+		key := sarama.StringEncoder(*addr)
+		p, err := producer.New(os.Args[0], kafkaChan, kafkaClient, key, openconfig.MessageEncoder)
+		if err != nil {
+			glog.Fatalf("Failed to create Kafka producer: %s", err)
+		}
+		go p.Run()
+	}
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
@@ -137,17 +167,20 @@ func main() {
 			respTxt = proto.MarshalTextString(resp)
 		}
 		glog.Info(respTxt)
+		if kafkaChan != nil {
+			kafkaChan <- resp
+		}
 	}
 }
 
-func joinPath(path *openconfig.Path) string {
+func joinPath(path *pb.Path) string {
 	return strings.Join(path.Element, "/")
 }
 
-func jsonify(resp *openconfig.SubscribeResponse) string {
+func jsonify(resp *pb.SubscribeResponse) string {
 	m := make(map[string]interface{}, 1)
 	switch resp := resp.Response.(type) {
-	case *openconfig.SubscribeResponse_Update:
+	case *pb.SubscribeResponse_Update:
 		notif := resp.Update
 		m["timestamp"] = notif.Timestamp
 		m["path"] = "/" + joinPath(notif.Prefix)
@@ -156,12 +189,12 @@ func jsonify(resp *openconfig.SubscribeResponse) string {
 			for _, update := range notif.Update {
 				var value interface{}
 				switch update.Value.Type {
-				case openconfig.Type_JSON:
+				case pb.Type_JSON:
 					err := json.Unmarshal(update.Value.Value, &value)
 					if err != nil {
 						glog.Fatal(err)
 					}
-				case openconfig.Type_BYTES:
+				case pb.Type_BYTES:
 					value = strconv.Quote(string(update.Value.Value))
 				default:
 					glog.Fatalf("Unhandled type of value %v", update.Value.Type)
@@ -178,9 +211,9 @@ func jsonify(resp *openconfig.SubscribeResponse) string {
 			m["deletes"] = deletes
 		}
 		m = map[string]interface{}{"notification": m}
-	case *openconfig.SubscribeResponse_Heartbeat:
+	case *pb.SubscribeResponse_Heartbeat:
 		m["heartbeat"] = resp.Heartbeat.Interval
-	case *openconfig.SubscribeResponse_SyncResponse:
+	case *pb.SubscribeResponse_SyncResponse:
 		m["syncResponse"] = resp.SyncResponse
 	default:
 		glog.Fatalf("Unknown type of response: %T: %s", resp, resp)
