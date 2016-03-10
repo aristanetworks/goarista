@@ -33,7 +33,12 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var addr = flag.String("addr", "localhost:6042",
+const (
+	defaultPort  = "6042"
+	addrFlagName = "addr"
+)
+
+var addr = flag.String(addrFlagName, "localhost:"+defaultPort,
 	"Address of the OpenConfig server")
 
 var certFile = flag.String("certfile", "",
@@ -56,6 +61,9 @@ var username = flag.String("username", "",
 
 var password = flag.String("password", "",
 	"Password to authenticate with")
+
+var kafkaKey = flag.String("kafkakey", "",
+	"Key for kafka messages (default: the value of -"+addrFlagName)
 
 func main() {
 	flag.Parse()
@@ -89,8 +97,13 @@ func main() {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
+	if !strings.ContainsRune(*addr, ':') {
+		*addr += ":" + defaultPort
+	}
 	conn, err := grpc.Dial(*addr, opts...)
-	if err != nil {
+	if err == nil {
+		glog.Infof("Connected to %s", *addr)
+	} else {
 		glog.Fatalf("fail to dial: %s", err)
 	}
 	defer conn.Close()
@@ -145,7 +158,10 @@ func main() {
 			glog.Fatalf("Failed to create Kafka client: %s", err)
 		}
 		kafkaChan = make(chan proto.Message)
-		key := sarama.StringEncoder(*addr)
+		if *kafkaKey == "" {
+			*kafkaKey = *addr
+		}
+		key := sarama.StringEncoder(*kafkaKey)
 		p, err := producer.New(*kafka.Topic, kafkaChan, kafkaClient, key, openconfig.MessageEncoder)
 		if err != nil {
 			glog.Fatalf("Failed to create Kafka producer: %s", err)
