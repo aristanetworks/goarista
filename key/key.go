@@ -7,6 +7,8 @@ package key
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/aristanetworks/goarista/value"
 )
 
 // Key represents the Key in the updates and deletes of the Notification
@@ -34,20 +36,13 @@ type Key interface {
 	SetToMap(m map[Key]interface{}, value interface{})
 }
 
-// Keyable is an interface that should be applied to hashable values
-// that can be wrapped as Key's.
-type Keyable interface {
-	// KeyString returns the string representation of this key.
-	KeyString() string
-}
-
 type keyImpl struct {
 	key interface{}
 }
 
 // New wraps the given value in a Key.
 // This function panics if the value passed in isn't allowed in a Key or
-// doesn't implement Keyable.
+// doesn't implement value.Value.
 func New(intf interface{}) Key {
 	switch t := intf.(type) {
 	case map[string]interface{}:
@@ -55,7 +50,7 @@ func New(intf interface{}) Key {
 	case int8, int16, int32, int64,
 		uint8, uint16, uint32, uint64,
 		float32, float64, string, bool,
-		Keyable:
+		value.Value:
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}

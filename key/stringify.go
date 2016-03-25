@@ -10,6 +10,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/aristanetworks/goarista/value"
 )
 
 // StringifyInterface transforms an arbitrary interface into its string
@@ -66,8 +68,8 @@ func StringifyInterface(key interface{}) (string, error) {
 		}
 		str = strings.Join(keys, "_")
 
-	case Keyable:
-		return key.KeyString(), nil
+	case value.Value:
+		return key.String(), nil
 
 	default:
 		panic(fmt.Errorf("Unable to stringify type %T: %#v", key, key))

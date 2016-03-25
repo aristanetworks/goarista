@@ -12,6 +12,7 @@ import (
 
 	. "github.com/aristanetworks/goarista/key"
 	"github.com/aristanetworks/goarista/test"
+	"github.com/aristanetworks/goarista/value"
 )
 
 type compareMe struct {
@@ -27,8 +28,18 @@ type customKey struct {
 	i int
 }
 
-func (c customKey) KeyString() string {
+var _ value.Value = customKey{}
+
+func (c customKey) String() string {
 	return fmt.Sprintf("customKey=%d", c.i)
+}
+
+func (c customKey) MarshalJSON() ([]byte, error) {
+	return nil, nil
+}
+
+func (c customKey) ToBuiltin() interface{} {
+	return c.i
 }
 
 func TestKeyEqual(t *testing.T) {
