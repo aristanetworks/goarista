@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"math"
 	"reflect"
-	"unsafe"
 
+	"github.com/aristanetworks/goarista/areflect"
 	"github.com/aristanetworks/goarista/key"
 )
 
@@ -245,8 +245,8 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			if typ.Field(i).Tag.Get("deepequal") == "ignore" {
 				continue
 			}
-			af := forceExport(av.Field(i))
-			bf := forceExport(bv.Field(i))
+			af := areflect.ForceExport(av.Field(i))
+			bf := areflect.ForceExport(bv.Field(i))
 			if !deepEqual(af.Interface(), bf.Interface(), seen) {
 				return false
 			}
@@ -256,23 +256,6 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 		// Other the basic types.
 		return a == b
 	}
-}
-
-// The `reflect' package intentionally makes it impossible to access the value
-// of an unexported attribute.  The implementation of reflect.DeepEqual() cheats
-// as it bypasses this check.  Unfortunately, we can't use the same cheat, which
-// prevents us from re-implementing DeepEqual properly.  So this is our cheat on
-// top of theirs.  It makes the given reflect.Value appear as if it was exported.
-func forceExport(v reflect.Value) reflect.Value {
-	const flagRO uintptr = 1 << 5 // from reflect/value.go
-	ptr := unsafe.Pointer(&v)
-	rv := (*struct {
-		typ  unsafe.Pointer // a *reflect.rtype (reflect.Type)
-		ptr  unsafe.Pointer // The value wrapped by this reflect.Value
-		flag uintptr
-	})(ptr)
-	rv.flag &= ^flagRO // Unset the flag so this value appears to be exported.
-	return v
 }
 
 // Compares two maps with complex keys (that are pointers).  This assumes the

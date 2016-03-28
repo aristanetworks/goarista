@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+
+	"github.com/aristanetworks/goarista/areflect"
 )
 
 // PrettyPrint tries to display a human readable version of an interface
@@ -52,7 +54,7 @@ func prettyPrintWithType(v reflect.Value, done ptrSet, depth int, showType bool)
 		reflect.Float32, reflect.Float64,
 		reflect.Int, reflect.Uint, reflect.Uintptr,
 		reflect.Complex64, reflect.Complex128:
-		i := forceExport(v).Interface()
+		i := areflect.ForceExport(v).Interface()
 		if showType {
 			return fmt.Sprintf("%s(%v)", v.Type().Name(), i)
 		}

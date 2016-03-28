@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/aristanetworks/goarista/areflect"
 	"github.com/aristanetworks/goarista/key"
 )
 
@@ -157,8 +158,8 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 			if typ.Field(i).Tag.Get("deepequal") == "ignore" {
 				continue
 			}
-			af := forceExport(av.Field(i))
-			bf := forceExport(bv.Field(i))
+			af := areflect.ForceExport(av.Field(i))
+			bf := areflect.ForceExport(bv.Field(i))
 			if diff := diffImpl(af.Interface(), bf.Interface(), seen); len(diff) > 0 {
 				return fmt.Sprintf("attributes %q are different: %s",
 					av.Type().Field(i).Name, diff)
