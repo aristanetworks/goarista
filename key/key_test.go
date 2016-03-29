@@ -558,3 +558,34 @@ func BenchmarkGetFromMapWithMapKey(b *testing.B) {
 		}
 	}
 }
+
+func mkKey(i int) Key {
+	return New(map[string]interface{}{
+		"foo": map[string]interface{}{
+			"aaaa1": uint32(0),
+			"aaaa2": uint32(0),
+			"aaaa3": uint32(i),
+		},
+		"bar": map[string]interface{}{
+			"nested": uint32(42),
+		},
+	})
+}
+
+func BenchmarkBigMapWithCompositeKeys(b *testing.B) {
+	const size = 10000
+	m := make(map[Key]interface{}, size)
+	for i := 0; i < size; i++ {
+		m[mkKey(i)] = true
+	}
+	k := mkKey(0)
+	submap := k.Key().(map[string]interface{})["foo"].(map[string]interface{})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		submap["aaaa3"] = uint32(i)
+		_, found := k.GetFromMap(m)
+		if found != (i < size) {
+			b.Fatalf("WTF: %#v", k)
+		}
+	}
+}
