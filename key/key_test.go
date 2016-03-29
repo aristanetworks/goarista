@@ -127,60 +127,6 @@ func TestKeyEqual(t *testing.T) {
 	}
 }
 
-func TestIsHashable(t *testing.T) {
-	tests := []struct {
-		k interface{}
-		h bool
-	}{{
-		true,
-		true,
-	}, {
-		uint8(3),
-		true,
-	}, {
-		uint16(3),
-		true,
-	}, {
-		uint32(3),
-		true,
-	}, {
-		uint64(3),
-		true,
-	}, {
-		int8(3),
-		true,
-	}, {
-		int16(3),
-		true,
-	}, {
-		int32(3),
-		true,
-	}, {
-		int64(3),
-		true,
-	}, {
-		float32(3.2),
-		true,
-	}, {
-		float64(3.3),
-		true,
-	}, {
-		"foobar",
-		true,
-	}, {
-		map[string]interface{}{"foo": "bar"},
-		false,
-	}}
-
-	for _, tcase := range tests {
-		if New(tcase.k).IsHashable() != tcase.h {
-			t.Errorf("Wrong result for case:\nk: %#v",
-				tcase.k)
-
-		}
-	}
-}
-
 func TestGetFromMap(t *testing.T) {
 	tests := []struct {
 		k     Key
