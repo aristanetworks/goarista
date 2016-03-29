@@ -227,6 +227,52 @@ func TestGetFromMap(t *testing.T) {
 		k:     New(customKey{i: 42}),
 		m:     map[Key]interface{}{New(customKey{i: 43}): "c"},
 		found: false,
+	}, {
+		k: New(map[string]interface{}{
+			"damn": map[Key]interface{}{
+				New(map[string]interface{}{"a": uint32(42),
+					"b": uint32(51)}): true}}),
+		m: map[Key]interface{}{
+			New(map[string]interface{}{
+				"damn": map[Key]interface{}{
+					New(map[string]interface{}{"a": uint32(42),
+						"b": uint32(51)}): true}}): "foo",
+		},
+		v:     "foo",
+		found: true,
+	}, {
+		k: New(map[string]interface{}{
+			"damn": map[Key]interface{}{
+				New(map[string]interface{}{"a": uint32(42),
+					"b": uint32(52)}): true}}),
+		m: map[Key]interface{}{
+			New(map[string]interface{}{
+				"damn": map[Key]interface{}{
+					New(map[string]interface{}{"a": uint32(42),
+						"b": uint32(51)}): true}}): "foo",
+		},
+		found: false,
+	}, {
+		k: New(map[string]interface{}{
+			"nested": map[string]interface{}{
+				"a": uint32(42), "b": uint32(51)}}),
+		m: map[Key]interface{}{
+			New(map[string]interface{}{
+				"nested": map[string]interface{}{
+					"a": uint32(42), "b": uint32(51)}}): "foo",
+		},
+		v:     "foo",
+		found: true,
+	}, {
+		k: New(map[string]interface{}{
+			"nested": map[string]interface{}{
+				"a": uint32(42), "b": uint32(52)}}),
+		m: map[Key]interface{}{
+			New(map[string]interface{}{
+				"nested": map[string]interface{}{
+					"a": uint32(42), "b": uint32(51)}}): "foo",
+		},
+		found: false,
 	}}
 
 	for _, tcase := range tests {
