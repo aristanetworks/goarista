@@ -232,6 +232,23 @@ func joinPath(path *pb.Path) string {
 	return strings.Join(path.Element, "/")
 }
 
+func convertUpdate(update *pb.Update) interface{} {
+	switch update.Value.Type {
+	case pb.Type_JSON:
+		var value interface{}
+		err := json.Unmarshal(update.Value.Value, &value)
+		if err != nil {
+			glog.Fatalf("Malformed JSON update %q in %s", update.Value.Value, update)
+		}
+		return value
+	case pb.Type_BYTES:
+		return strconv.Quote(string(update.Value.Value))
+	default:
+		glog.Fatalf("Unhandled type of value %v in %s", update.Value.Type, update)
+		return nil
+	}
+}
+
 func jsonify(resp *pb.SubscribeResponse) string {
 	m := make(map[string]interface{}, 1)
 	switch resp := resp.Response.(type) {
@@ -242,19 +259,7 @@ func jsonify(resp *pb.SubscribeResponse) string {
 		if len(notif.Update) != 0 {
 			updates := make(map[string]interface{}, len(notif.Update))
 			for _, update := range notif.Update {
-				var value interface{}
-				switch update.Value.Type {
-				case pb.Type_JSON:
-					err := json.Unmarshal(update.Value.Value, &value)
-					if err != nil {
-						glog.Fatalf("Malformed JSON update %q in %s", update.Value.Value, resp)
-					}
-				case pb.Type_BYTES:
-					value = strconv.Quote(string(update.Value.Value))
-				default:
-					glog.Fatalf("Unhandled type of value %v in %s", update.Value.Type, resp)
-				}
-				updates[joinPath(update.Path)] = value
+				updates[joinPath(update.Path)] = convertUpdate(update)
 			}
 			m["updates"] = updates
 		}
