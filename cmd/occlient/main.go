@@ -158,7 +158,11 @@ func (c *client) run(wg sync.WaitGroup, subscribePaths []string) error {
 		} else {
 			respTxt = proto.MarshalTextString(resp)
 		}
-		glog.Info(respTxt)
+		log := glog.Info
+		if resp.GetHeartbeat() != nil {
+			log = glog.V(1).Info // Log heartbeats with verbose logging only.
+		}
+		log(respTxt)
 		if c.kafkaProducer != nil {
 			c.kafkaProducer.Write(resp)
 		}
