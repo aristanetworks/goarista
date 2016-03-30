@@ -247,12 +247,12 @@ func jsonify(resp *pb.SubscribeResponse) string {
 				case pb.Type_JSON:
 					err := json.Unmarshal(update.Value.Value, &value)
 					if err != nil {
-						glog.Fatal(err)
+						glog.Fatalf("Malformed JSON update %q in %s", update.Value.Value, resp)
 					}
 				case pb.Type_BYTES:
 					value = strconv.Quote(string(update.Value.Value))
 				default:
-					glog.Fatalf("Unhandled type of value %v", update.Value.Type)
+					glog.Fatalf("Unhandled type of value %v in %s", update.Value.Type, resp)
 				}
 				updates[joinPath(update.Path)] = value
 			}
