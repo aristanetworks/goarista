@@ -25,10 +25,14 @@ import (
 // well as map[Key]interface{}.
 //
 // See also https://github.com/golang/go/issues/283
-type composite map[string]interface{}
+type composite struct {
+	// This value must always be set to the sentinel constant above.
+	sentinel uintptr
+	m        map[string]interface{}
+}
 
 func (k composite) Key() interface{} {
-	return map[string]interface{}(k)
+	return k.m
 }
 
 func (k composite) String() string {
@@ -93,7 +97,7 @@ func hashMapKey(m map[Key]interface{}) uintptr {
 		case keyImpl:
 			h += _nilinterhash(k.key)
 		case composite:
-			h += hashMapString(k)
+			h += hashMapString(k.m)
 		}
 		h += hashInterface(v)
 	}
@@ -102,19 +106,30 @@ func hashMapKey(m map[Key]interface{}) uintptr {
 
 func hash(p unsafe.Pointer, seed uintptr) uintptr {
 	ck := *(*composite)(p)
-	return seed ^ hashMapString(ck)
+	if ck.sentinel != sentinel {
+		panic("use of unhashable type in a map")
+	}
+	return seed ^ hashMapString(ck.m)
 }
 
 func equal(a unsafe.Pointer, b unsafe.Pointer) bool {
-	return (*composite)(a).Equal(*(*composite)(b))
+	ca := (*composite)(a)
+	cb := (*composite)(b)
+	if ca.sentinel != sentinel {
+		panic("use of uncomparable type on the lhs of ==")
+	}
+	if cb.sentinel != sentinel {
+		panic("use of uncomparable type on the rhs of ==")
+	}
+	return ca.Equal(*cb)
 }
 
 func init() {
 	typ := reflect.TypeOf(composite{})
 	alg := reflect.ValueOf(typ).Elem().FieldByName("alg").Elem()
 	// Pretty certain that doing this voids your warranty.
-	// This overwrites the typeAlg of either alg_NOEQ32 (on 32-bit platforms)
-	// or alg_NOEQ64 (on 64-bit platforms), which means that all unhashable
+	// This overwrites the typeAlg of either alg_NOEQ64 (on 32-bit platforms)
+	// or alg_NOEQ128 (on 64-bit platforms), which means that all unhashable
 	// types that were using this typeAlg are now suddenly hashable and will
 	// attempt to use our equal/hash functions, which will lead to undefined
 	// behaviors.  But then these types shouldn't have been hashable in the

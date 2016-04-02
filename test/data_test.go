@@ -430,10 +430,11 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 42}): true}}),
 		b: key.New(map[string]interface{}{
 			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 51}): true}}),
-		diff: `Comparable types are different: key.composite{"a":map[key.Key]interface {}` +
-			`{key.composite{<max_depth>:<max_depth>}:true}} vs ` +
-			`key.composite{"a":map[key.Key]interface {}` +
-			`{key.composite{<max_depth>:<max_depth>}:true}}`,
+		diff: `Comparable types are different: ` +
+			`key.composite{sentinel:uintptr(18379810577513696751), m:map[string]interface {}` +
+			`{"a":map[key.Key]interface {}{<max_depth>:<max_depth>}}} vs` +
+			` key.composite{sentinel:uintptr(18379810577513696751), m:map[string]interface {}` +
+			`{"a":map[key.Key]interface {}{<max_depth>:<max_depth>}}}`,
 	}, {
 		a: code(42),
 		b: code(42),
