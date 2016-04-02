@@ -35,6 +35,7 @@ func TestJsonify(t *testing.T) {
 					"b": 42,
 				},
 			},
+			"_timestamp": 0,
 		},
 	},
 	}

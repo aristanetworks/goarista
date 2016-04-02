@@ -37,7 +37,9 @@ func (e UnhandledSubscribeResponseError) Error() string {
 // jsonify maps a Notification into a JSON document
 func jsonify(notification *openconfig.Notification) ([]byte, error) {
 	prefix := notification.GetPrefix()
-	root := make(map[string]interface{})
+	root := map[string]interface{}{
+		"_timestamp": notification.Timestamp,
+	}
 	prefixLeaf := root
 	if prefix != nil {
 		parent := root
