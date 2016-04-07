@@ -8,6 +8,7 @@ GOTEST_FLAGS :=
 
 DEFAULT_GOPATH := $${GOPATH%%:*}
 GOPATH_BIN := $(DEFAULT_GOPATH)/bin
+GOPATH_PKG := $(DEFAULT_GOPATH)/pkg
 GOLINT := $(GOPATH_BIN)/golint
 
 all: install
@@ -46,5 +47,9 @@ lint:
 
 test:
 	$(GO) test $(GOTEST_FLAGS) -timeout=$(TEST_TIMEOUT) ./...
+
+clean:
+	rm -rf $(GOPATH_PKG)/*/github.com/aristanetworks/goarista
+	$(GO) clean ./...
 
 .PHONY: all check coverage coverdata fmtcheck install lint test vet
