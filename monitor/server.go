@@ -90,11 +90,11 @@ func (s *server) Run() {
 		glog.Fatalf("Failed to go to network namespace for vrf %s: %s", s.vrfName, err)
 	}
 	if listenErr != nil {
-		glog.Errorf("Could not start monitor server: %s", listenErr)
+		glog.Fatal("Could not start monitor server:", listenErr)
 	}
 
 	err = http.Serve(listener, nil)
 	if err != nil {
-		glog.Fatalf("http serve returned with error: %s", err)
+		glog.Fatal("http serve returned with error:", err)
 	}
 }
