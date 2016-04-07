@@ -97,6 +97,9 @@ func main() {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
+	if *kafkaKey == "" {
+		*kafkaKey = *addr
+	}
 	if !strings.ContainsRune(*addr, ':') {
 		*addr += ":" + defaultPort
 	}
@@ -158,9 +161,6 @@ func main() {
 			glog.Fatalf("Failed to create Kafka client: %s", err)
 		}
 		kafkaChan = make(chan proto.Message)
-		if *kafkaKey == "" {
-			*kafkaKey = *addr
-		}
 		key := sarama.StringEncoder(*kafkaKey)
 		p, err := producer.New(*kafka.Topic, kafkaChan, kafkaClient, key, openconfig.MessageEncoder)
 		if err != nil {
