@@ -29,11 +29,12 @@ type MessageEncoder func(string, sarama.Encoder, proto.Message) (*sarama.Produce
 // Producer forwards messages recvd on a channel to kafka.
 type Producer interface {
 	Run()
+	Write(proto.Message)
 	Stop()
 }
 
 type producer struct {
-	notifsChan    <-chan proto.Message
+	notifsChan    chan proto.Message
 	kafkaProducer sarama.AsyncProducer
 	topic         string
 	key           sarama.Encoder
@@ -48,7 +49,7 @@ type producer struct {
 }
 
 // New creates new Kafka producer
-func New(topic string, notifsChan <-chan proto.Message, client sarama.Client, key sarama.Encoder,
+func New(topic string, notifsChan chan proto.Message, client sarama.Client, key sarama.Encoder,
 	encoder MessageEncoder) (
 	Producer, error) {
 	kafkaProducer, err := sarama.NewAsyncProducerFromClient(client)
@@ -106,6 +107,10 @@ func (p *producer) Run() {
 			return
 		}
 	}
+}
+
+func (p *producer) Write(m proto.Message) {
+	p.notifsChan <- m
 }
 
 func (p *producer) Stop() {

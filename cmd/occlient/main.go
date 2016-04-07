@@ -11,11 +11,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/context"
 
@@ -34,98 +36,96 @@ import (
 )
 
 const (
-	defaultPort  = "6042"
-	addrFlagName = "addr"
+	defaultPort   = "6042"
+	addrsFlagName = "addrs"
 )
 
-var addr = flag.String(addrFlagName, "localhost:"+defaultPort,
-	"Address of the OpenConfig server")
+var addrsFlag = flag.String(addrsFlagName, "localhost:"+defaultPort,
+	"Addresses of the OpenConfig servers (comma-separated)")
 
-var certFile = flag.String("certfile", "",
+var certFileFlag = flag.String("certfile", "",
 	"Path to client TLS certificate file")
 
-var keyFile = flag.String("keyfile", "",
+var keyFileFlag = flag.String("keyfile", "",
 	"Path to client TLS private key file")
 
-var caFile = flag.String("cafile", "",
+var caFileFlag = flag.String("cafile", "",
 	"Path to server TLS certificate file")
 
-var jsonOutput = flag.Bool("json", false,
+var jsonOutputFlag = flag.Bool("json", false,
 	"Print the output in JSON instead of protobuf")
 
-var subscribe = flag.String("subscribe", "",
+var subscribeFlag = flag.String("subscribe", "",
 	"Comma-separated list of paths to subscribe to upon connecting to the server")
 
-var username = flag.String("username", "",
+var usernameFlag = flag.String("username", "",
 	"Username to authenticate with")
 
-var password = flag.String("password", "",
+var passwordFlag = flag.String("password", "",
 	"Password to authenticate with")
 
-var kafkaKey = flag.String("kafkakey", "",
-	"Key for kafka messages (default: the value of -"+addrFlagName)
+var kafkaKeysFlag = flag.String("kafkakey", "",
+	"Keys for kafka messages (comma-separated, default: the value of -"+
+		addrsFlagName)
 
-func main() {
-	flag.Parse()
-	var opts []grpc.DialOption
-	if *caFile != "" || *certFile != "" {
-		config := &tls.Config{}
-		if *caFile != "" {
-			b, err := ioutil.ReadFile(*caFile)
-			if err != nil {
-				glog.Fatal(err)
-			}
-			cp := x509.NewCertPool()
-			if !cp.AppendCertsFromPEM(b) {
-				glog.Fatalf("credentials: failed to append certificates")
-			}
-			config.RootCAs = cp
-		} else {
-			config.InsecureSkipVerify = true
-		}
-		if *certFile != "" {
-			if *keyFile == "" {
-				glog.Fatalf("Please provide both -certfile and -keyfile")
-			}
-			cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
-			if err != nil {
-				glog.Fatal(err)
-			}
-			config.Certificates = []tls.Certificate{cert}
-		}
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(config)))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-	if *kafkaKey == "" {
-		*kafkaKey = *addr
-	}
-	if !strings.ContainsRune(*addr, ':') {
-		*addr += ":" + defaultPort
-	}
-	conn, err := grpc.Dial(*addr, opts...)
-	if err == nil {
-		glog.Infof("Connected to %s", *addr)
-	} else {
-		glog.Fatalf("fail to dial: %s", err)
-	}
-	defer conn.Close()
-	client := pb.NewOpenConfigClient(conn)
+type client struct {
+	addr          string
+	client        pb.OpenConfigClient
+	ctx           context.Context
+	kafkaProducer producer.Producer
+}
 
-	ctx := context.Background()
-	if *username != "" {
-		ctx = metadata.NewContext(ctx, metadata.Pairs(
-			"username", *username,
-			"password", *password))
+func newClient(addr string, opts *[]grpc.DialOption, username, password string,
+	subscribePaths []string, kafkaAddresses []string, kafkaTopic,
+	kafkaKey string) (*client, error) {
+	c := &client{
+		addr: addr,
 	}
+	conn, err := grpc.Dial(addr, *opts...)
+	if err != nil {
+		return nil, err
+	}
+	glog.Infof("Connected to %s", addr)
+	c.client = pb.NewOpenConfigClient(conn)
+	c.ctx = context.Background()
+	if username != "" {
+		c.ctx = metadata.NewContext(c.ctx, metadata.Pairs(
+			"username", username,
+			"password", password))
+	}
+	if len(kafkaAddresses) == 0 {
+		return c, nil
+	}
+	kafkaConfig := sarama.NewConfig()
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = ""
+	}
+	kafkaConfig.ClientID = hostname
+	kafkaConfig.Producer.Compression = sarama.CompressionSnappy
+	kafkaConfig.Producer.Return.Successes = true
 
-	stream, err := client.Subscribe(ctx)
+	kafkaClient, err := sarama.NewClient(kafkaAddresses, kafkaConfig)
+	if err != nil {
+		glog.Fatalf("Failed to create Kafka client: %s", err)
+	}
+	kafkaChan := make(chan proto.Message)
+	key := sarama.StringEncoder(kafkaKey)
+	c.kafkaProducer, err = producer.New(kafkaTopic, kafkaChan, kafkaClient, key,
+		openconfig.MessageEncoder)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create Kafka producer: %s", err)
+	}
+	return c, nil
+}
+
+func (c *client) run(wg sync.WaitGroup, subscribePaths []string) error {
+	defer wg.Done()
+	stream, err := c.client.Subscribe(c.ctx)
 	if err != nil {
 		glog.Fatalf("Subscribe failed: %s", err)
 	}
-	defer stream.CloseSend()
-
-	for _, path := range strings.Split(*subscribe, ",") {
+	for _, path := range subscribePaths {
 		sub := &pb.SubscribeRequest{
 			Request: &pb.SubscribeRequest_Subscribe{
 				Subscribe: &pb.SubscriptionList{
@@ -140,53 +140,96 @@ func main() {
 
 		err = stream.Send(sub)
 		if err != nil {
-			glog.Fatalf("Failed to subscribe: %s", err)
+			return err
 		}
 	}
-
-	var kafkaChan chan proto.Message
-	if *kafka.Addresses != "" {
-		kafkaAddresses := strings.Split(*kafka.Addresses, ",")
-		kafkaConfig := sarama.NewConfig()
-		hostname, err := os.Hostname()
-		if err != nil {
-			hostname = ""
-		}
-		kafkaConfig.ClientID = hostname
-		kafkaConfig.Producer.Compression = sarama.CompressionSnappy
-		kafkaConfig.Producer.Return.Successes = true
-
-		kafkaClient, err := sarama.NewClient(kafkaAddresses, kafkaConfig)
-		if err != nil {
-			glog.Fatalf("Failed to create Kafka client: %s", err)
-		}
-		kafkaChan = make(chan proto.Message)
-		key := sarama.StringEncoder(*kafkaKey)
-		p, err := producer.New(*kafka.Topic, kafkaChan, kafkaClient, key, openconfig.MessageEncoder)
-		if err != nil {
-			glog.Fatalf("Failed to create Kafka producer: %s", err)
-		}
-		go p.Run()
+	if c.kafkaProducer != nil {
+		go c.kafkaProducer.Run()
 	}
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
 			if err != io.EOF {
-				glog.Fatalf("Error received from the server: %s", err)
+				glog.Fatalf("Error received from the %s: %s", c.addr, err)
 			}
-			return
 		}
 		var respTxt string
-		if *jsonOutput {
+		if *jsonOutputFlag {
 			respTxt = jsonify(resp)
 		} else {
 			respTxt = proto.MarshalTextString(resp)
 		}
 		glog.Info(respTxt)
-		if kafkaChan != nil {
-			kafkaChan <- resp
+		if c.kafkaProducer != nil {
+			c.kafkaProducer.Write(resp)
 		}
 	}
+}
+
+func main() {
+	flag.Parse()
+	var opts []grpc.DialOption
+	if *caFileFlag != "" || *certFileFlag != "" {
+		config := &tls.Config{}
+		if *caFileFlag != "" {
+			b, err := ioutil.ReadFile(*caFileFlag)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			cp := x509.NewCertPool()
+			if !cp.AppendCertsFromPEM(b) {
+				glog.Fatalf("credentials: failed to append certificates")
+			}
+			config.RootCAs = cp
+		} else {
+			config.InsecureSkipVerify = true
+		}
+		if *certFileFlag != "" {
+			if *keyFileFlag == "" {
+				glog.Fatalf("Please provide both -certfile and -keyfile")
+			}
+			cert, err := tls.LoadX509KeyPair(*certFileFlag, *keyFileFlag)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			config.Certificates = []tls.Certificate{cert}
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(config)))
+	} else {
+		opts = append(opts, grpc.WithInsecure())
+	}
+	if *kafkaKeysFlag == "" {
+		*kafkaKeysFlag = *addrsFlag
+	}
+	addrs := strings.Split(*addrsFlag, ",")
+	kafkaKeys := strings.Split(*kafkaKeysFlag, ",")
+	if len(addrs) != len(kafkaKeys) {
+		glog.Fatal("Please provide the same number of addresses and Kafka keys")
+	}
+	var subscribePaths []string
+	if *subscribeFlag != "" {
+		subscribePaths = strings.Split(*subscribeFlag, ",")
+	}
+	var kafkaAddresses []string
+	if *kafka.Addresses != "" {
+		kafkaAddresses = strings.Split(*kafka.Addresses, ",")
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < len(addrs); i++ {
+		addr := addrs[i]
+		kafkaKey := kafkaKeys[i]
+		if !strings.ContainsRune(addr, ':') {
+			addr += ":" + defaultPort
+		}
+		c, err := newClient(addr, &opts, *usernameFlag, *passwordFlag, subscribePaths,
+			kafkaAddresses, *kafka.Topic, kafkaKey)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		wg.Add(1)
+		go c.run(wg, subscribePaths)
+	}
+	wg.Wait()
 }
 
 func joinPath(path *pb.Path) string {
