@@ -17,7 +17,7 @@ all: install
 install:
 	$(GO) install ./...
 
-check: vet test fmtcheck lint
+check: vet test fmtcheck lint docker
 
 COVER_PKGS := key test
 COVER_MODE := count
@@ -48,8 +48,11 @@ lint:
 test:
 	$(GO) test $(GOTEST_FLAGS) -timeout=$(TEST_TIMEOUT) ./...
 
+docker:
+	docker build -f Dockerfile-occlient .
+
 clean:
 	rm -rf $(GOPATH_PKG)/*/github.com/aristanetworks/goarista
 	$(GO) clean ./...
 
-.PHONY: all check coverage coverdata fmtcheck install lint test vet
+.PHONY: all check coverage coverdata docker fmtcheck install lint test vet
