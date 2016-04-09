@@ -76,8 +76,7 @@ type client struct {
 }
 
 func newClient(addr string, opts *[]grpc.DialOption, username, password string,
-	subscribePaths []string, kafkaAddresses []string, kafkaTopic,
-	kafkaKey string) (*client, error) {
+	kafkaAddresses []string, kafkaTopic, kafkaKey string) (*client, error) {
 	c := &client{
 		addr: addr,
 	}
@@ -206,10 +205,7 @@ func main() {
 	if len(addrs) != len(kafkaKeys) {
 		glog.Fatal("Please provide the same number of addresses and Kafka keys")
 	}
-	var subscribePaths []string
-	if *subscribeFlag != "" {
-		subscribePaths = strings.Split(*subscribeFlag, ",")
-	}
+	subscribePaths := strings.Split(*subscribeFlag, ",")
 	var kafkaAddresses []string
 	if *kafka.Addresses != "" {
 		kafkaAddresses = strings.Split(*kafka.Addresses, ",")
@@ -221,7 +217,7 @@ func main() {
 		if !strings.ContainsRune(addr, ':') {
 			addr += ":" + defaultPort
 		}
-		c, err := newClient(addr, &opts, *usernameFlag, *passwordFlag, subscribePaths,
+		c, err := newClient(addr, &opts, *usernameFlag, *passwordFlag,
 			kafkaAddresses, *kafka.Topic, kafkaKey)
 		if err != nil {
 			glog.Fatal(err)
