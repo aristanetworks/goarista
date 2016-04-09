@@ -12,4 +12,4 @@ RUN go get -d ./cmd/occlient/... \
   && mv /go/bin/occlient /bin \
   && rm -rf /go
 
-ENTRYPOINT /bin/occlient
+ENTRYPOINT ["/bin/occlient"]
