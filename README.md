@@ -6,6 +6,11 @@ Helper functions to work with the `reflect` package.  Contains
 `ForceExport()`, which bypasses the check in `reflect.Value` that
 prevents accessing unexported attributes.
 
+## cmd/occlient
+
+Client for the gRPC OpenConfig service for getting and setting the configuration and
+state of a network device.
+
 ## dscp
 
 Provides `ListenTCPWithTOS()`, which is a replacement for `net.ListenTCP()`
