@@ -49,7 +49,7 @@ test:
 	$(GO) test $(GOTEST_FLAGS) -timeout=$(TEST_TIMEOUT) ./...
 
 docker:
-	docker build -f Dockerfile-occlient .
+	docker build -f cmd/occlient/Dockerfile .
 
 clean:
 	rm -rf $(GOPATH_PKG)/*/github.com/aristanetworks/goarista

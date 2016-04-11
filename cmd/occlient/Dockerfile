@@ -8,8 +8,6 @@ RUN mkdir -p /go/src/github.com/aristanetworks/goarista/cmd
 WORKDIR /go/src/github.com/aristanetworks/goarista
 COPY ./ .
 RUN go get -d ./cmd/occlient/... \
-  && go install ./cmd/occlient \
-  && mv /go/bin/occlient /bin \
-  && rm -rf /go
+  && go install ./cmd/occlient
 
-ENTRYPOINT ["/bin/occlient"]
+ENTRYPOINT ["/go/bin/occlient"]
