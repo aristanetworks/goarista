@@ -162,9 +162,10 @@ func (c *client) run(wg sync.WaitGroup, subscribePaths []string) error {
 		if resp.GetHeartbeat() != nil {
 			log = glog.V(1).Info // Log heartbeats with verbose logging only.
 		}
-		log(respTxt)
 		if c.kafkaProducer != nil {
 			c.kafkaProducer.Write(resp)
+		} else {
+			log(respTxt)
 		}
 	}
 }
