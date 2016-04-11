@@ -17,7 +17,7 @@ all: install
 install:
 	$(GO) install ./...
 
-check: vet test fmtcheck lint docker
+check: vet test fmtcheck lint
 
 COVER_PKGS := key test
 COVER_MODE := count
@@ -49,7 +49,7 @@ test:
 	$(GO) test $(GOTEST_FLAGS) -timeout=$(TEST_TIMEOUT) ./...
 
 docker:
-	if docker version; then docker build -f Dockerfile-occlient .; fi
+	docker build -f Dockerfile-occlient .
 
 clean:
 	rm -rf $(GOPATH_PKG)/*/github.com/aristanetworks/goarista
