@@ -379,11 +379,11 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: complexCompare{p: &complexCompare{p: recursive}},
 		b: complexCompare{p: &complexCompare{p: recursive}},
 	}, {
-		a: []complexCompare{complexCompare{p: &complexCompare{p: recursive}}},
-		b: []complexCompare{complexCompare{p: &complexCompare{p: recursive}}},
+		a: []complexCompare{{p: &complexCompare{p: recursive}}},
+		b: []complexCompare{{p: &complexCompare{p: recursive}}},
 	}, {
-		a: []complexCompare{complexCompare{p: &complexCompare{p: recursive}}},
-		b: []complexCompare{complexCompare{p: &complexCompare{p: nil}}},
+		a: []complexCompare{{p: &complexCompare{p: recursive}}},
+		b: []complexCompare{{p: &complexCompare{p: nil}}},
 		diff: `In arrays, values are different at index 0: attributes "p" are` +
 			` different: attributes "p" are different: got nil instead of ` +
 			`*test.complexCompare{m:map[test.builtinCompare]int8{},` +

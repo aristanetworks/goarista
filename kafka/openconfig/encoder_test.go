@@ -20,7 +20,7 @@ func TestJsonify(t *testing.T) {
 		notification: &openconfig.Notification{
 			Prefix: &openconfig.Path{Element: []string{"Sysdb", "a"}},
 			Update: []*openconfig.Update{
-				&openconfig.Update{
+				{
 					Path: &openconfig.Path{Element: []string{"b"}},
 					Value: &openconfig.Value{
 						Value: []byte{52, 50},

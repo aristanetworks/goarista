@@ -129,7 +129,7 @@ func (c *client) run(wg sync.WaitGroup, subscribePaths []string) error {
 			Request: &pb.SubscribeRequest_Subscribe{
 				Subscribe: &pb.SubscriptionList{
 					Subscription: []*pb.Subscription{
-						&pb.Subscription{
+						{
 							Path: &pb.Path{Element: strings.Split(path, "/")},
 						},
 					},
