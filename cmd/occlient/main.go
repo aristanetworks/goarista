@@ -43,30 +43,33 @@ const (
 var addrsFlag = flag.String(addrsFlagName, "localhost:"+defaultPort,
 	"Addresses of the OpenConfig servers (comma-separated)")
 
-var certFileFlag = flag.String("certfile", "",
-	"Path to client TLS certificate file")
-
-var keyFileFlag = flag.String("keyfile", "",
-	"Path to client TLS private key file")
-
 var caFileFlag = flag.String("cafile", "",
 	"Path to server TLS certificate file")
+
+var certFileFlag = flag.String("certfile", "",
+	"Path to client TLS certificate file")
 
 var jsonOutputFlag = flag.Bool("json", false,
 	"Print the output in JSON instead of protobuf")
 
-var subscribeFlag = flag.String("subscribe", "",
-	"Comma-separated list of paths to subscribe to upon connecting to the server")
+var kafkaKeysFlag = flag.String("kafkakey", "",
+	"Keys for kafka messages (comma-separated, default: the value of -"+
+		addrsFlagName)
 
-var usernameFlag = flag.String("username", "",
-	"Username to authenticate with")
+var keyFileFlag = flag.String("keyfile", "",
+	"Path to client TLS private key file")
 
 var passwordFlag = flag.String("password", "",
 	"Password to authenticate with")
 
-var kafkaKeysFlag = flag.String("kafkakey", "",
-	"Keys for kafka messages (comma-separated, default: the value of -"+
-		addrsFlagName)
+var subscribeFlag = flag.String("subscribe", "",
+	"Comma-separated list of paths to subscribe to upon connecting to the server")
+
+var tlsFlag = flag.Bool("tls", false,
+	"Enable TLS")
+
+var usernameFlag = flag.String("username", "",
+	"Username to authenticate with")
 
 type client struct {
 	addr          string
@@ -173,7 +176,7 @@ func (c *client) run(wg sync.WaitGroup, subscribePaths []string) error {
 func main() {
 	flag.Parse()
 	var opts []grpc.DialOption
-	if *caFileFlag != "" || *certFileFlag != "" {
+	if *tlsFlag || *caFileFlag != "" || *certFileFlag != "" {
 		config := &tls.Config{}
 		if *caFileFlag != "" {
 			b, err := ioutil.ReadFile(*caFileFlag)
