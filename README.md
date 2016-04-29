@@ -6,6 +6,13 @@ Helper functions to work with the `reflect` package.  Contains
 `ForceExport()`, which bypasses the check in `reflect.Value` that
 prevents accessing unexported attributes.
 
+## atime
+
+Provides access to a fast monotonic clock source, to fill in the gap in the
+[Go standard library, which lacks one](https://github.com/golang/go/issues/12914).
+Don't use `time.Now()` in code that needs to time things or otherwise assume
+that time passes at a constant rate, instead use `atime.Nanotime()`.
+
 ## cmd/occlient
 
 Client for the gRPC OpenConfig service for getting and setting the configuration and
