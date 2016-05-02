@@ -11,19 +11,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
 
 	"golang.org/x/net/context"
 
-	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/goarista/kafka"
-	"github.com/aristanetworks/goarista/kafka/openconfig"
 	"github.com/aristanetworks/goarista/kafka/producer"
 
 	"github.com/aristanetworks/glog"
@@ -78,10 +74,14 @@ type client struct {
 	kafkaProducer producer.Producer
 }
 
+// newClient creates a new gRPC client and pipes it into the given producer.
+// The producer is typically something responsible for pushing updates to a
+// backend system like Kafka or Redis or HBase.
 func newClient(addr string, opts *[]grpc.DialOption, username, password string,
-	kafkaAddresses []string, kafkaTopic, kafkaKey string) (*client, error) {
+	p producer.Producer) (*client, error) {
 	c := &client{
-		addr: addr,
+		addr:          addr,
+		kafkaProducer: p,
 	}
 	conn, err := grpc.Dial(addr, *opts...)
 	if err != nil {
@@ -94,29 +94,6 @@ func newClient(addr string, opts *[]grpc.DialOption, username, password string,
 		c.ctx = metadata.NewContext(c.ctx, metadata.Pairs(
 			"username", username,
 			"password", password))
-	}
-	if len(kafkaAddresses) == 0 {
-		return c, nil
-	}
-	kafkaConfig := sarama.NewConfig()
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = ""
-	}
-	kafkaConfig.ClientID = hostname
-	kafkaConfig.Producer.Compression = sarama.CompressionSnappy
-	kafkaConfig.Producer.Return.Successes = true
-
-	kafkaClient, err := sarama.NewClient(kafkaAddresses, kafkaConfig)
-	if err != nil {
-		glog.Fatalf("Failed to create Kafka client: %s", err)
-	}
-	kafkaChan := make(chan proto.Message)
-	key := sarama.StringEncoder(kafkaKey)
-	c.kafkaProducer, err = producer.New(kafkaTopic, kafkaChan, kafkaClient, key,
-		openconfig.MessageEncoder)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create Kafka producer: %s", err)
 	}
 	return c, nil
 }
@@ -225,10 +202,13 @@ func main() {
 		if !strings.ContainsRune(addr, ':') {
 			addr += ":" + defaultPort
 		}
-		c, err := newClient(addr, &opts, *usernameFlag, *passwordFlag,
-			kafkaAddresses, *kafka.Topic, kafkaKey)
+		p, err := newKafkaProducer(kafkaAddresses, *kafka.Topic, kafkaKey)
 		if err != nil {
-			glog.Fatal(err)
+			glog.Fatal("Failed to initialize producer: ", err)
+		}
+		c, err := newClient(addr, &opts, *usernameFlag, *passwordFlag, p)
+		if err != nil {
+			glog.Fatal("Failed to initialize client: ", err)
 		}
 		wg.Add(1)
 		go c.run(wg, subscribePaths)
