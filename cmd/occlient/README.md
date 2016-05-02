@@ -22,7 +22,7 @@ Start in a container:
 docker run aristanetworks/occlient -addrs 10.0.1.1
 ```
 
-## ELK integration demo
-The following video demoes integration with ELK using [this](https://github.com/aristanetworks/docker-logstash) Logstash instance:
+## Kafka/ELK integration demo
+The following video demoes integration with Kafka and ELK using [this](https://github.com/aristanetworks/docker-logstash) Logstash instance:
 
 [![video preview](http://img.youtube.com/vi/WsyFmxMwXYQ/0.jpg)](https://youtu.be/WsyFmxMwXYQ)
