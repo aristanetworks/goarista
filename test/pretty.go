@@ -152,9 +152,9 @@ func prettyPrintWithType(v reflect.Value, done ptrSet, depth int, showType bool)
 			ptr = fmt.Sprintf("0x%x", v.Pointer())
 		}
 		if showType {
-			return fmt.Sprintf("(unsafe.Pointer)(%s)", ptr)
+			ptr = fmt.Sprintf("(unsafe.Pointer)(%s)", ptr)
 		}
-		return fmt.Sprintf("%s", ptr)
+		return ptr
 	default:
 		return fmt.Sprintf("%#v", v.Interface())
 	}
