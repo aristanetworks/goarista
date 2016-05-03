@@ -31,6 +31,7 @@ func TestPrettyPrint(t *testing.T) {
 		{[]byte{42, 0, 42}, `[]byte("*\x00*")`},
 		{[]int{42, 51}, "[]int{42, 51}"},
 		{[2]int{42, 51}, "[2]int{42, 51}"},
+		{[2]byte{42, 51}, "[2]uint8{42, 51}"}, // Yeah, in Go `byte' is really just `uint8'.
 		{alias(42), "alias(42)"},
 	}
 	for i, tcase := range testcases {
