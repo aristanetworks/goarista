@@ -163,9 +163,3 @@ func prettyPrintWithType(v reflect.Value, done ptrSet, depth int, showType bool)
 		panic(fmt.Errorf("Unhandled kind of reflect.Value: %v", v.Kind()))
 	}
 }
-
-// IsNilCheck checks if the two values can compare to nil
-// if checked == false, deep equal should continue
-func IsNilCheck(a, b interface{}) (bool /*checked*/, string) {
-	return isNilCheck(reflect.ValueOf(a), reflect.ValueOf(b))
-}
