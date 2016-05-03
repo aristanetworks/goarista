@@ -28,6 +28,7 @@ func TestPrettyPrint(t *testing.T) {
 		{func() {}, "func(...)"},
 		{unsafe.Pointer(nil), "(unsafe.Pointer)(nil)"},
 		{unsafe.Pointer(t), fmt.Sprintf("(unsafe.Pointer)(%p)", t)},
+		{[]byte(nil), `[]byte(nil)`},
 		{[]byte{42, 0, 42}, `[]byte("*\x00*")`},
 		{[]int{42, 51}, "[]int{42, 51}"},
 		{[2]int{42, 51}, "[2]int{42, 51}"},
