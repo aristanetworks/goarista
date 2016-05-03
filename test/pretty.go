@@ -160,7 +160,7 @@ func prettyPrintWithType(v reflect.Value, done ptrSet, depth int, showType bool)
 		}
 		return ptr
 	default:
-		return fmt.Sprintf("%#v", v.Interface())
+		panic(fmt.Errorf("Unhandled kind of reflect.Value: %v", v.Kind()))
 	}
 }
 
