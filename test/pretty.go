@@ -128,7 +128,7 @@ func prettyPrintWithType(v reflect.Value, done ptrSet, depth int, showType bool)
 		l := v.Len()
 		var r []byte
 		if v.Type().Elem().Kind() == reflect.Uint8 && v.Kind() != reflect.Array {
-			b := v.Interface().([]byte)
+			b := areflect.ForceExport(v).Interface().([]byte)
 			r = append(r, []byte(`[]byte(`)...)
 			if b == nil {
 				r = append(r, []byte("nil")...)

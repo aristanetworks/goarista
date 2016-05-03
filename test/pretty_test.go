@@ -14,6 +14,10 @@ import (
 
 type alias int
 
+type privateByteSlice struct {
+	exportme []byte
+}
+
 func TestPrettyPrint(t *testing.T) {
 	// This test doesn't need to cover all the types of input as a number of
 	// them are covered by other tests in this package.
@@ -34,6 +38,7 @@ func TestPrettyPrint(t *testing.T) {
 		{[2]int{42, 51}, "[2]int{42, 51}"},
 		{[2]byte{42, 51}, "[2]uint8{42, 51}"}, // Yeah, in Go `byte' is really just `uint8'.
 		{alias(42), "alias(42)"},
+		{privateByteSlice{[]byte("a")}, `test_test.privateByteSlice{exportme:[]byte("a")}`},
 	}
 	for i, tcase := range testcases {
 		actual := PrettyPrint(tcase.input)
