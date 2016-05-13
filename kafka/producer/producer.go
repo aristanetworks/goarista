@@ -52,6 +52,9 @@ type producer struct {
 func New(topic string, notifsChan chan proto.Message, client sarama.Client, key sarama.Encoder,
 	encoder MessageEncoder) (
 	Producer, error) {
+	if notifsChan == nil {
+		notifsChan = make(chan proto.Message)
+	}
 	kafkaProducer, err := sarama.NewAsyncProducerFromClient(client)
 	if err != nil {
 		return nil, err

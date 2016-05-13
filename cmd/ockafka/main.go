@@ -19,7 +19,6 @@ import (
 	"github.com/aristanetworks/goarista/kafka/producer"
 	pb "github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/openconfig/client"
-	"github.com/golang/protobuf/proto"
 )
 
 const defaultPort = "6042"
@@ -32,9 +31,8 @@ func newProducer(addresses []string, topic, key string) (producer.Producer, erro
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kafka client: %s", err)
 	}
-	ch := make(chan proto.Message)
 	encodedKey := sarama.StringEncoder(key)
-	p, err := producer.New(topic, ch, client, encodedKey, openconfig.MessageEncoder)
+	p, err := producer.New(topic, nil, client, encodedKey, openconfig.MessageEncoder)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kafka producer: %s", err)
 	}
