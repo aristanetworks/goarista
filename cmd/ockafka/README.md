@@ -1,17 +1,18 @@
 # ockafka
 
-Client for the gRPC OpenConfig service for subscribing to, getting and setting the
-configuration and state of a network device.
+Client for the gRPC OpenConfig service for subscribing to the configuration and
+state of a network device and feeding the stream to Kafka.
 
 ## Sample usage
 
-Subscribe to all updates on the Arista device at `10.0.1.2` and dump results as JSON to stdout:
+Subscribe to all updates on the Arista device at `10.0.1.2` and stream to a local
+Kafka instance:
 
 ```
-ockafka -addrs 10.0.1.2 -json
+ockafka -addrs 10.0.1.2
 ```
 
-Subscribe to temperature sensors from 2 switches and stream to Kafka:
+Subscribe to temperature sensors from 2 switches and stream to a remote Kafka instance:
 
 ```
 ockafka -addrs 10.0.1.2,10.0.1.3 -kafkaaddrs kafka:9092 -subscribe /Sysdb/environment/temperature/status/tempSensor
@@ -19,7 +20,7 @@ ockafka -addrs 10.0.1.2,10.0.1.3 -kafkaaddrs kafka:9092 -subscribe /Sysdb/enviro
 
 Start in a container:
 ```
-docker run aristanetworks/ockafka -addrs 10.0.1.1
+docker run aristanetworks/ockafka -addrs 10.0.1.1 -kafkaaddrs kafka:9092
 ```
 
 ## Kafka/ELK integration demo

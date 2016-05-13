@@ -40,21 +40,18 @@ func newProducer(addresses []string, topic, key string) (producer.Producer, erro
 }
 
 func main() {
-	username, password, subscriptions, addrs, opts := client.ParseFlags()
+	username, password, subscriptions, grpcAddrs, opts := client.ParseFlags()
 
 	if *keysFlag == "" {
-		*keysFlag = strings.Join(addrs, ",")
+		*keysFlag = strings.Join(grpcAddrs, ",")
 	}
 	keys := strings.Split(*keysFlag, ",")
-	if len(addrs) != len(keys) {
+	if len(grpcAddrs) != len(keys) {
 		glog.Fatal("Please provide the same number of addresses and Kafka keys")
 	}
-	var addresses []string
-	if *kafka.Addresses != "" {
-		addresses = strings.Split(*kafka.Addresses, ",")
-	}
+	addresses := strings.Split(*kafka.Addresses, ",")
 	wg := new(sync.WaitGroup)
-	for i, addr := range addrs {
+	for i, addr := range grpcAddrs {
 		key := keys[i]
 		if !strings.ContainsRune(addr, ':') {
 			addr += ":" + defaultPort
