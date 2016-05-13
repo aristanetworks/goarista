@@ -15,10 +15,9 @@ that time passes at a constant rate, instead use `atime.Nanotime()`.
 
 ## cmd
 
-### occlient
+### ockafka
 
-Client for the gRPC OpenConfig service for getting and setting the configuration and
-state of a network device.
+Client for the OpenConfig gRPC interface that publishes updates to Kafka.
 
 ### ocredis
 
