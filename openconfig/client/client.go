@@ -24,7 +24,7 @@ import (
 // This function does not normally return so it should probably be run in its
 // own goroutine.  When this function returns, the given WaitGroup is marked
 // as done.
-func Run(publish func(*openconfig.SubscribeResponse), wg sync.WaitGroup,
+func Run(publish func(*openconfig.SubscribeResponse), wg *sync.WaitGroup,
 	username, password, addr string, subscriptions []string,
 	opts []grpc.DialOption) {
 

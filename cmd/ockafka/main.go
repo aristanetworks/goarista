@@ -37,7 +37,7 @@ func main() {
 	if *kafka.Addresses != "" {
 		kafkaAddresses = strings.Split(*kafka.Addresses, ",")
 	}
-	var wg sync.WaitGroup
+	wg := new(sync.WaitGroup)
 	for i, addr := range addrs {
 		kafkaKey := kafkaKeys[i]
 		if !strings.ContainsRune(addr, ':') {
