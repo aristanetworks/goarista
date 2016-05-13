@@ -15,6 +15,11 @@ that time passes at a constant rate, instead use `atime.Nanotime()`.
 
 ## cmd
 
+### occli
+
+Simple CLI client for the OpenConfig gRPC interface that prints the response
+protobufs in text form or JSON.
+
 ### ockafka
 
 Client for the OpenConfig gRPC interface that publishes updates to Kafka.
