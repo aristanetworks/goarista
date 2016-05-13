@@ -20,6 +20,14 @@ that time passes at a constant rate, instead use `atime.Nanotime()`.
 Client for the gRPC OpenConfig service for getting and setting the configuration and
 state of a network device.
 
+### ocredis
+
+Client for the OpenConfig gRPC interface that publishes updates to Redis
+using both [Redis' hashes](http://redis.io/topics/data-types-intro#hashes)
+(one per container / entity / collection) and [Redis' Pub/Sub](http://redis.io/topics/pubsub) 
+mechanism, so that one can [subscribe](http://redis.io/commands/subscribe) to
+incoming updates being applied on the hash maps.
+
 ## dscp
 
 Provides `ListenTCPWithTOS()`, which is a replacement for `net.ListenTCP()`
