@@ -13,7 +13,9 @@ Provides access to a fast monotonic clock source, to fill in the gap in the
 Don't use `time.Now()` in code that needs to time things or otherwise assume
 that time passes at a constant rate, instead use `atime.Nanotime()`.
 
-## cmd/occlient
+## cmd
+
+### occlient
 
 Client for the gRPC OpenConfig service for getting and setting the configuration and
 state of a network device.

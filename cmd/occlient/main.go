@@ -7,12 +7,9 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"flag"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,51 +18,23 @@ import (
 
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/kafka/producer"
+	cli "github.com/aristanetworks/goarista/openconfig/client"
 
 	"github.com/aristanetworks/glog"
 	pb "github.com/aristanetworks/goarista/openconfig"
 	"github.com/golang/protobuf/proto"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 )
 
-const (
-	defaultPort   = "6042"
-	addrsFlagName = "addrs"
-)
-
-var addrsFlag = flag.String(addrsFlagName, "localhost:"+defaultPort,
-	"Addresses of the OpenConfig servers (comma-separated)")
-
-var caFileFlag = flag.String("cafile", "",
-	"Path to server TLS certificate file")
-
-var certFileFlag = flag.String("certfile", "",
-	"Path to client TLS certificate file")
+const defaultPort = "6042"
 
 var jsonOutputFlag = flag.Bool("json", false,
 	"Print the output in JSON instead of protobuf")
 
 var kafkaKeysFlag = flag.String("kafkakey", "",
-	"Keys for kafka messages (comma-separated, default: the value of -"+
-		addrsFlagName)
-
-var keyFileFlag = flag.String("keyfile", "",
-	"Path to client TLS private key file")
-
-var passwordFlag = flag.String("password", "",
-	"Password to authenticate with")
-
-var subscribeFlag = flag.String("subscribe", "",
-	"Comma-separated list of paths to subscribe to upon connecting to the server")
-
-var tlsFlag = flag.Bool("tls", false,
-	"Enable TLS")
-
-var usernameFlag = flag.String("username", "",
-	"Username to authenticate with")
+	"Keys for kafka messages (comma-separated, default: the value of -addrs")
 
 type client struct {
 	addr          string
@@ -151,46 +120,15 @@ func (c *client) run(wg sync.WaitGroup, subscribePaths []string) error {
 }
 
 func main() {
-	flag.Parse()
-	var opts []grpc.DialOption
-	if *tlsFlag || *caFileFlag != "" || *certFileFlag != "" {
-		config := &tls.Config{}
-		if *caFileFlag != "" {
-			b, err := ioutil.ReadFile(*caFileFlag)
-			if err != nil {
-				glog.Fatal(err)
-			}
-			cp := x509.NewCertPool()
-			if !cp.AppendCertsFromPEM(b) {
-				glog.Fatalf("credentials: failed to append certificates")
-			}
-			config.RootCAs = cp
-		} else {
-			config.InsecureSkipVerify = true
-		}
-		if *certFileFlag != "" {
-			if *keyFileFlag == "" {
-				glog.Fatalf("Please provide both -certfile and -keyfile")
-			}
-			cert, err := tls.LoadX509KeyPair(*certFileFlag, *keyFileFlag)
-			if err != nil {
-				glog.Fatal(err)
-			}
-			config.Certificates = []tls.Certificate{cert}
-		}
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(config)))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
+	username, password, subscriptions, addrs, opts := cli.ParseFlags()
+
 	if *kafkaKeysFlag == "" {
-		*kafkaKeysFlag = *addrsFlag
+		*kafkaKeysFlag = strings.Join(addrs, ",")
 	}
-	addrs := strings.Split(*addrsFlag, ",")
 	kafkaKeys := strings.Split(*kafkaKeysFlag, ",")
 	if len(addrs) != len(kafkaKeys) {
 		glog.Fatal("Please provide the same number of addresses and Kafka keys")
 	}
-	subscribePaths := strings.Split(*subscribeFlag, ",")
 	var kafkaAddresses []string
 	if *kafka.Addresses != "" {
 		kafkaAddresses = strings.Split(*kafka.Addresses, ",")
@@ -206,12 +144,12 @@ func main() {
 		if err != nil {
 			glog.Fatal("Failed to initialize producer: ", err)
 		}
-		c, err := newClient(addr, &opts, *usernameFlag, *passwordFlag, p)
+		c, err := newClient(addr, &opts, username, password, p)
 		if err != nil {
 			glog.Fatal("Failed to initialize client: ", err)
 		}
 		wg.Add(1)
-		go c.run(wg, subscribePaths)
+		go c.run(wg, subscriptions)
 	}
 	wg.Wait()
 }
