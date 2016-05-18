@@ -58,7 +58,9 @@ func main() {
 		}
 		p, err := newProducer(addresses, *kafka.Topic, key)
 		if err != nil {
-			glog.Fatal("Failed to initialize producer: ", err)
+			glog.Fatal(err)
+		} else {
+			glog.Infof("Initialized Kafka producer for %s", grpcAddr)
 		}
 		publish := func(notif *pb.SubscribeResponse) {
 			p.Write(notif)

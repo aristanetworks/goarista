@@ -33,6 +33,7 @@ func Run(publish func(*openconfig.SubscribeResponse), wg *sync.WaitGroup,
 	if err != nil {
 		glog.Fatalf("fail to dial: %s", err)
 	}
+	glog.Infof("Connected to %s", addr)
 	defer conn.Close()
 	client := openconfig.NewOpenConfigClient(conn)
 
