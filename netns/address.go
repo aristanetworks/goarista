@@ -27,3 +27,11 @@ func ParseAddress(address string) (vrfName string, addr string, err error) {
 	}
 	return
 }
+
+// VRFToNetNS converts a VRF name to network namespace's name corresponding to that VRF.
+func VRFToNetNS(vrf string) string {
+	if vrf != "" && vrf != "default" && !strings.HasPrefix(vrf, "ns-") {
+		vrf = "ns-" + vrf
+	}
+	return vrf
+}
