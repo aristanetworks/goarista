@@ -44,7 +44,7 @@ func TestJsonify(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		actual, err := jsonify(jsonTest.notification)
+		actual, err := openconfig.NotificationToJSONDocument(jsonTest.notification)
 		if err != nil {
 			t.Error(err)
 		}
