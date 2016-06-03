@@ -74,8 +74,9 @@ func SubscribeResponseToJSON(resp *SubscribeResponse) (string, error) {
 	return string(js), nil
 }
 
-// NotificationToJSONDocument maps a Notification into a single JSON document
-func NotificationToJSONDocument(notification *Notification) ([]byte, error) {
+// NotificationToMap maps a Notification into a nested map of entities
+func NotificationToMap(notification *Notification) (map[string]interface{},
+	error) {
 	prefix := notification.GetPrefix()
 	root := map[string]interface{}{
 		"_timestamp": notification.Timestamp,
@@ -121,5 +122,14 @@ func NotificationToJSONDocument(notification *Notification) ([]byte, error) {
 		}
 		parent[path.Element[elementLen-1]] = unmarshaledValue
 	}
-	return json.Marshal(root)
+	return root, nil
+}
+
+// NotificationToJSONDocument maps a Notification into a single JSON document
+func NotificationToJSONDocument(notification *Notification) ([]byte, error) {
+	m, err := NotificationToMap(notification)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(m)
 }
