@@ -10,6 +10,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
+	"github.com/aristanetworks/goarista/elasticsearch"
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/golang/protobuf/proto"
@@ -33,8 +34,9 @@ func (e UnhandledSubscribeResponseError) Error() string {
 	return fmt.Sprintf("Unexpected type %T in subscribe response: %#v", e.response, e.response)
 }
 
-// MessageEncoder defines the encoding from SubscribeResponse to sarama.ProducerMessage
-func MessageEncoder(topic string, key sarama.Encoder,
+// ElasticsearchMessageEncoder defines the encoding from SubscribeResponse to
+// sarama.ProducerMessage for Elasticsearch
+func ElasticsearchMessageEncoder(topic string, key sarama.Encoder,
 	message proto.Message) (*sarama.ProducerMessage, error) {
 	response, ok := message.(*openconfig.SubscribeResponse)
 	if !ok {
@@ -44,7 +46,8 @@ func MessageEncoder(topic string, key sarama.Encoder,
 	if update == nil {
 		return nil, UnhandledSubscribeResponseError{response: response}
 	}
-	updateJSON, err := openconfig.NotificationToJSONDocument(update)
+	updateJSON, err := openconfig.NotificationToJSONDocument(update,
+		elasticsearch.EscapeFieldName)
 	if err != nil {
 		return nil, err
 	}

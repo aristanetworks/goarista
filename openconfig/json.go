@@ -74,9 +74,17 @@ func SubscribeResponseToJSON(resp *SubscribeResponse) (string, error) {
 	return string(js), nil
 }
 
+// EscapeFunc is the escaping method for attribute names
+type EscapeFunc func(k string) string
+
 // NotificationToMap maps a Notification into a nested map of entities
-func NotificationToMap(notification *Notification) (map[string]interface{},
-	error) {
+func NotificationToMap(notification *Notification,
+	escape EscapeFunc) (map[string]interface{}, error) {
+	if escape == nil {
+		escape = func(name string) string {
+			return name
+		}
+	}
 	prefix := notification.GetPrefix()
 	root := map[string]interface{}{
 		"_timestamp": notification.Timestamp,
@@ -86,7 +94,7 @@ func NotificationToMap(notification *Notification) (map[string]interface{},
 		parent := root
 		for _, element := range prefix.Element {
 			node := map[string]interface{}{}
-			parent[element] = node
+			parent[escape(element)] = node
 			parent = node
 		}
 		prefixLeaf = parent
@@ -100,7 +108,7 @@ func NotificationToMap(notification *Notification) (map[string]interface{},
 				node, found := parent[element]
 				if !found {
 					node = map[string]interface{}{}
-					parent[element] = node
+					parent[escape(element)] = node
 				}
 				var ok bool
 				parent, ok = node.(map[string]interface{})
@@ -120,14 +128,15 @@ func NotificationToMap(notification *Notification) (map[string]interface{},
 		if err := json.Unmarshal(value.Value, &unmarshaledValue); err != nil {
 			return nil, err
 		}
-		parent[path.Element[elementLen-1]] = unmarshaledValue
+		parent[escape(path.Element[elementLen-1])] = unmarshaledValue
 	}
 	return root, nil
 }
 
 // NotificationToJSONDocument maps a Notification into a single JSON document
-func NotificationToJSONDocument(notification *Notification) ([]byte, error) {
-	m, err := NotificationToMap(notification)
+func NotificationToJSONDocument(notification *Notification,
+	escape EscapeFunc) ([]byte, error) {
+	m, err := NotificationToMap(notification, escape)
 	if err != nil {
 		return nil, err
 	}

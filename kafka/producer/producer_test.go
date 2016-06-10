@@ -69,7 +69,7 @@ func TestKafkaProducer(t *testing.T) {
 		kafkaProducer: mock,
 		topic:         topic,
 		key:           sarama.StringEncoder(systemID),
-		encoder:       openconfig.MessageEncoder,
+		encoder:       openconfig.ElasticsearchMessageEncoder,
 		done:          make(chan struct{}),
 		wg:            sync.WaitGroup{},
 	}

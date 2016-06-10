@@ -32,7 +32,7 @@ func newProducer(addresses []string, topic, key string) (producer.Producer, erro
 		return nil, fmt.Errorf("Failed to create Kafka client: %s", err)
 	}
 	encodedKey := sarama.StringEncoder(key)
-	p, err := producer.New(topic, nil, client, encodedKey, openconfig.MessageEncoder)
+	p, err := producer.New(topic, nil, client, encodedKey, openconfig.ElasticsearchMessageEncoder)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kafka producer: %s", err)
 	}
