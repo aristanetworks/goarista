@@ -15,22 +15,7 @@ that time passes at a constant rate, instead use `atime.Nanotime()`.
 
 ## cmd
 
-### occli
-
-Simple CLI client for the OpenConfig gRPC interface that prints the response
-protobufs in text form or JSON.
-
-### ockafka
-
-Client for the OpenConfig gRPC interface that publishes updates to Kafka.
-
-### ocredis
-
-Client for the OpenConfig gRPC interface that publishes updates to Redis
-using both [Redis' hashes](http://redis.io/topics/data-types-intro#hashes)
-(one per container / entity / collection) and [Redis' Pub/Sub](http://redis.io/topics/pubsub) 
-mechanism, so that one can [subscribe](http://redis.io/commands/subscribe) to
-incoming updates being applied on the hash maps.
+See the [cmd](cmd) directory.
 
 ## dscp
 
