@@ -1,24 +1,12 @@
 # OpenConfig clients
 
-The following commands are clients for the [OpenConfig](http://openconfig.net) gRPC interface.
+The `oc*` commands are clients for the [OpenConfig](http://openconfig.net) gRPC interface.
 
-## occli
+# Running
 
-Prints the response protobufs in text form or JSON.
+After installing [Go](https://golang.org/dl/) and setting the [GOPATH](https://golang.org/doc/code.html#GOPATH) environment variable to the path to your workspace, you can just run:
 
-## ockafka
-
-Publishes updates to [Kafka](http://kafka.apache.org) in [Elasticsearch](https://www.elastic.co/products/elasticsearch)-friendly form.
-
-## ocredis
-
-Publishes updates to [Redis](http://redis.io) using both [Redis' hashes](http://redis.io/topics/data-types-intro#hashes)
-(one per container / entity / collection) and [Redis' Pub/Sub](http://redis.io/topics/pubsub) 
-mechanism, so that one can [subscribe](http://redis.io/commands/subscribe) to
-incoming updates being applied on the hash maps.
-
-## octsdb
-
-Publishes updates to [OpenTSDB](http://opentsdb.net).
-
-
+```
+go get get github.com/aristanetworks/goarista/cmd/<cmd>
+$GOPATH/bin/<cmd>
+```
