@@ -63,6 +63,7 @@ func Run(publish func(*openconfig.SubscribeResponse), wg *sync.WaitGroup,
 			},
 		}
 
+		glog.Infof("Sending subscribe request: %s", sub)
 		err = stream.Send(sub)
 		if err != nil {
 			glog.Fatalf("Failed to subscribe: %s", err)
