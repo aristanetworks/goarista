@@ -15,8 +15,10 @@ func TestNanoTime(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		t1 := NanoTime()
 		t2 := NanoTime()
-		if t1 >= t2 {
-			t.Fatalf("t1=%d should have been strictly less than t2=%d", t1, t2)
+		// I honestly thought that we needed >= here, but in some environments
+		// two consecutive calls can return the same value!
+		if t1 > t2 {
+			t.Fatalf("t1=%d should have been less than or equal to t2=%d", t1, t2)
 		}
 	}
 }
