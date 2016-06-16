@@ -105,10 +105,11 @@ func NotificationToMap(notification *Notification,
 		elementLen := len(path.Element)
 		if elementLen > 1 {
 			for _, element := range path.Element[:elementLen-2] {
-				node, found := parent[element]
+				escapedElement := escape(element)
+				node, found := parent[escapedElement]
 				if !found {
 					node = map[string]interface{}{}
-					parent[escape(element)] = node
+					parent[escapedElement] = node
 				}
 				var ok bool
 				parent, ok = node.(map[string]interface{})
