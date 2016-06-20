@@ -11,7 +11,7 @@ prevents accessing unexported attributes.
 Provides access to a fast monotonic clock source, to fill in the gap in the
 [Go standard library, which lacks one](https://github.com/golang/go/issues/12914).
 Don't use `time.Now()` in code that needs to time things or otherwise assume
-that time passes at a constant rate, instead use `atime.Nanotime()`.
+that time passes at a constant rate, instead use `atime.NanoTime()`.
 
 ## cmd
 
