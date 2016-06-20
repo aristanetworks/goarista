@@ -5,11 +5,9 @@
 // Package atime provides a fast monotonic clock source.
 package atime
 
-import "unsafe"
-
-// Make goimports import the unsafe package, which is required to be able
-// to use //go:linkname
-var _ = unsafe.Sizeof(0)
+import (
+	_ "unsafe" // required to use //go:linkname
+)
 
 //go:noescape
 //go:linkname nanotime runtime.nanotime
