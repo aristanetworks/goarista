@@ -78,6 +78,7 @@ func Run(publish func(*openconfig.SubscribeResponse), wg *sync.WaitGroup,
 			}
 			return
 		}
+		glog.V(3).Info(resp)
 		publish(resp)
 	}
 }
