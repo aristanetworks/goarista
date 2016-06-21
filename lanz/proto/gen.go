@@ -6,6 +6,6 @@ package proto
 
 // To run this command you need protobuf and the go protoc plugin:
 // brew install protobuf --devel
-// go get github.com/golang/protobuf/protoc-gen-go
+// go get -u github.com/golang/protobuf/protoc-gen-go
 
 //go:generate protoc --go_out=. lanz.proto

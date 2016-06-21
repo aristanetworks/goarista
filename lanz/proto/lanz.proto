@@ -1,9 +1,12 @@
 // Copyright (c) 2011 Arista Networks, Inc.  All rights reserved.
-// Arista Networks, Inc. Confidential and Proprietary.
+// Use of this source code is governed by the Apache License 2.0
+// that can be found in the COPYING file.
 //
 // This Google Protocol Buffer schema contains the message
 // that are used for Lanz streaming.
 //
+
+syntax = "proto2";
 
 option go_package = "proto";
 
@@ -24,8 +27,8 @@ message ConfigRecord {
       required uint32 lowThreshold = 6;  // Lower threshold
    }
    repeated PortConfigRecord portConfigRecord = 6; // Lanz config details of each port
-   optional uint32 globalUsageHighThreshold = 7;   // High threshold for global usage monitoring 
-   optional uint32 globalUsageLowThreshold = 8;    // Low threshold for global usage monitoring 
+   optional uint32 globalUsageHighThreshold = 7;   // High threshold for global usage monitoring
+   optional uint32 globalUsageLowThreshold = 8;    // Low threshold for global usage monitoring
    optional bool globalUsageReportingEnabled = 9;  // Global buffer reporting enabled
 }
 
@@ -37,8 +40,8 @@ message GlobalBufferUsageRecord {
    }
    optional EntryType entryType = 1;
    optional uint64 timestamp = 2;    // Time of entry in micro-seconds (UTC)
-   optional uint32 bufferSize = 3;   // Size of global buffer 
-   optional uint32 duration = 4;     // duration of buffer usage between high and low  
+   optional uint32 bufferSize = 3;   // Size of global buffer
+   optional uint32 duration = 4;     // duration of buffer usage between high and low
 }
 
 message CongestionRecord {
@@ -54,7 +57,7 @@ message CongestionRecord {
    }
    optional EntryType entryType = 6;    // Type of entry
    optional uint32 trafficClass = 7;    // Traffic Class
-   optional uint64 timeOfMaxQLen = 8;   // Time of max q len since congestion start 
+   optional uint64 timeOfMaxQLen = 8;   // Time of max q len since congestion start
    optional uint32 txLatency = 9;       // Transmit latency
    optional uint32 qDropCount = 10;     // Queue drop count
    optional string fabricPeerIntfName = 11; // Name of the fabric port's peer
