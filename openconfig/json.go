@@ -77,6 +77,20 @@ func SubscribeResponseToJSON(resp *SubscribeResponse) (string, error) {
 // EscapeFunc is the escaping method for attribute names
 type EscapeFunc func(k string) string
 
+// escapeValue looks for maps in an interface and escapes their keys
+func escapeValue(value interface{}, escape EscapeFunc) interface{} {
+	valueMap, ok := value.(map[string]interface{})
+	if !ok {
+		return value
+	}
+	escapedMap := make(map[string]interface{}, len(valueMap))
+	for k, v := range valueMap {
+		escapedKey := escape(k)
+		escapedMap[escapedKey] = escapeValue(v, escape)
+	}
+	return escapedMap
+}
+
 // NotificationToMap maps a Notification into a nested map of entities
 func NotificationToMap(notification *Notification,
 	escape EscapeFunc) (map[string]interface{}, error) {
@@ -129,7 +143,8 @@ func NotificationToMap(notification *Notification,
 		if err := json.Unmarshal(value.Value, &unmarshaledValue); err != nil {
 			return nil, err
 		}
-		parent[escape(path.Element[elementLen-1])] = unmarshaledValue
+		parent[escape(path.Element[elementLen-1])] = escapeValue(unmarshaledValue,
+			escape)
 	}
 	return root, nil
 }
