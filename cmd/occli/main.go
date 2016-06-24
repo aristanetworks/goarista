@@ -8,6 +8,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"sync"
 
 	"github.com/aristanetworks/goarista/openconfig"
@@ -39,7 +40,7 @@ func main() {
 		} else {
 			respTxt = proto.MarshalTextString(resp)
 		}
-		glog.Info(respTxt)
+		fmt.Println(respTxt)
 	}
 
 	wg := new(sync.WaitGroup)
