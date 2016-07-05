@@ -2,19 +2,19 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-// Package atime provides a fast monotonic clock source.
-package atime_test
+// Package monotime provides a fast monotonic clock source.
+package monotime_test
 
 import (
 	"testing"
 
-	. "github.com/aristanetworks/goarista/atime"
+	. "github.com/aristanetworks/goarista/monotime"
 )
 
-func TestNanoTime(t *testing.T) {
+func TestNow(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		t1 := NanoTime()
-		t2 := NanoTime()
+		t1 := Now()
+		t2 := Now()
 		// I honestly thought that we needed >= here, but in some environments
 		// two consecutive calls can return the same value!
 		if t1 > t2 {
