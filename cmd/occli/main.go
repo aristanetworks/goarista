@@ -18,8 +18,6 @@ import (
 	"github.com/aristanetworks/glog"
 )
 
-const defaultPort = "6042"
-
 var jsonFlag = flag.Bool("json", false,
 	"Print the output in JSON instead of protobuf")
 

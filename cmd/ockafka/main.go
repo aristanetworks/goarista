@@ -21,8 +21,6 @@ import (
 	"github.com/aristanetworks/goarista/openconfig/client"
 )
 
-const defaultGRPCPort = "6042"
-
 var keysFlag = flag.String("kafkakeys", "",
 	"Keys for kafka messages (comma-separated, default: the value of -addrs")
 
@@ -53,9 +51,6 @@ func main() {
 	wg := new(sync.WaitGroup)
 	for i, grpcAddr := range grpcAddrs {
 		key := keys[i]
-		if !strings.ContainsRune(grpcAddr, ':') {
-			grpcAddr += ":" + defaultGRPCPort
-		}
 		p, err := newProducer(addresses, *kafka.Topic, key)
 		if err != nil {
 			glog.Fatal(err)

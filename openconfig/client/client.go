@@ -17,6 +17,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const defaultPort = "6042"
+
 // Run creates a new gRPC client, sends subscriptions, and consumes responses.
 // The given publish function is used to publish SubscribeResponses received
 // for the given subscriptions, when connected to the given host, with the
@@ -29,6 +31,9 @@ func Run(publish func(*openconfig.SubscribeResponse), wg *sync.WaitGroup,
 	opts []grpc.DialOption) {
 
 	defer wg.Done()
+	if !strings.ContainsRune(addr, ':') {
+		addr += ":" + defaultPort
+	}
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		glog.Fatalf("fail to dial: %s", err)
