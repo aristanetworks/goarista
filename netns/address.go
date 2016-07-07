@@ -10,17 +10,17 @@ import (
 )
 
 // ParseAddress takes in an address string, parsing out the address
-// and an optional VRF name.
+// and an optional VRF name. It returns the namespace corresponding to the VRF.
 // The expected form is [<vrf-name>/]address:port. However, ParseAddress
 // will not actually check to see if the VRF name or address are valid.
 // Presumably, when those values are used later, they will fail if they
 // are malformed
-func ParseAddress(address string) (vrfName string, addr string, err error) {
+func ParseAddress(address string) (nsName string, addr string, err error) {
 	split := strings.Split(address, "/")
 	if l := len(split); l == 1 {
 		addr = split[0]
 	} else if l == 2 {
-		vrfName = split[0]
+		nsName = VRFToNetNS(split[0])
 		addr = split[1]
 	} else {
 		err = fmt.Errorf("Could not parse out a <vrf-name>/address for %s", address)

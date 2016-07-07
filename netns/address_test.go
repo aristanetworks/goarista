@@ -18,7 +18,7 @@ func TestParseAddress(t *testing.T) {
 	}{{
 		"Parse address with VRF",
 		"vrf1/1.2.3.4:50",
-		"vrf1",
+		"ns-vrf1",
 		"1.2.3.4:50",
 		false,
 	}, {
