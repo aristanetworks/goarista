@@ -5,6 +5,7 @@
 package openconfig
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -19,8 +20,9 @@ func convertUpdate(update *Update) (interface{}, error) {
 	switch update.Value.Type {
 	case Type_JSON:
 		var value interface{}
-		err := json.Unmarshal(update.Value.Value, &value)
-		if err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(update.Value.Value))
+		decoder.UseNumber()
+		if err := decoder.Decode(&value); err != nil {
 			return nil, fmt.Errorf("Malformed JSON update %q in %s",
 				update.Value.Value, update)
 		}
