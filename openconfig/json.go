@@ -93,6 +93,28 @@ func escapeValue(value interface{}, escape EscapeFunc) interface{} {
 	return escapedMap
 }
 
+// addPathToMap creates a map[string]interface{} from a path. It returns the node in
+// the map corresponding to the last element in the path
+func addPathToMap(parent map[string]interface{}, path []string, escape EscapeFunc) (
+	map[string]interface{}, error) {
+	for _, element := range path[:len(path)-1] {
+		escapedElement := escape(element)
+		node, found := parent[escapedElement]
+		if !found {
+			node = map[string]interface{}{}
+			parent[escapedElement] = node
+		}
+		var ok bool
+		parent, ok = node.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf(
+				"Node %s is of type %T (expected map[string]interface traversing %q)",
+				element, node, path)
+		}
+	}
+	return parent, nil
+}
+
 // NotificationToMap maps a Notification into a nested map of entities
 func NotificationToMap(notification *Notification,
 	escape EscapeFunc) (map[string]interface{}, error) {
@@ -120,20 +142,11 @@ func NotificationToMap(notification *Notification,
 		path := update.GetPath()
 		elementLen := len(path.Element)
 		if elementLen > 1 {
-			for _, element := range path.Element[:elementLen-2] {
-				escapedElement := escape(element)
-				node, found := parent[escapedElement]
-				if !found {
-					node = map[string]interface{}{}
-					parent[escapedElement] = node
-				}
-				var ok bool
-				parent, ok = node.(map[string]interface{})
-				if !ok {
-					return nil, fmt.Errorf(
-						"Node %s is of type %T (expected map[string]interface traversing %q)",
-						element, node, path.Element)
-				}
+			parentElements := path.Element[:elementLen-1]
+			var err error
+			parent, err = addPathToMap(prefixLeaf, parentElements, escape)
+			if err != nil {
+				return nil, err
 			}
 		}
 		value := update.GetValue()
