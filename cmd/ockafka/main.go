@@ -17,8 +17,8 @@ import (
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/kafka/openconfig"
 	"github.com/aristanetworks/goarista/kafka/producer"
-	pb "github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/openconfig/client"
+	"github.com/golang/protobuf/proto"
 )
 
 var keysFlag = flag.String("kafkakeys", "",
@@ -57,8 +57,8 @@ func main() {
 		} else {
 			glog.Infof("Initialized Kafka producer for %s", grpcAddr)
 		}
-		publish := func(notif *pb.SubscribeResponse) {
-			p.Write(notif)
+		publish := func(addr string, message proto.Message) {
+			p.Write(message)
 		}
 		wg.Add(1)
 		go p.Run()

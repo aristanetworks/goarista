@@ -16,6 +16,7 @@ import (
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/openconfig/client"
+	"github.com/golang/protobuf/proto"
 )
 
 func main() {
@@ -56,7 +57,12 @@ func main() {
 	wg := new(sync.WaitGroup)
 	for _, addr := range addrs {
 		wg.Add(1)
-		publish := func(resp *openconfig.SubscribeResponse) {
+		publish := func(addr string, message proto.Message) {
+			resp, ok := message.(*openconfig.SubscribeResponse)
+			if !ok {
+				glog.Errorf("Unexpected type of message: %T", message)
+				return
+			}
 			if notif := resp.GetUpdate(); notif != nil {
 				pushToOpenTSDB(addr, c, config, notif)
 			}

@@ -17,6 +17,7 @@ import (
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig"
 	occlient "github.com/aristanetworks/goarista/openconfig/client"
+	"github.com/golang/protobuf/proto"
 	redis "gopkg.in/redis.v4"
 )
 
@@ -72,18 +73,21 @@ func main() {
 		glog.Fatal("Failed to connect to client: ", err)
 	}
 
-	ocPublish := func(addr string) func(*openconfig.SubscribeResponse) {
-		return func(resp *openconfig.SubscribeResponse) {
-			if notif := resp.GetUpdate(); notif != nil {
-				bufferToRedis(addr, notif)
-			}
+	ocPublish := func(addr string, message proto.Message) {
+		resp, ok := message.(*openconfig.SubscribeResponse)
+		if !ok {
+			glog.Errorf("Unexpected type of message: %T", message)
+			return
+		}
+		if notif := resp.GetUpdate(); notif != nil {
+			bufferToRedis(addr, notif)
 		}
 	}
 
 	wg := new(sync.WaitGroup)
 	for _, hostAddr := range hostAddrs {
 		wg.Add(1)
-		go occlient.Run(ocPublish(hostAddr), wg, username, password, hostAddr, subscriptions, opts)
+		go occlient.Run(ocPublish, wg, username, password, hostAddr, subscriptions, opts)
 	}
 	wg.Wait()
 }

@@ -24,7 +24,12 @@ var jsonFlag = flag.Bool("json", false,
 func main() {
 	username, password, subscriptions, addrs, opts := client.ParseFlags()
 
-	publish := func(resp *openconfig.SubscribeResponse) {
+	publish := func(addr string, message proto.Message) {
+		resp, ok := message.(*openconfig.SubscribeResponse)
+		if !ok {
+			glog.Errorf("Unexpected type of message: %T", message)
+			return
+		}
 		if resp.GetHeartbeat() != nil && !glog.V(1) {
 			return // Log heartbeats with verbose logging only.
 		}

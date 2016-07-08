@@ -12,12 +12,16 @@ import (
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
 const defaultPort = "6042"
+
+// PublishFunc is the method to publish responses
+type PublishFunc func(addr string, message proto.Message)
 
 // Run creates a new gRPC client, sends subscriptions, and consumes responses.
 // The given publish function is used to publish SubscribeResponses received
@@ -26,11 +30,12 @@ const defaultPort = "6042"
 // This function does not normally return so it should probably be run in its
 // own goroutine.  When this function returns, the given WaitGroup is marked
 // as done.
-func Run(publish func(*openconfig.SubscribeResponse), wg *sync.WaitGroup,
+func Run(publish PublishFunc, wg *sync.WaitGroup,
 	username, password, addr string, subscriptions []string,
 	opts []grpc.DialOption) {
 
 	defer wg.Done()
+	device := addr
 	if !strings.ContainsRune(addr, ':') {
 		addr += ":" + defaultPort
 	}
@@ -84,6 +89,6 @@ func Run(publish func(*openconfig.SubscribeResponse), wg *sync.WaitGroup,
 			return
 		}
 		glog.V(3).Info(resp)
-		publish(resp)
+		publish(device, resp)
 	}
 }
