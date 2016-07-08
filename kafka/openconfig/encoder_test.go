@@ -30,12 +30,14 @@ func TestJsonify(t *testing.T) {
 			},
 		},
 		document: map[string]interface{}{
-			"Sysdb": map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": 42,
+			"timestamp": int64(0),
+			"update": map[string]interface{}{
+				"Sysdb": map[string]interface{}{
+					"a": map[string]interface{}{
+						"b": 42,
+					},
 				},
 			},
-			"_timestamp": 0,
 		},
 	},
 	}

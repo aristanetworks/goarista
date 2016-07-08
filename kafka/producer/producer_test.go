@@ -86,9 +86,12 @@ func TestKafkaProducer(t *testing.T) {
 		},
 	}
 	document := map[string]interface{}{
-		"": map[string]interface{}{
-			"foo": map[string]interface{}{
-				"bar": map[string]interface{}{},
+		"timestamp": int64(0),
+		"update": map[string]interface{}{
+			"": map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": map[string]interface{}{},
+				},
 			},
 		},
 	}
@@ -116,7 +119,7 @@ func TestKafkaProducer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error decoding into JSON: %s", err)
 	}
-	if !test.DeepEqual(document[""], result.(map[string]interface{})[""]) {
+	if !test.DeepEqual(document["update"], result.(map[string]interface{})["update"]) {
 		t.Errorf("Protobuf sent from Kafka Producer does not match original.\nOriginal: %v\nNew:%v",
 			document, result)
 	}

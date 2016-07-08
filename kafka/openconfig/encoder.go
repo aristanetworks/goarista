@@ -53,7 +53,7 @@ func ElasticsearchMessageEncoder(topic string, key sarama.Encoder,
 		return nil, err
 	}
 	// Convert time to ms to make Elasticsearch happy
-	updateMap["_timestamp"] = updateMap["_timestamp"].(int64) / 1000000
+	updateMap["timestamp"] = updateMap["timestamp"].(int64) / 1000000
 	updateJSON, err := json.Marshal(updateMap)
 	if err != nil {
 		return nil, err

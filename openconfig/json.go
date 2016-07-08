@@ -94,14 +94,15 @@ func escapeValue(value interface{}, escape EscapeFunc) interface{} {
 
 // addPathToMap creates a map[string]interface{} from a path. It returns the node in
 // the map corresponding to the last element in the path
-func addPathToMap(parent map[string]interface{}, path []string, escape EscapeFunc) (
+func addPathToMap(root map[string]interface{}, path []string, escape EscapeFunc) (
 	map[string]interface{}, error) {
-	for _, element := range path[:len(path)-1] {
-		escapedElement := escape(element)
-		node, found := parent[escapedElement]
+	parent := root
+	for _, element := range path[:len(path)] {
+		k := escape(element)
+		node, found := parent[k]
 		if !found {
 			node = map[string]interface{}{}
-			parent[escapedElement] = node
+			parent[k] = node
 		}
 		var ok bool
 		parent, ok = node.(map[string]interface{})
@@ -123,46 +124,81 @@ func NotificationToMap(notification *Notification,
 		}
 	}
 	prefix := notification.GetPrefix()
-	root := map[string]interface{}{
-		"_timestamp": notification.Timestamp,
-	}
-	prefixLeaf := root
-	if prefix != nil {
-		parent := root
-		for _, element := range prefix.Element {
-			node := map[string]interface{}{}
-			parent[escape(element)] = node
-			parent = node
-		}
-		prefixLeaf = parent
-	}
-	for _, update := range notification.GetUpdate() {
-		parent := prefixLeaf
-		path := update.GetPath()
-		elementLen := len(path.Element)
-		if elementLen > 1 {
-			parentElements := path.Element[:elementLen-1]
+
+	// Convert deletes
+	var deletes map[string]interface{}
+	notificationDeletes := notification.GetDelete()
+	if notificationDeletes != nil {
+		deletes = make(map[string]interface{})
+		node := deletes
+		if prefix != nil {
 			var err error
-			parent, err = addPathToMap(prefixLeaf, parentElements, escape)
+			node, err = addPathToMap(node, prefix.Element, escape)
 			if err != nil {
 				return nil, err
 			}
 		}
-		value := update.GetValue()
-		var unmarshaledValue interface{}
-		switch value.Type {
-		case Type_JSON:
-			if err := json.Unmarshal(value.Value, &unmarshaledValue); err != nil {
+		for _, delete := range notificationDeletes {
+			addPathToMap(node, delete.Element, escape)
+		}
+	}
+
+	// Convert updates
+	var updates map[string]interface{}
+	notificationUpdates := notification.GetUpdate()
+	if notificationUpdates != nil {
+		updates = make(map[string]interface{})
+		node := updates
+		if prefix != nil {
+			var err error
+			node, err = addPathToMap(node, prefix.Element, escape)
+			if err != nil {
 				return nil, err
 			}
-		case Type_BYTES:
-			unmarshaledValue = update.Value.Value
-		default:
-			return nil, fmt.Errorf("Unexpected value type %s for path %v",
-				value.Type, path)
 		}
-		parent[escape(path.Element[elementLen-1])] = escapeValue(unmarshaledValue,
-			escape)
+		for _, update := range notificationUpdates {
+			path := update.GetPath()
+			elementLen := len(path.Element)
+
+			// Convert all elements before the leaf
+			if elementLen > 1 {
+				parentElements := path.Element[:elementLen-1]
+				var err error
+				node, err = addPathToMap(node, parentElements, escape)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			// Convert the value in the leaf
+			value := update.GetValue()
+			var unmarshaledValue interface{}
+			switch value.Type {
+			case Type_JSON:
+				if err := json.Unmarshal(value.Value, &unmarshaledValue); err != nil {
+					return nil, err
+				}
+			case Type_BYTES:
+				unmarshaledValue = update.Value.Value
+			default:
+				return nil, fmt.Errorf("Unexpected value type %s for path %v",
+					value.Type, path)
+			}
+			node[escape(path.Element[elementLen-1])] = escapeValue(unmarshaledValue,
+				escape)
+		}
+	}
+
+	// Build the complete map to return
+	root := map[string]interface{}{
+		// TODO: add "dataset"
+		"timestamp": notification.Timestamp,
+	}
+	if deletes != nil {
+		root["delete"] = deletes
+	}
+	if updates != nil {
+		root["update"] = updates
 	}
 	return root, nil
 }
