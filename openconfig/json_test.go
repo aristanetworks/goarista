@@ -51,6 +51,7 @@ func TestNotificationToMap(t *testing.T) {
 	}
 	expected := map[string]interface{}{
 		"timestamp": int64(0),
+		"dataset":   "cairo",
 		"delete": map[string]interface{}{
 			"Smash": map[string]interface{}{
 				"routing": map[string]interface{}{
@@ -89,7 +90,7 @@ func TestNotificationToMap(t *testing.T) {
 			},
 		},
 	}
-	actual, err := NotificationToMap(&notification, nil)
+	actual, err := NotificationToMap("cairo", &notification, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

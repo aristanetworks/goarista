@@ -24,7 +24,8 @@ import (
 var counter uint32
 
 // MessageEncoder defines the encoding from topic, key, proto.Message to sarama.ProducerMessage
-type MessageEncoder func(string, sarama.Encoder, proto.Message) (*sarama.ProducerMessage, error)
+type MessageEncoder func(string, sarama.Encoder, string, proto.Message) (*sarama.ProducerMessage,
+	error)
 
 // Producer forwards messages recvd on a channel to kafka.
 type Producer interface {
@@ -38,6 +39,7 @@ type producer struct {
 	kafkaProducer sarama.AsyncProducer
 	topic         string
 	key           sarama.Encoder
+	dataset       string
 	encoder       MessageEncoder
 	done          chan struct{}
 	wg            sync.WaitGroup
@@ -50,8 +52,7 @@ type producer struct {
 
 // New creates new Kafka producer
 func New(topic string, notifsChan chan proto.Message, client sarama.Client, key sarama.Encoder,
-	encoder MessageEncoder) (
-	Producer, error) {
+	dataset string, encoder MessageEncoder) (Producer, error) {
 	if notifsChan == nil {
 		notifsChan = make(chan proto.Message)
 	}
@@ -75,6 +76,7 @@ func New(topic string, notifsChan chan proto.Message, client sarama.Client, key 
 		kafkaProducer: kafkaProducer,
 		topic:         topic,
 		key:           key,
+		dataset:       dataset,
 		encoder:       encoder,
 		done:          make(chan struct{}),
 		wg:            sync.WaitGroup{},
@@ -123,7 +125,7 @@ func (p *producer) Stop() {
 }
 
 func (p *producer) produceNotification(protoMessage proto.Message) error {
-	message, err := p.encoder(p.topic, p.key, protoMessage)
+	message, err := p.encoder(p.topic, p.key, p.dataset, protoMessage)
 	if err != nil {
 		return err
 	}

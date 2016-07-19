@@ -37,7 +37,7 @@ func (e UnhandledSubscribeResponseError) Error() string {
 
 // ElasticsearchMessageEncoder defines the encoding from SubscribeResponse to
 // sarama.ProducerMessage for Elasticsearch
-func ElasticsearchMessageEncoder(topic string, key sarama.Encoder,
+func ElasticsearchMessageEncoder(topic string, key sarama.Encoder, dataset string,
 	message proto.Message) (*sarama.ProducerMessage, error) {
 	response, ok := message.(*openconfig.SubscribeResponse)
 	if !ok {
@@ -47,7 +47,7 @@ func ElasticsearchMessageEncoder(topic string, key sarama.Encoder,
 	if update == nil {
 		return nil, UnhandledSubscribeResponseError{response: response}
 	}
-	updateMap, err := openconfig.NotificationToMap(update,
+	updateMap, err := openconfig.NotificationToMap(dataset, update,
 		elasticsearch.EscapeFieldName)
 	if err != nil {
 		return nil, err

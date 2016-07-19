@@ -31,6 +31,7 @@ func TestJsonify(t *testing.T) {
 		},
 		document: map[string]interface{}{
 			"timestamp": int64(0),
+			"dataset":   "foo",
 			"update": map[string]interface{}{
 				"Sysdb": map[string]interface{}{
 					"a": map[string]interface{}{
@@ -46,8 +47,8 @@ func TestJsonify(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		actual, err := openconfig.NotificationToJSONDocument(jsonTest.notification,
-			nil)
+		actual, err := openconfig.NotificationToJSONDocument("foo",
+			jsonTest.notification, nil)
 		if err != nil {
 			t.Error(err)
 		}

@@ -116,7 +116,7 @@ func addPathToMap(root map[string]interface{}, path []string, escape EscapeFunc)
 }
 
 // NotificationToMap maps a Notification into a nested map of entities
-func NotificationToMap(notification *Notification,
+func NotificationToMap(addr string, notification *Notification,
 	escape EscapeFunc) (map[string]interface{}, error) {
 	if escape == nil {
 		escape = func(name string) string {
@@ -191,8 +191,10 @@ func NotificationToMap(notification *Notification,
 
 	// Build the complete map to return
 	root := map[string]interface{}{
-		// TODO: add "dataset"
 		"timestamp": notification.Timestamp,
+	}
+	if addr != "" {
+		root["dataset"] = addr
 	}
 	if deletes != nil {
 		root["delete"] = deletes
@@ -204,9 +206,9 @@ func NotificationToMap(notification *Notification,
 }
 
 // NotificationToJSONDocument maps a Notification into a single JSON document
-func NotificationToJSONDocument(notification *Notification,
+func NotificationToJSONDocument(addr string, notification *Notification,
 	escape EscapeFunc) ([]byte, error) {
-	m, err := NotificationToMap(notification, escape)
+	m, err := NotificationToMap(addr, notification, escape)
 	if err != nil {
 		return nil, err
 	}
