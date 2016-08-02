@@ -10,18 +10,55 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/PuerkitoBio/redisc"
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/openconfig/client"
 	"github.com/garyburd/redigo/redis"
 )
 
+var clusterMode = flag.Bool("cluster", false, "Whether the redis server is a cluster")
+
 var redisFlag = flag.String("redis", "",
-	"Address of Redis server where to push updates to")
+	"Comma separated list of Redis servers to push updates to")
+
+var redisPassword = flag.String("redispass", "", "Password of redis server/cluster")
+
+// dialRedis connects to redis and tries to authenticate if necessary.
+func dialRedis(server string) (redis.Conn, error) {
+	c, err := redis.Dial("tcp", server)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to connect to Redis server %s: %s", server, err)
+	}
+	if *redisPassword != "" {
+		if _, err := c.Do("AUTH", *redisPassword); err != nil {
+			c.Close()
+			glog.Fatal("Error authenticating: ", err)
+		}
+	}
+	return c, nil
+}
+
+// newPool creates a new redis Pool. This is based on the example in the redigo library
+func newPool(server string, options ...redis.DialOption) (*redis.Pool, error) {
+	return &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 300 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return dialRedis(server)
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}, nil
+}
 
 func main() {
 	username, password, subscriptions, addrs, opts := client.ParseFlags()
@@ -29,27 +66,62 @@ func main() {
 		glog.Fatal("Specify the address of the Redis server to write to with -redis")
 	}
 
-	r, err := redis.Dial("tcp", *redisFlag)
-	if err != nil {
-		glog.Fatal("Failed to connect to Redis: ", err)
+	// The addr is used to uniquely identify different devices
+	publish := func(addr string, conn redis.Conn) func(*openconfig.SubscribeResponse) {
+		return func(resp *openconfig.SubscribeResponse) {
+			if notif := resp.GetUpdate(); notif != nil {
+				publishToRedis(addr, conn, notif)
+			}
+		}
 	}
 
-	publish := func(resp *openconfig.SubscribeResponse) {
-		if notif := resp.GetUpdate(); notif != nil {
-			publishToRedis(r, notif)
+	// If we are in clusterMode, we need to initialise the cluster
+	var cluster *redisc.Cluster
+	if *clusterMode {
+		// Create a cluster, using the pool to authenticate
+		cluster = &redisc.Cluster{
+			StartupNodes: strings.Split(*redisFlag, ","),
+			CreatePool:   newPool,
+		}
+		defer cluster.Close()
+
+		// From the doc: refreshes the cluster's internal mapping of hash slots to nodes
+		if err := cluster.Refresh(); err != nil {
+			glog.Fatal("Failed to refresh cluster: ", err)
 		}
 	}
 
 	wg := new(sync.WaitGroup)
+	// Create a connection to Redis per device we are connected to. Otherwise, we will
+	// have concurrency errors for using the same connection.
 	for _, addr := range addrs {
+		var conn redis.Conn
+		var err error
+		if *clusterMode {
+			// If we are in cluster mode, we need to get our connections from the cluster
+			r := cluster.Get()
+			defer r.Close()
+			// Set up the RetryConn
+			conn, err = redisc.RetryConn(r, 3, 100*time.Millisecond)
+			if err != nil {
+				glog.Fatal("Failed to create RetryConn: ", err)
+			}
+		} else {
+			// Otherwise, when we are not in cluster mode, so we can just directly Dial Redis
+			conn, err = dialRedis(*redisFlag)
+			if err != nil {
+				glog.Fatalf("Failed to connect to redis at %s: %s", *redisFlag, err)
+			}
+		}
+
 		wg.Add(1)
-		go client.Run(publish, wg, username, password, addr, subscriptions, opts)
+		go client.Run(publish(addr, conn), wg, username, password, addr, subscriptions, opts)
 	}
 	wg.Wait()
 }
 
-func publishToRedis(r redis.Conn, notif *openconfig.Notification) {
-	path := "/" + joinPath(notif.Prefix)
+func publishToRedis(addr string, r redis.Conn, notif *openconfig.Notification) {
+	path := addr + "/" + joinPath(notif.Prefix)
 
 	publish := func(kind string, payload interface{}) {
 		js, err := json.Marshal(map[string]interface{}{
@@ -59,8 +131,7 @@ func publishToRedis(r redis.Conn, notif *openconfig.Notification) {
 		if err != nil {
 			glog.Fatalf("JSON error: %s", err)
 		}
-		err = r.Send("PUBLISH", path, js)
-		if err != nil {
+		if _, err = r.Do("PUBLISH", path, js); err != nil {
 			glog.Fatalf("redis PUBLISH error: %s", err)
 		}
 	}
@@ -83,9 +154,12 @@ func publishToRedis(r redis.Conn, notif *openconfig.Notification) {
 				glog.Fatalf("Failed to JSON marshal update %#v", update)
 			}
 		}
-		err = r.Send("HMSET", kvs...)
-		if err != nil {
-			glog.Fatalf("redis HMSET error: %s", err)
+		if _, err = r.Do("HMSET", kvs...); err != nil {
+			if redirErr := redisc.ParseRedir(err); redirErr == nil {
+				// ParseRedir returns nil if err is not a MOVED or ASK err, which
+				// means this is some other error
+				glog.Fatalf("redis HMSET error: %s", err)
+			}
 		}
 		publish("updates", pub)
 	}
@@ -97,15 +171,14 @@ func publishToRedis(r redis.Conn, notif *openconfig.Notification) {
 		for i, del := range notif.Delete {
 			keys[i] = joinPath(del)
 		}
-		err = r.Send("HDEL", keys...)
-		if err != nil {
-			glog.Fatalf("redis HDEL error: %s", err)
+		if _, err = r.Do("HDEL", keys...); err != nil {
+			if redirErr := redisc.ParseRedir(err); redirErr == nil {
+				// ParseRedir returns nil if err is not a MOVED or ASK err, which
+				// means this is some other error
+				glog.Fatalf("redis HDEL error: %s", err)
+			}
 		}
 		publish("deletes", keys)
-	}
-	_, err = r.Do("") // Flush
-	if err != nil {
-		glog.Fatalf("redis error: %s", err)
 	}
 }
 
