@@ -10,17 +10,14 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/PuerkitoBio/redisc"
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig"
-	"github.com/aristanetworks/goarista/openconfig/client"
-	"github.com/garyburd/redigo/redis"
+	occlient "github.com/aristanetworks/goarista/openconfig/client"
+	redis "gopkg.in/redis.v4"
 )
 
 var clusterMode = flag.Bool("cluster", false, "Whether the redis server is a cluster")
@@ -30,155 +27,138 @@ var redisFlag = flag.String("redis", "",
 
 var redisPassword = flag.String("redispass", "", "Password of redis server/cluster")
 
-// dialRedis connects to redis and tries to authenticate if necessary.
-func dialRedis(server string) (redis.Conn, error) {
-	c, err := redis.Dial("tcp", server)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to connect to Redis server %s: %s", server, err)
-	}
-	if *redisPassword != "" {
-		if _, err := c.Do("AUTH", *redisPassword); err != nil {
-			c.Close()
-			glog.Fatal("Error authenticating: ", err)
-		}
-	}
-	return c, nil
+// baseClient allows us to represent both a redis.Client and redis.ClusterClient.
+type baseClient interface {
+	Close() error
+	ClusterInfo() *redis.StringCmd
+	HDel(string, ...string) *redis.IntCmd
+	HMSet(string, map[string]string) *redis.StatusCmd
+	Ping() *redis.StatusCmd
+	Pipelined(func(*redis.Pipeline) error) ([]redis.Cmder, error)
+	Publish(string, string) *redis.IntCmd
 }
 
-// newPool creates a new redis Pool. This is based on the example in the redigo library
-func newPool(server string, options ...redis.DialOption) (*redis.Pool, error) {
-	return &redis.Pool{
-		MaxIdle:     3,
-		IdleTimeout: 300 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return dialRedis(server)
-		},
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			_, err := c.Do("PING")
-			return err
-		},
-	}, nil
-}
+var client baseClient
 
 func main() {
-	username, password, subscriptions, addrs, opts := client.ParseFlags()
+	username, password, subscriptions, hostAddrs, opts := occlient.ParseFlags()
 	if *redisFlag == "" {
 		glog.Fatal("Specify the address of the Redis server to write to with -redis")
 	}
 
-	// The addr is used to uniquely identify different devices
-	publish := func(addr string, conn redis.Conn) func(*openconfig.SubscribeResponse) {
-		return func(resp *openconfig.SubscribeResponse) {
-			if notif := resp.GetUpdate(); notif != nil {
-				publishToRedis(addr, conn, notif)
-			}
-		}
+	redisAddrs := strings.Split(*redisFlag, ",")
+	if !*clusterMode && len(redisAddrs) > 1 {
+		glog.Fatal("Please pass only 1 redis address in noncluster mode or enable cluster mode")
 	}
 
-	// If we are in clusterMode, we need to initialise the cluster
-	var cluster *redisc.Cluster
 	if *clusterMode {
-		// Create a cluster, using the pool to authenticate
-		cluster = &redisc.Cluster{
-			StartupNodes: strings.Split(*redisFlag, ","),
-			CreatePool:   newPool,
-		}
-		defer cluster.Close()
+		client = redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:    redisAddrs,
+			Password: *redisPassword,
+		})
+	} else {
+		client = redis.NewClient(&redis.Options{
+			Addr:     *redisFlag,
+			Password: *redisPassword,
+		})
+	}
+	defer client.Close()
 
-		// From the doc: refreshes the cluster's internal mapping of hash slots to nodes
-		if err := cluster.Refresh(); err != nil {
-			glog.Fatal("Failed to refresh cluster: ", err)
+	// TODO: Figure out ways to handle being in the wrong mode:
+	// Connecting to cluster in non cluster mode - we get a MOVED error on the first HMSET
+	// Connecting to a noncluster in cluster mode - we get stuck forever
+	_, err := client.Ping().Result()
+	if err != nil {
+		glog.Fatal("Failed to connect to client: ", err)
+	}
+
+	ocPublish := func(addr string) func(*openconfig.SubscribeResponse) {
+		return func(resp *openconfig.SubscribeResponse) {
+			if notif := resp.GetUpdate(); notif != nil {
+				bufferToRedis(addr, notif)
+			}
 		}
 	}
 
 	wg := new(sync.WaitGroup)
-	// Create a connection to Redis per device we are connected to. Otherwise, we will
-	// have concurrency errors for using the same connection.
-	for _, addr := range addrs {
-		var conn redis.Conn
-		var err error
-		if *clusterMode {
-			// If we are in cluster mode, we need to get our connections from the cluster
-			r := cluster.Get()
-			defer r.Close()
-			// Set up the RetryConn
-			conn, err = redisc.RetryConn(r, 3, 100*time.Millisecond)
-			if err != nil {
-				glog.Fatal("Failed to create RetryConn: ", err)
-			}
-		} else {
-			// Otherwise, when we are not in cluster mode, so we can just directly Dial Redis
-			conn, err = dialRedis(*redisFlag)
-			if err != nil {
-				glog.Fatalf("Failed to connect to redis at %s: %s", *redisFlag, err)
-			}
-		}
-
+	for _, hostAddr := range hostAddrs {
 		wg.Add(1)
-		go client.Run(publish(addr, conn), wg, username, password, addr, subscriptions, opts)
+		go occlient.Run(ocPublish(hostAddr), wg, username, password, hostAddr, subscriptions, opts)
 	}
 	wg.Wait()
 }
 
-func publishToRedis(addr string, r redis.Conn, notif *openconfig.Notification) {
+type redisData struct {
+	key   string
+	hmset map[string]string
+	hdel  []string
+	pub   map[string]interface{}
+}
+
+func bufferToRedis(addr string, notif *openconfig.Notification) {
 	path := addr + "/" + joinPath(notif.Prefix)
+	data := &redisData{key: path}
 
-	publish := func(kind string, payload interface{}) {
-		js, err := json.Marshal(map[string]interface{}{
-			"kind":    kind,
-			"payload": payload,
-		})
-		if err != nil {
-			glog.Fatalf("JSON error: %s", err)
-		}
-		if _, err = r.Do("PUBLISH", path, js); err != nil {
-			glog.Fatalf("redis PUBLISH error: %s", err)
-		}
-	}
-
-	var err error
 	if len(notif.Update) != 0 {
-		// kvs is going to be: ["/path/to/entity", "key1", "value1", "key2", "value2", ...]
-		kvs := make([]interface{}, 1+len(notif.Update)*2)
+		hmset := make(map[string]string, len(notif.Update))
+
 		// Updates to publish on the pub/sub.
 		pub := make(map[string]interface{}, len(notif.Update))
-		kvs[0] = path
-		for i, update := range notif.Update {
+		for _, update := range notif.Update {
 			key := joinPath(update.Path)
 			value := convertUpdate(update)
 			pub[key] = value
-			// The initial "1+" is to skip over the path.
-			kvs[1+i*2] = key
-			kvs[1+i*2+1], err = json.Marshal(value)
+			marshaledValue, err := json.Marshal(value)
 			if err != nil {
 				glog.Fatalf("Failed to JSON marshal update %#v", update)
 			}
+			hmset[key] = string(marshaledValue)
 		}
-		if _, err = r.Do("HMSET", kvs...); err != nil {
-			if redirErr := redisc.ParseRedir(err); redirErr == nil {
-				// ParseRedir returns nil if err is not a MOVED or ASK err, which
-				// means this is some other error
-				glog.Fatalf("redis HMSET error: %s", err)
-			}
-		}
-		publish("updates", pub)
+		data.hmset = hmset
+		data.pub = pub
 	}
 
 	if len(notif.Delete) != 0 {
-		// keys is going to be: ["/path/to/entity", "key1", "key2", ...]
-		keys := make([]interface{}, 1+len(notif.Delete))
-		keys[0] = path
+		hdel := make([]string, len(notif.Delete))
 		for i, del := range notif.Delete {
-			keys[i] = joinPath(del)
+			hdel[i] = joinPath(del)
 		}
-		if _, err = r.Do("HDEL", keys...); err != nil {
-			if redirErr := redisc.ParseRedir(err); redirErr == nil {
-				// ParseRedir returns nil if err is not a MOVED or ASK err, which
-				// means this is some other error
-				glog.Fatalf("redis HDEL error: %s", err)
+		data.hdel = hdel
+	}
+	pushToRedis(data)
+}
+
+func pushToRedis(data *redisData) {
+	_, err := client.Pipelined(func(pipe *redis.Pipeline) error {
+		if data.hmset != nil {
+			if reply := client.HMSet(data.key, data.hmset); reply.Err() != nil {
+				glog.Fatal("Redis HMSET error: ", reply.Err())
 			}
+			redisPublish(data.key, "updates", data.pub)
 		}
-		publish("deletes", keys)
+		if data.hdel != nil {
+			if reply := client.HDel(data.key, data.hdel...); reply.Err() != nil {
+				glog.Fatal("Redis HDEL error: ", reply.Err())
+			}
+			redisPublish(data.key, "deletes", data.hdel)
+		}
+		return nil
+	})
+	if err != nil {
+		glog.Fatal("Failed to send Pipelined commands: ", err)
+	}
+}
+
+func redisPublish(path, kind string, payload interface{}) {
+	js, err := json.Marshal(map[string]interface{}{
+		"kind":    kind,
+		"payload": payload,
+	})
+	if err != nil {
+		glog.Fatalf("JSON error: %s", err)
+	}
+	if reply := client.Publish(path, string(js)); reply.Err() != nil {
+		glog.Fatal("Redis PUBLISH error: ", reply.Err())
 	}
 }
 
