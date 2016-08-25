@@ -86,7 +86,8 @@ func main() {
 	wg := new(sync.WaitGroup)
 	for _, hostAddr := range hostAddrs {
 		wg.Add(1)
-		go occlient.Run(ocPublish, wg, username, password, hostAddr, subscriptions, opts)
+		c := occlient.New(username, password, hostAddr, opts)
+		go c.Subscribe(wg, subscriptions, ocPublish)
 	}
 	wg.Wait()
 }

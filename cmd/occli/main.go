@@ -49,7 +49,8 @@ func main() {
 	wg := new(sync.WaitGroup)
 	for _, addr := range addrs {
 		wg.Add(1)
-		go client.Run(publish, wg, username, password, addr, subscriptions, opts)
+		c := client.New(username, password, addr, opts)
+		go c.Subscribe(wg, subscriptions, publish)
 	}
 	wg.Wait()
 }

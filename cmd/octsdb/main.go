@@ -67,7 +67,8 @@ func main() {
 				pushToOpenTSDB(addr, c, config, notif)
 			}
 		}
-		go client.Run(publish, wg, username, password, addr, subscriptions, opts)
+		c := client.New(username, password, addr, opts)
+		go c.Subscribe(wg, subscriptions, publish)
 	}
 	wg.Wait()
 }

@@ -23,18 +23,15 @@ const defaultPort = "6042"
 // PublishFunc is the method to publish responses
 type PublishFunc func(addr string, message proto.Message)
 
-// Run creates a new gRPC client, sends subscriptions, and consumes responses.
-// The given publish function is used to publish SubscribeResponses received
-// for the given subscriptions, when connected to the given host, with the
-// given user/pass pair, or the client-side cert specified in the gRPC opts.
-// This function does not normally return so it should probably be run in its
-// own goroutine.  When this function returns, the given WaitGroup is marked
-// as done.
-func Run(publish PublishFunc, wg *sync.WaitGroup,
-	username, password, addr string, subscriptions []string,
-	opts []grpc.DialOption) {
+// ConnectedClient is a connected gRPC client
+type ConnectedClient struct {
+	client openconfig.OpenConfigClient
+	ctx    context.Context
+	device string
+}
 
-	defer wg.Done()
+// New creates a new gRPC client and connects it
+func New(username, password, addr string, opts []grpc.DialOption) *ConnectedClient {
 	device := addr
 	if !strings.ContainsRune(addr, ':') {
 		addr += ":" + defaultPort
@@ -44,7 +41,6 @@ func Run(publish PublishFunc, wg *sync.WaitGroup,
 		glog.Fatalf("fail to dial: %s", err)
 	}
 	glog.Infof("Connected to %s", addr)
-	defer conn.Close()
 	client := openconfig.NewOpenConfigClient(conn)
 
 	ctx := context.Background()
@@ -53,8 +49,24 @@ func Run(publish PublishFunc, wg *sync.WaitGroup,
 			"username", username,
 			"password", password))
 	}
+	return &ConnectedClient{
+		client: client,
+		device: device,
+		ctx:    ctx,
+	}
+}
 
-	stream, err := client.Subscribe(ctx)
+// Subscribe sends subscriptions, and consumes responses.
+// The given publish function is used to publish SubscribeResponses received
+// for the given subscriptions, when connected to the given host, with the
+// given user/pass pair, or the client-side cert specified in the gRPC opts.
+// This function does not normally return so it should probably be run in its
+// own goroutine.  When this function returns, the given WaitGroup is marked
+// as done.
+func (c *ConnectedClient) Subscribe(wg *sync.WaitGroup, subscriptions []string,
+	publish PublishFunc) {
+	defer wg.Done()
+	stream, err := c.client.Subscribe(c.ctx)
 	if err != nil {
 		glog.Fatalf("Subscribe failed: %s", err)
 	}
@@ -89,6 +101,6 @@ func Run(publish PublishFunc, wg *sync.WaitGroup,
 			return
 		}
 		glog.V(3).Info(resp)
-		publish(device, resp)
+		publish(c.device, resp)
 	}
 }

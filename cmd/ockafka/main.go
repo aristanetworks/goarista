@@ -64,7 +64,8 @@ func main() {
 		}
 		wg.Add(1)
 		go p.Run()
-		go client.Run(publish, wg, username, password, grpcAddr, subscriptions, opts)
+		c := client.New(username, password, grpcAddr, opts)
+		go c.Subscribe(wg, subscriptions, publish)
 	}
 	wg.Wait()
 }
