@@ -22,7 +22,20 @@ var jsonFlag = flag.Bool("json", false,
 	"Print the output in JSON instead of protobuf")
 
 func main() {
-	username, password, subscriptions, addrs, opts := client.ParseFlags()
+	username, password, get, subscriptions, addrs, opts := client.ParseFlags()
+
+	if get != "" {
+		c := client.New(username, password, addrs[0], opts)
+		for _, notification := range c.Get(get) {
+			if notifStr, err := openconfig.NotificationToJSON(notification); err != nil {
+				glog.Fatal(err)
+			} else {
+				fmt.Println(notifStr)
+			}
+		}
+
+		return
+	}
 
 	publish := func(addr string, message proto.Message) {
 		resp, ok := message.(*openconfig.SubscribeResponse)

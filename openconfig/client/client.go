@@ -23,15 +23,15 @@ const defaultPort = "6042"
 // PublishFunc is the method to publish responses
 type PublishFunc func(addr string, message proto.Message)
 
-// ConnectedClient is a connected gRPC client
-type ConnectedClient struct {
+// Client is a connected gRPC client
+type Client struct {
 	client openconfig.OpenConfigClient
 	ctx    context.Context
 	device string
 }
 
 // New creates a new gRPC client and connects it
-func New(username, password, addr string, opts []grpc.DialOption) *ConnectedClient {
+func New(username, password, addr string, opts []grpc.DialOption) *Client {
 	device := addr
 	if !strings.ContainsRune(addr, ':') {
 		addr += ":" + defaultPort
@@ -49,11 +49,27 @@ func New(username, password, addr string, opts []grpc.DialOption) *ConnectedClie
 			"username", username,
 			"password", password))
 	}
-	return &ConnectedClient{
+	return &Client{
 		client: client,
 		device: device,
 		ctx:    ctx,
 	}
+}
+
+// Get sends a get request and returns the responses
+func (c *Client) Get(path string) []*openconfig.Notification {
+	req := &openconfig.GetRequest{
+		Path: []*openconfig.Path{
+			{
+				Element: strings.Split(path, "/"),
+			},
+		},
+	}
+	response, err := c.client.Get(c.ctx, req)
+	if err != nil {
+		glog.Fatalf("Get failed: %s", err)
+	}
+	return response.Notification
 }
 
 // Subscribe sends subscriptions, and consumes responses.
@@ -63,7 +79,7 @@ func New(username, password, addr string, opts []grpc.DialOption) *ConnectedClie
 // This function does not normally return so it should probably be run in its
 // own goroutine.  When this function returns, the given WaitGroup is marked
 // as done.
-func (c *ConnectedClient) Subscribe(wg *sync.WaitGroup, subscriptions []string,
+func (c *Client) Subscribe(wg *sync.WaitGroup, subscriptions []string,
 	publish PublishFunc) {
 	defer wg.Done()
 	stream, err := c.client.Subscribe(c.ctx)

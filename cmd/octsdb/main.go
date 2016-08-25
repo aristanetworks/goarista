@@ -26,7 +26,7 @@ func main() {
 		"Print the output as simple text")
 	configFlag := flag.String("config", "",
 		"Config to turn OpenConfig telemetry into OpenTSDB put requests")
-	username, password, subscriptions, addrs, opts := client.ParseFlags()
+	username, password, _, subscriptions, addrs, opts := client.ParseFlags()
 
 	if !(*tsdbFlag != "" || *textFlag) {
 		glog.Fatal("Specify the address of the OpenTSDB server to write to with -tsdb")

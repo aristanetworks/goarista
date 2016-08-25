@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+// joinPath builds a string out of an Element
 func joinPath(path *Path) string {
 	return strings.Join(path.Element, "/")
 }
