@@ -28,7 +28,7 @@ func newProducer(addresses []string, topic, key, dataset string) (producer.Produ
 	error) {
 	client, err := kafka.NewClient(addresses)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create Kafka client: %s", err)
+		return nil, fmt.Errorf("Failed to create Kafka client for %s: %s", addresses, err)
 	}
 	encodedKey := sarama.StringEncoder(key)
 	p, err := producer.New(topic, nil, client, encodedKey, dataset,

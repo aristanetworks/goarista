@@ -38,7 +38,7 @@ func New(username, password, addr string, opts []grpc.DialOption) *Client {
 	}
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
-		glog.Fatalf("fail to dial: %s", err)
+		glog.Fatalf("Failed to dial: %s", err)
 	}
 	glog.Infof("Connected to %s", addr)
 	client := openconfig.NewOpenConfigClient(conn)

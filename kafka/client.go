@@ -34,8 +34,8 @@ func NewClient(addresses []string) (sarama.Client, error) {
 		client, err = sarama.NewClient(addresses, config)
 		retries--
 		if err == sarama.ErrOutOfBrokers {
-			glog.Errorf("Can't connect to the Kafka cluster (%d retries left): %s",
-				retries, err)
+			glog.Errorf("Can't connect to the Kafka cluster at %s (%d retries left): %s",
+				addresses, retries, err)
 			time.Sleep(outOfBrokersBackoff)
 		} else {
 			break
