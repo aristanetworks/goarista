@@ -34,33 +34,44 @@ func convertUpdate(update *Update) (interface{}, error) {
 	}
 }
 
+// NotificationToJSON converts a Notification into a JSON string
+func NotificationToJSON(notif *Notification) (string, error) {
+	m := make(map[string]interface{}, 1)
+	m["timestamp"] = notif.Timestamp
+	m["path"] = "/" + joinPath(notif.Prefix)
+	if len(notif.Update) != 0 {
+		updates := make(map[string]interface{}, len(notif.Update))
+		var err error
+		for _, update := range notif.Update {
+			updates[joinPath(update.Path)], err = convertUpdate(update)
+			if err != nil {
+				return "", err
+			}
+		}
+		m["updates"] = updates
+	}
+	if len(notif.Delete) != 0 {
+		deletes := make([]string, len(notif.Delete))
+		for i, del := range notif.Delete {
+			deletes[i] = joinPath(del)
+		}
+		m["deletes"] = deletes
+	}
+	m = map[string]interface{}{"notification": m}
+	js, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(js), nil
+}
+
 // SubscribeResponseToJSON converts a SubscribeResponse into a JSON string
 func SubscribeResponseToJSON(resp *SubscribeResponse) (string, error) {
 	m := make(map[string]interface{}, 1)
 	var err error
 	switch resp := resp.Response.(type) {
 	case *SubscribeResponse_Update:
-		notif := resp.Update
-		m["timestamp"] = notif.Timestamp
-		m["path"] = "/" + joinPath(notif.Prefix)
-		if len(notif.Update) != 0 {
-			updates := make(map[string]interface{}, len(notif.Update))
-			for _, update := range notif.Update {
-				updates[joinPath(update.Path)], err = convertUpdate(update)
-				if err != nil {
-					return "", err
-				}
-			}
-			m["updates"] = updates
-		}
-		if len(notif.Delete) != 0 {
-			deletes := make([]string, len(notif.Delete))
-			for i, del := range notif.Delete {
-				deletes[i] = joinPath(del)
-			}
-			m["deletes"] = deletes
-		}
-		m = map[string]interface{}{"notification": m}
+		return NotificationToJSON(resp.Update)
 	case *SubscribeResponse_Heartbeat:
 		m["heartbeat"] = resp.Heartbeat.Interval
 	case *SubscribeResponse_SyncResponse:
