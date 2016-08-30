@@ -6,8 +6,15 @@ package kafka
 
 import (
 	"os"
+	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/aristanetworks/glog"
+)
+
+const (
+	outOfBrokersBackoff = 30 * time.Second
+	outOfBrokersRetries = 5
 )
 
 // NewClient returns a Kafka client
@@ -21,5 +28,18 @@ func NewClient(addresses []string) (sarama.Client, error) {
 	config.Producer.Compression = sarama.CompressionSnappy
 	config.Producer.Return.Successes = true
 
-	return sarama.NewClient(addresses, config)
+	var client sarama.Client
+	retries := outOfBrokersRetries + 1
+	for retries > 0 {
+		client, err = sarama.NewClient(addresses, config)
+		retries--
+		if err == sarama.ErrOutOfBrokers {
+			glog.Errorf("Can't connect to the Kafka cluster (%d retries left): %s",
+				retries, err)
+			time.Sleep(outOfBrokersBackoff)
+		} else {
+			break
+		}
+	}
+	return client, err
 }
