@@ -30,6 +30,7 @@ func newProducer(addresses []string, topic, key, dataset string) (producer.Produ
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kafka client for %s: %s", addresses, err)
 	}
+	glog.Infof("Connected to Kafka brokers at %s", addresses)
 	encodedKey := sarama.StringEncoder(key)
 	p, err := producer.New(topic, nil, client, encodedKey, dataset,
 		openconfig.ElasticsearchMessageEncoder)
