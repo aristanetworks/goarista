@@ -131,6 +131,7 @@ func (p *producer) produceNotification(protoMessage proto.Message) error {
 	}
 	select {
 	case p.kafkaProducer.Input() <- message:
+		glog.V(9).Infof("Message produced to Kafka: %s", message)
 		return nil
 	case <-p.done:
 		return nil
