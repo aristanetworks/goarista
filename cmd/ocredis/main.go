@@ -10,7 +10,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -180,7 +179,7 @@ func convertUpdate(update *openconfig.Update) interface{} {
 		}
 		return value
 	case openconfig.Type_BYTES:
-		return strconv.Quote(string(update.Value.Value))
+		return update.Value.Value
 	default:
 		glog.Fatalf("Unhandled type of value %v in %s", update.Value.Type, update)
 		return nil

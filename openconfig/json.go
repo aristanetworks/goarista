@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -28,7 +27,7 @@ func convertUpdate(update *Update) (interface{}, error) {
 		}
 		return value, nil
 	case Type_BYTES:
-		return strconv.Quote(string(update.Value.Value)), nil
+		return update.Value.Value, nil
 	default:
 		return nil,
 			fmt.Errorf("Unhandled type of value %v in %s", update.Value.Type, update)
@@ -150,13 +149,17 @@ func NotificationToMap(notification *Notification,
 			}
 		}
 		value := update.GetValue()
-		if value.Type != Type_JSON {
+		var unmarshaledValue interface{}
+		switch value.Type {
+		case Type_JSON:
+			if err := json.Unmarshal(value.Value, &unmarshaledValue); err != nil {
+				return nil, err
+			}
+		case Type_BYTES:
+			unmarshaledValue = update.Value.Value
+		default:
 			return nil, fmt.Errorf("Unexpected value type %s for path %v",
 				value.Type, path)
-		}
-		var unmarshaledValue interface{}
-		if err := json.Unmarshal(value.Value, &unmarshaledValue); err != nil {
-			return nil, err
 		}
 		parent[escape(path.Element[elementLen-1])] = escapeValue(unmarshaledValue,
 			escape)
