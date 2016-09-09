@@ -89,8 +89,7 @@ func ParseFlags() (username string, password string, get string,
 		} else if len(addrs) > 1 {
 			glog.Fatal("Please specify a single address in -addrs with -get")
 		}
-	}
-	if *subscribeFlag != "" {
+	} else {
 		subscriptions = strings.Split(*subscribeFlag, ",")
 	}
 	return *usernameFlag, *passwordFlag, *getFlag, subscriptions, addrs, opts
