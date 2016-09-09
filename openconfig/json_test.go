@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
+	"github.com/openconfig/reference/rpc/openconfig"
 )
 
 func TestNotificationToMap(t *testing.T) {
@@ -21,30 +22,30 @@ func TestNotificationToMap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notification := Notification{
-		Prefix: &Path{
+	notification := openconfig.Notification{
+		Prefix: &openconfig.Path{
 			Element: []string{
 				"Smash", "routing", "pim", "sparsemode", "status", "default",
 			},
 		},
-		Delete: []*Path{
-			&Path{
+		Delete: []*openconfig.Path{
+			&openconfig.Path{
 				Element: []string{
 					"route", "237.255.255.250_0.0.0.0",
 				}},
-			&Path{
+			&openconfig.Path{
 				Element: []string{
 					"route", "238.255.255.250_0.0.0.0",
 				},
 			},
 		},
-		Update: []*Update{{
-			Path: &Path{
+		Update: []*openconfig.Update{{
+			Path: &openconfig.Path{
 				Element: []string{
 					"route",
 				},
 			},
-			Value: &Value{
+			Value: &openconfig.Value{
 				Value: valueJSON,
 			},
 		}},

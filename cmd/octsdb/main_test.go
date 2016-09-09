@@ -8,8 +8,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/test"
+	"github.com/openconfig/reference/rpc/openconfig"
 )
 
 func TestParseValue(t *testing.T) { // Because parsing JSON sucks.

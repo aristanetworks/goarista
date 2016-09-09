@@ -12,9 +12,9 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/goarista/kafka/openconfig"
-	pb "github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/test"
 	"github.com/golang/protobuf/proto"
+	pb "github.com/openconfig/reference/rpc/openconfig"
 )
 
 type mockAsyncProducer struct {

@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"github.com/aristanetworks/glog"
-	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/golang/protobuf/proto"
+	"github.com/openconfig/reference/rpc/openconfig"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

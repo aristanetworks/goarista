@@ -10,21 +10,22 @@ import (
 
 	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/test"
+	pb "github.com/openconfig/reference/rpc/openconfig"
 )
 
 func TestJsonify(t *testing.T) {
 	var tests = []struct {
-		notification *openconfig.Notification
+		notification *pb.Notification
 		document     map[string]interface{}
 	}{{
-		notification: &openconfig.Notification{
-			Prefix: &openconfig.Path{Element: []string{"Sysdb", "a"}},
-			Update: []*openconfig.Update{
+		notification: &pb.Notification{
+			Prefix: &pb.Path{Element: []string{"Sysdb", "a"}},
+			Update: []*pb.Update{
 				{
-					Path: &openconfig.Path{Element: []string{"b"}},
-					Value: &openconfig.Value{
+					Path: &pb.Path{Element: []string{"b"}},
+					Value: &pb.Value{
 						Value: []byte{52, 50},
-						Type:  openconfig.Type_JSON,
+						Type:  pb.Type_JSON,
 					},
 				},
 			},

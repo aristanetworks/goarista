@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/openconfig/client"
 	"github.com/golang/protobuf/proto"
-
-	"github.com/aristanetworks/glog"
+	pb "github.com/openconfig/reference/rpc/openconfig"
 )
 
 var jsonFlag = flag.Bool("json", false,
@@ -38,7 +38,7 @@ func main() {
 	}
 
 	publish := func(addr string, message proto.Message) {
-		resp, ok := message.(*openconfig.SubscribeResponse)
+		resp, ok := message.(*pb.SubscribeResponse)
 		if !ok {
 			glog.Errorf("Unexpected type of message: %T", message)
 			return

@@ -15,6 +15,8 @@ import (
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/golang/protobuf/proto"
+
+	pb "github.com/openconfig/reference/rpc/openconfig"
 )
 
 // UnhandledMessageError is used for proto messages not matching the handled types
@@ -28,7 +30,7 @@ func (e UnhandledMessageError) Error() string {
 
 // UnhandledSubscribeResponseError is used for subscribe responses not matching the handled types
 type UnhandledSubscribeResponseError struct {
-	response *openconfig.SubscribeResponse
+	response *pb.SubscribeResponse
 }
 
 func (e UnhandledSubscribeResponseError) Error() string {
@@ -39,7 +41,7 @@ func (e UnhandledSubscribeResponseError) Error() string {
 // sarama.ProducerMessage for Elasticsearch
 func ElasticsearchMessageEncoder(topic string, key sarama.Encoder, dataset string,
 	message proto.Message) (*sarama.ProducerMessage, error) {
-	response, ok := message.(*openconfig.SubscribeResponse)
+	response, ok := message.(*pb.SubscribeResponse)
 	if !ok {
 		return nil, UnhandledMessageError{message: message}
 	}

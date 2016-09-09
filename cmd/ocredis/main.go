@@ -14,9 +14,9 @@ import (
 	"sync"
 
 	"github.com/aristanetworks/glog"
-	"github.com/aristanetworks/goarista/openconfig"
 	occlient "github.com/aristanetworks/goarista/openconfig/client"
 	"github.com/golang/protobuf/proto"
+	"github.com/openconfig/reference/rpc/openconfig"
 	redis "gopkg.in/redis.v4"
 )
 

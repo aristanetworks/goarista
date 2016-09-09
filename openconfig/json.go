@@ -9,16 +9,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/openconfig/reference/rpc/openconfig"
 )
 
 // joinPath builds a string out of an Element
-func joinPath(path *Path) string {
+func joinPath(path *openconfig.Path) string {
 	return strings.Join(path.Element, "/")
 }
 
-func convertUpdate(update *Update) (interface{}, error) {
+func convertUpdate(update *openconfig.Update) (interface{}, error) {
 	switch update.Value.Type {
-	case Type_JSON:
+	case openconfig.Type_JSON:
 		var value interface{}
 		decoder := json.NewDecoder(bytes.NewReader(update.Value.Value))
 		decoder.UseNumber()
@@ -27,7 +29,7 @@ func convertUpdate(update *Update) (interface{}, error) {
 				update.Value.Value, update)
 		}
 		return value, nil
-	case Type_BYTES:
+	case openconfig.Type_BYTES:
 		return update.Value.Value, nil
 	default:
 		return nil,
@@ -36,7 +38,7 @@ func convertUpdate(update *Update) (interface{}, error) {
 }
 
 // NotificationToJSON converts a Notification into a JSON string
-func NotificationToJSON(notif *Notification) (string, error) {
+func NotificationToJSON(notif *openconfig.Notification) (string, error) {
 	m := make(map[string]interface{}, 1)
 	m["timestamp"] = notif.Timestamp
 	m["path"] = "/" + joinPath(notif.Prefix)
@@ -67,15 +69,15 @@ func NotificationToJSON(notif *Notification) (string, error) {
 }
 
 // SubscribeResponseToJSON converts a SubscribeResponse into a JSON string
-func SubscribeResponseToJSON(resp *SubscribeResponse) (string, error) {
+func SubscribeResponseToJSON(resp *openconfig.SubscribeResponse) (string, error) {
 	m := make(map[string]interface{}, 1)
 	var err error
 	switch resp := resp.Response.(type) {
-	case *SubscribeResponse_Update:
+	case *openconfig.SubscribeResponse_Update:
 		return NotificationToJSON(resp.Update)
-	case *SubscribeResponse_Heartbeat:
+	case *openconfig.SubscribeResponse_Heartbeat:
 		m["heartbeat"] = resp.Heartbeat.Interval
-	case *SubscribeResponse_SyncResponse:
+	case *openconfig.SubscribeResponse_SyncResponse:
 		m["syncResponse"] = resp.SyncResponse
 	default:
 		return "", fmt.Errorf("Unknown type of response: %T: %s", resp, resp)
@@ -128,7 +130,7 @@ func addPathToMap(root map[string]interface{}, path []string, escape EscapeFunc)
 }
 
 // NotificationToMap maps a Notification into a nested map of entities
-func NotificationToMap(addr string, notification *Notification,
+func NotificationToMap(addr string, notification *openconfig.Notification,
 	escape EscapeFunc) (map[string]interface{}, error) {
 	if escape == nil {
 		escape = func(name string) string {
@@ -186,11 +188,11 @@ func NotificationToMap(addr string, notification *Notification,
 			value := update.GetValue()
 			var unmarshaledValue interface{}
 			switch value.Type {
-			case Type_JSON:
+			case openconfig.Type_JSON:
 				if err := json.Unmarshal(value.Value, &unmarshaledValue); err != nil {
 					return nil, err
 				}
-			case Type_BYTES:
+			case openconfig.Type_BYTES:
 				unmarshaledValue = update.Value.Value
 			default:
 				return nil, fmt.Errorf("Unexpected value type %s for path %v",
@@ -218,7 +220,7 @@ func NotificationToMap(addr string, notification *Notification,
 }
 
 // NotificationToJSONDocument maps a Notification into a single JSON document
-func NotificationToJSONDocument(addr string, notification *Notification,
+func NotificationToJSONDocument(addr string, notification *openconfig.Notification,
 	escape EscapeFunc) ([]byte, error) {
 	m, err := NotificationToMap(addr, notification, escape)
 	if err != nil {
