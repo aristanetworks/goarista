@@ -27,13 +27,18 @@ func main() {
 	if get != "" {
 		c := client.New(username, password, addrs[0], opts)
 		for _, notification := range c.Get(get) {
-			if notifStr, err := openconfig.NotificationToJSON(notification); err != nil {
-				glog.Fatal(err)
+			var notifStr string
+			if *jsonFlag {
+				var err error
+				if notifStr, err = openconfig.NotificationToJSON(notification); err != nil {
+					glog.Fatal(err)
+				}
 			} else {
-				fmt.Println(notifStr)
+				notifStr = notification.String()
 			}
-		}
+			fmt.Println(notifStr)
 
+		}
 		return
 	}
 
