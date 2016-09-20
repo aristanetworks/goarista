@@ -18,15 +18,18 @@ import (
 	pb "github.com/openconfig/reference/rpc/openconfig"
 )
 
+var getFlag = flag.String("get", "",
+	"Path to get to upon connecting to the server")
+
 var jsonFlag = flag.Bool("json", false,
 	"Print the output in JSON instead of protobuf")
 
 func main() {
-	username, password, get, subscriptions, addrs, opts := client.ParseFlags()
+	username, password, subscriptions, addrs, opts := client.ParseFlags()
 
-	if get != "" {
+	if *getFlag != "" {
 		c := client.New(username, password, addrs[0], opts)
-		for _, notification := range c.Get(get) {
+		for _, notification := range c.Get(*getFlag) {
 			var notifStr string
 			if *jsonFlag {
 				var err error

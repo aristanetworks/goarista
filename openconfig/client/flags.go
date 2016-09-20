@@ -19,8 +19,7 @@ import (
 // ParseFlags registers some additional common flags,
 // parses the flags, and returns the resulting gRPC options,
 // and other settings to connect to the gRPC interface.
-func ParseFlags() (username string, password string, get string,
-	subscriptions, addrs []string,
+func ParseFlags() (username string, password string, subscriptions, addrs []string,
 	opts []grpc.DialOption) {
 
 	var (
@@ -32,9 +31,6 @@ func ParseFlags() (username string, password string, get string,
 
 		certFileFlag = flag.String("certfile", "",
 			"Path to client TLS certificate file")
-
-		getFlag = flag.String("get", "",
-			"Path to get to upon connecting to the server")
 
 		keyFileFlag = flag.String("keyfile", "",
 			"Path to client TLS private key file")
@@ -83,14 +79,6 @@ func ParseFlags() (username string, password string, get string,
 		opts = append(opts, grpc.WithInsecure())
 	}
 	addrs = strings.Split(*addrsFlag, ",")
-	if *getFlag != "" {
-		if *subscribeFlag != "" {
-			glog.Fatal("-get and -subscribe are mutually exclusive")
-		} else if len(addrs) > 1 {
-			glog.Fatal("Please specify a single address in -addrs with -get")
-		}
-	} else {
-		subscriptions = strings.Split(*subscribeFlag, ",")
-	}
-	return *usernameFlag, *passwordFlag, *getFlag, subscriptions, addrs, opts
+	subscriptions = strings.Split(*subscribeFlag, ",")
+	return *usernameFlag, *passwordFlag, subscriptions, addrs, opts
 }

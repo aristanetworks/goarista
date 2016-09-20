@@ -41,7 +41,7 @@ type baseClient interface {
 var client baseClient
 
 func main() {
-	username, password, _, subscriptions, hostAddrs, opts := occlient.ParseFlags()
+	username, password, subscriptions, hostAddrs, opts := occlient.ParseFlags()
 	if *redisFlag == "" {
 		glog.Fatal("Specify the address of the Redis server to write to with -redis")
 	}

@@ -41,7 +41,7 @@ func newProducer(addresses []string, topic, key, dataset string) (producer.Produ
 }
 
 func main() {
-	username, password, _, subscriptions, grpcAddrs, opts := client.ParseFlags()
+	username, password, subscriptions, grpcAddrs, opts := client.ParseFlags()
 
 	if *keysFlag == "" {
 		*keysFlag = strings.Join(grpcAddrs, ",")
