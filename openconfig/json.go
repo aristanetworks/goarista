@@ -15,6 +15,9 @@ import (
 
 // joinPath builds a string out of an Element
 func joinPath(path *openconfig.Path) string {
+	if path == nil {
+		return ""
+	}
 	return strings.Join(path.Element, "/")
 }
 
