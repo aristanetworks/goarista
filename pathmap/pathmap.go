@@ -49,6 +49,19 @@ type PathMap interface {
 	// >> Calls Printer(1) and Printer(2)
 	Visit(path []string, f VisitorFunc) error
 
+	// VisitPrefix calls f for every registration in the PathMap that
+	// is a prefix of path. For example,
+	//
+	// m.Set({}, 0)
+	// m.Set({"foo"}, 1)
+	// m.Set({"foo", "bar"}, 2)
+	// m.Set({"foo", "quux"}, 3)
+	// m.Set({"*", "bar"}, 4)
+	//
+	// m.VisitPrefix({"foo", "bar", "baz"}, Printer)
+	// >> Calls Printer on values 0, 1, 2, and 4
+	VisitPrefix(path []string, f VisitorFunc) error
+
 	// Get returns the mapping for path. This returns the exact
 	// mapping for path. For example, if you register two paths
 	//
@@ -101,6 +114,34 @@ func (n *node) Visit(path []string, f VisitorFunc) error {
 	if n.val == nil {
 		return nil
 	}
+	return f(n.val)
+}
+
+// VisitPrefix calls f for every registered path that is a prefix of
+// the path
+func (n *node) VisitPrefix(path []string, f VisitorFunc) error {
+	for i, element := range path {
+		// Call f on each node we visit
+		if n.val != nil {
+			if err := f(n.val); err != nil {
+				return err
+			}
+		}
+		if n.wildcard != nil {
+			if err := n.wildcard.VisitPrefix(path[i+1:], f); err != nil {
+				return err
+			}
+		}
+		next, ok := n.children[element]
+		if !ok {
+			return nil
+		}
+		n = next
+	}
+	if n.val == nil {
+		return nil
+	}
+	// Call f on the final node
 	return f(n.val)
 }
 

@@ -92,6 +92,10 @@ func TestVisitError(t *testing.T) {
 	if err != errTest {
 		t.Errorf("Unexpected error. Expected: %v, Got: %v", errTest, err)
 	}
+	err = m.VisitPrefix([]string{"foo", "bar", "baz"}, func(v interface{}) error { return errTest })
+	if err != errTest {
+		t.Errorf("Unexpected error. Expected: %v, Got: %v", errTest, err)
+	}
 }
 
 func TestGet(t *testing.T) {
@@ -225,6 +229,47 @@ func TestDelete(t *testing.T) {
 		m.Visit(tc.visit, accumulator(afterResult))
 		if diff := test.Diff(tc.after, afterResult); diff != "" {
 			t.Errorf("Test case %d (%v): %s", i, tc.del, diff)
+		}
+	}
+}
+
+func TestVisitPrefix(t *testing.T) {
+	m := New()
+	m.Set([]string{}, 0)
+	m.Set([]string{"foo"}, 1)
+	m.Set([]string{"foo", "bar"}, 2)
+	m.Set([]string{"foo", "bar", "baz"}, 3)
+	m.Set([]string{"foo", "bar", "baz", "quux"}, 4)
+	m.Set([]string{"quux", "bar"}, 5)
+	m.Set([]string{"foo", "quux"}, 6)
+	m.Set([]string{"*"}, 7)
+	m.Set([]string{"foo", "*"}, 8)
+	m.Set([]string{"*", "bar"}, 9)
+	m.Set([]string{"*", "quux"}, 10)
+	m.Set([]string{"quux", "quux", "quux", "quux"}, 11)
+
+	testCases := []struct {
+		path     []string
+		expected map[int]int
+	}{{
+		path:     []string{"foo", "bar", "baz"},
+		expected: map[int]int{0: 1, 1: 1, 2: 1, 3: 1, 7: 1, 8: 1, 9: 1},
+	}, {
+		path:     []string{"zip", "zap"},
+		expected: map[int]int{0: 1, 7: 1},
+	}, {
+		path:     []string{"foo", "zap"},
+		expected: map[int]int{0: 1, 1: 1, 8: 1, 7: 1},
+	}, {
+		path:     []string{"quux", "quux", "quux"},
+		expected: map[int]int{0: 1, 7: 1, 10: 1},
+	}}
+
+	for _, tc := range testCases {
+		result := make(map[int]int, len(tc.expected))
+		m.VisitPrefix(tc.path, accumulator(result))
+		if diff := test.Diff(tc.expected, result); diff != "" {
+			t.Errorf("Test case %v: %s", tc.path, diff)
 		}
 	}
 }
