@@ -6,6 +6,7 @@ package pathmap
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
@@ -271,6 +272,29 @@ func TestVisitPrefix(t *testing.T) {
 		if diff := test.Diff(tc.expected, result); diff != "" {
 			t.Errorf("Test case %v: %s", tc.path, diff)
 		}
+	}
+}
+
+func TestString(t *testing.T) {
+	m := New()
+	m.Set([]string{}, 0)
+	m.Set([]string{"foo", "bar"}, 1)
+	m.Set([]string{"foo", "quux"}, 2)
+	m.Set([]string{"foo", "*"}, 3)
+
+	expected := `Val: 0
+Child "foo":
+  Child "*":
+    Val: 3
+  Child "bar":
+    Val: 1
+  Child "quux":
+    Val: 2
+`
+	got := fmt.Sprint(m)
+
+	if expected != got {
+		t.Errorf("Unexpected string. Expected:\n\n%s\n\nGot:\n\n%s", expected, got)
 	}
 }
 

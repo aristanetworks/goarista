@@ -4,6 +4,12 @@
 
 package pathmap
 
+import (
+	"bytes"
+	"fmt"
+	"sort"
+)
+
 // PathMap associates Paths to a values. It allows wildcards. The
 // primary use of PathMap is to be able to register handlers to paths
 // that can be efficiently looked up every time a path is updated.
@@ -225,4 +231,35 @@ func (n *node) Delete(path []string) bool {
 
 	}
 	return true
+}
+
+func (n *node) String() string {
+	var b bytes.Buffer
+	n.write(&b, "")
+	return b.String()
+}
+
+func (n *node) write(b *bytes.Buffer, indent string) {
+	if n.val != nil {
+		b.WriteString(indent)
+		fmt.Fprintf(b, "Val: %v", n.val)
+		b.WriteString("\n")
+	}
+	if n.wildcard != nil {
+		b.WriteString(indent)
+		fmt.Fprintf(b, "Child %q:\n", Wildcard)
+		n.wildcard.write(b, indent+"  ")
+	}
+	children := make([]string, 0, len(n.children))
+	for name := range n.children {
+		children = append(children, name)
+	}
+	sort.Strings(children)
+
+	for _, name := range children {
+		child := n.children[name]
+		b.WriteString(indent)
+		fmt.Fprintf(b, "Child %q:\n", name)
+		child.write(b, indent+"  ")
+	}
 }
