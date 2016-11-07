@@ -29,6 +29,52 @@ func TestNotificationToMap(t *testing.T) {
 		notification: openconfig.Notification{
 			Prefix: &openconfig.Path{
 				Element: []string{
+					"foo",
+				},
+			},
+			Update: []*openconfig.Update{
+				{
+					Path: &openconfig.Path{
+						Element: []string{
+							"route1",
+						},
+					},
+					Value: &openconfig.Value{
+						Value: valueJSON,
+					},
+				}, {
+					Path: &openconfig.Path{
+						Element: []string{
+							"route2",
+						},
+					},
+					Value: &openconfig.Value{
+						Value: valueJSON,
+					},
+				}},
+		},
+		json: map[string]interface{}{
+			"timestamp": int64(0),
+			"dataset":   "cairo",
+			"update": map[string]interface{}{
+				"foo": map[string]interface{}{
+					"route1": map[string]interface{}{
+						"239.255.255.250_0.0.0.0": map[string]interface{}{
+							"creationTime": 4.567969230573434e+06,
+						},
+					},
+					"route2": map[string]interface{}{
+						"239.255.255.250_0.0.0.0": map[string]interface{}{
+							"creationTime": 4.567969230573434e+06,
+						},
+					},
+				},
+			},
+		},
+	}, {
+		notification: openconfig.Notification{
+			Prefix: &openconfig.Path{
+				Element: []string{
 					"foo", "bar",
 				},
 			},
@@ -79,8 +125,7 @@ func TestNotificationToMap(t *testing.T) {
 				},
 			},
 		},
-	},
-	}
+	}}
 	for _, tcase := range tests {
 		actual, err := NotificationToMap("cairo", &tcase.notification, nil)
 		if err != nil {
