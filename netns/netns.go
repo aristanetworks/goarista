@@ -53,6 +53,12 @@ func setNsByName(nsName string) error {
 // Do returns an error if an error occurs at any point besides in the invocation of
 // the given function.
 // The caller should check both the error of Do and any errors from the given function call.
+//
+// The callback function is expected to do something simple such as just
+// creating a socket / opening a connection, as it's not desirable to start
+// complex logic in a goroutine that is pinned to the current OS thread.
+// Also any goroutine started from the callback function may or may not
+// execute in the desired namespace.
 func Do(nsName string, cb Callback) error {
 	// If destNS is empty, the function is called in the caller's namespace
 	if nsName == "" {
