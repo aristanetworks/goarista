@@ -21,7 +21,7 @@ import (
 var getFlag = flag.String("get", "",
 	"Path to get to upon connecting to the server")
 
-var jsonFlag = flag.Bool("json", false,
+var jsonFlag = flag.Bool("json", true,
 	"Print the output in JSON instead of protobuf")
 
 func main() {
