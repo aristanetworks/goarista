@@ -116,6 +116,13 @@ func (c *Client) Subscribe(wg *sync.WaitGroup, subscriptions []string,
 			}
 			return
 		}
+		switch resp := resp.Response.(type) {
+		case *openconfig.SubscribeResponse_SyncResponse:
+			if !resp.SyncResponse {
+				panic("initial sync failed," +
+					" check that you're using a client compatible with the server")
+			}
+		}
 		glog.V(3).Info(resp)
 		publish(c.device, resp)
 	}
