@@ -52,9 +52,9 @@ func StringifyInterface(key interface{}) (string, error) {
 		keys := SortedKeys(key)
 		for i, k := range keys {
 			v := key[k]
-			keys[i] = stringify(v)
+			keys[i] = stringify(k) + "=" + stringify(v)
 		}
-		str = strings.Join(keys, "_")
+		str = strings.Join(keys, ",")
 	case *map[string]interface{}:
 		return StringifyInterface(*key)
 	case map[Key]interface{}:
@@ -66,7 +66,7 @@ func StringifyInterface(key interface{}) (string, error) {
 		for i, k := range keys {
 			keys[i] = stringify(k) + "=" + stringify(m[k])
 		}
-		str = strings.Join(keys, "_")
+		str = strings.Join(keys, ",")
 
 	case value.Value:
 		return key.String(), nil
