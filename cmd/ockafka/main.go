@@ -26,14 +26,11 @@ var keysFlag = flag.String("kafkakeys", "",
 
 func newProducer(addresses []string, topic, key, dataset string) (producer.Producer,
 	error) {
-	client, err := kafka.NewClient(addresses)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create Kafka client for %s: %s", addresses, err)
-	}
+
 	glog.Infof("Connected to Kafka brokers at %s", addresses)
 	encodedKey := sarama.StringEncoder(key)
-	p, err := producer.New(topic, nil, client, encodedKey, dataset,
-		openconfig.ElasticsearchMessageEncoder)
+	p, err := producer.New(topic, nil, encodedKey, dataset,
+		openconfig.ElasticsearchMessageEncoder, addresses, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kafka producer: %s", err)
 	}

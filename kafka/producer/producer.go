@@ -7,6 +7,7 @@ package producer
 import (
 	"expvar"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -51,12 +52,25 @@ type producer struct {
 }
 
 // New creates new Kafka producer
-func New(topic string, notifsChan chan proto.Message, client sarama.Client, key sarama.Encoder,
-	dataset string, encoder MessageEncoder) (Producer, error) {
+func New(topic string, notifsChan chan proto.Message,
+	key sarama.Encoder, dataset string, encoder MessageEncoder,
+	kafkaAddresses []string, kafkaConfig *sarama.Config) (Producer, error) {
 	if notifsChan == nil {
 		notifsChan = make(chan proto.Message)
 	}
-	kafkaProducer, err := sarama.NewAsyncProducerFromClient(client)
+
+	if kafkaConfig == nil {
+		kafkaConfig := sarama.NewConfig()
+		hostname, err := os.Hostname()
+		if err != nil {
+			hostname = ""
+		}
+		kafkaConfig.ClientID = hostname
+		kafkaConfig.Producer.Compression = sarama.CompressionSnappy
+		kafkaConfig.Producer.Return.Successes = true
+	}
+
+	kafkaProducer, err := sarama.NewAsyncProducer(kafkaAddresses, kafkaConfig)
 	if err != nil {
 		return nil, err
 	}
