@@ -24,6 +24,6 @@ docker run aristanetworks/ockafka -addrs 10.0.1.1 -kafkaaddrs kafka:9092
 ```
 
 ## Kafka/Elastic integration demo
-The following video demoes integration with Kafka and Elastic using [this](https://github.com/aristanetworks/docker-logstash) Logstash instance:
+The following video demoes integration with Kafka and Elastic using [this Logstash instance](https://github.com/aristanetworks/docker-logstash):
 
 [![video preview](http://img.youtube.com/vi/WsyFmxMwXYQ/0.jpg)](https://youtu.be/WsyFmxMwXYQ)
