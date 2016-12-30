@@ -27,6 +27,10 @@ func TestStringify(t *testing.T) {
 		input:  "foobar",
 		output: "foobar",
 	}, {
+		name:   "non-ASCII string",
+		input:  "日本語",
+		output: `\u65e5\u672c\u8a9e`,
+	}, {
 		name:   "uint8",
 		input:  uint8(43),
 		output: "43",
