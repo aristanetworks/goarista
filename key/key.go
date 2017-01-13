@@ -19,16 +19,6 @@ type Key interface {
 	Key() interface{}
 	String() string
 	Equal(other interface{}) bool
-
-	// Helper methods to manipulate maps keyed by `Key'.
-
-	// GetFromMap returns the value for the entry of this Key.
-	GetFromMap(map[Key]interface{}) (interface{}, bool)
-	// DeleteFromMap deletes the entry in the map for this Key.
-	// This is a no-op if the key does not exist in the map.
-	DeleteFromMap(map[Key]interface{})
-	// SetToMap updates or inserts an entry in the map for this Key.
-	SetToMap(m map[Key]interface{}, value interface{})
 }
 
 type keyImpl struct {
@@ -58,19 +48,6 @@ func (k keyImpl) Key() interface{} {
 
 func (k keyImpl) String() string {
 	return stringify(k.key)
-}
-
-func (k keyImpl) GetFromMap(m map[Key]interface{}) (interface{}, bool) {
-	v, ok := m[k]
-	return v, ok
-}
-
-func (k keyImpl) DeleteFromMap(m map[Key]interface{}) {
-	delete(m, k)
-}
-
-func (k keyImpl) SetToMap(m map[Key]interface{}, value interface{}) {
-	m[k] = value
 }
 
 func (k keyImpl) GoString() string {
@@ -114,7 +91,7 @@ func keyEqual(a, b interface{}) bool {
 			return false
 		}
 		for k, av := range a {
-			if bv, ok := k.GetFromMap(b); !ok || !keyEqual(av, bv) {
+			if bv, ok := b[k]; !ok || !keyEqual(av, bv) {
 				return false
 			}
 		}

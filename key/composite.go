@@ -39,19 +39,6 @@ func (k composite) String() string {
 	return stringify(k.Key())
 }
 
-func (k composite) GetFromMap(m map[Key]interface{}) (interface{}, bool) {
-	v, ok := m[k]
-	return v, ok
-}
-
-func (k composite) DeleteFromMap(m map[Key]interface{}) {
-	delete(m, k)
-}
-
-func (k composite) SetToMap(m map[Key]interface{}, value interface{}) {
-	m[k] = value
-}
-
 func (k composite) GoString() string {
 	return fmt.Sprintf("key.New(%#v)", k.Key())
 }

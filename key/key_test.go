@@ -222,7 +222,7 @@ func TestGetFromMap(t *testing.T) {
 	}}
 
 	for _, tcase := range tests {
-		v, ok := tcase.k.GetFromMap(tcase.m)
+		v, ok := tcase.m[tcase.k]
 		if tcase.found != ok {
 			t.Errorf("Wrong retrieval result for case:\nk: %#v\nm: %#v\nv: %#v",
 				tcase.k,
@@ -284,7 +284,7 @@ func TestDeleteFromMap(t *testing.T) {
 	}}
 
 	for _, tcase := range tests {
-		tcase.k.DeleteFromMap(tcase.m)
+		delete(tcase.m, tcase.k)
 		if !test.DeepEqual(tcase.m, tcase.r) {
 			t.Errorf("Wrong result for case:\nk: %#v\nm: %#v\nr: %#v",
 				tcase.k,
@@ -381,7 +381,7 @@ func TestSetToMap(t *testing.T) {
 	}}
 
 	for i, tcase := range tests {
-		tcase.k.SetToMap(tcase.m, tcase.v)
+		tcase.m[tcase.k] = tcase.v
 		if !test.DeepEqual(tcase.m, tcase.r) {
 			t.Errorf("Wrong result for case %d:\nk: %#v\nm: %#v\nr: %#v",
 				i,
@@ -439,7 +439,7 @@ func BenchmarkSetToMapWithStringKey(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		New(strconv.Itoa(i)).SetToMap(m, true)
+		m[New(strconv.Itoa(i))] = true
 	}
 }
 
@@ -468,7 +468,7 @@ func BenchmarkSetToMapWithUint64Key(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		New(uint64(i)).SetToMap(m, true)
+		m[New(uint64(i))] = true
 	}
 }
 
@@ -498,7 +498,7 @@ func BenchmarkGetFromMapWithMapKey(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := New(map[string]interface{}{string('a' + i%19): true})
-		_, found := key.GetFromMap(m)
+		_, found := m[key]
 		if !found {
 			b.Fatalf("WTF: %#v", key)
 		}
@@ -529,7 +529,7 @@ func BenchmarkBigMapWithCompositeKeys(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		submap["aaaa3"] = uint32(i)
-		_, found := k.GetFromMap(m)
+		_, found := m[k]
 		if found != (i < size) {
 			b.Fatalf("WTF: %#v", k)
 		}
