@@ -55,8 +55,9 @@ func TestNetNs(t *testing.T) {
 	cases := map[string]int{"": 0, "default": 2, nsName: 2}
 	for name, callCount := range cases {
 		var cbResult string
-		err = Do(name, func() {
+		err = Do(name, func() error {
 			cbResult = "Hello" + name
+			return nil
 		})
 		if err != nil {
 			t.Fatalf("Error calling function in different network namespace: %s", err)

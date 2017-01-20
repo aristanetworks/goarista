@@ -16,17 +16,17 @@ func ExampleDo_httpClient() {
 	vrf := "management"
 	vrf = netns.VRFToNetNS(vrf) // vrf is now "ns-management"
 
-	dial := func(network, address string) (conn net.Conn, err error) {
-		nserr := netns.Do(vrf, func() {
+	dial := func(network, address string) (net.Conn, error) {
+		var conn net.Conn
+		err := netns.Do(vrf, func() error {
+			var err error
 			conn, err = (&net.Dialer{
 				Timeout:   30 * time.Second, // This is the connection timeout
 				KeepAlive: 30 * time.Second,
 			}).Dial(network, address)
+			return err
 		})
-		if nserr != nil {
-			return nil, nserr
-		}
-		return
+		return conn, err
 	}
 
 	client := &http.Client{

@@ -19,7 +19,7 @@ const (
 
 // Callback is a function that gets called in a given network namespace.
 // The user needs to check any errors from any calls inside this function.
-type Callback func()
+type Callback func() error
 
 // File descriptor interface so we can mock for testing
 type handle interface {
@@ -51,8 +51,7 @@ func setNsByName(nsName string) error {
 // namespaces, call the given function, hop back to its original namespace, and then
 // unlock itself from its current OS thread.
 // Do returns an error if an error occurs at any point besides in the invocation of
-// the given function.
-// The caller should check both the error of Do and any errors from the given function call.
+// the given function, or if the given function itself returns an error.
 //
 // The callback function is expected to do something simple such as just
 // creating a socket / opening a connection, as it's not desirable to start
@@ -84,12 +83,13 @@ func Do(nsName string, cb Callback) error {
 	}
 
 	// Call the given function
-	cb()
+	cbErr := cb()
 
 	// Come back to the original namespace
 	if err = setNs(currNsFd); err != nil {
-		return fmt.Errorf("Failed to return to the original namespace: %s", err)
+		return fmt.Errorf("Failed to return to the original namespace: %s (callback returned %v)",
+			err, cbErr)
 	}
 
-	return nil
+	return cbErr
 }

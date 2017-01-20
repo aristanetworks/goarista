@@ -82,15 +82,13 @@ func (s *server) Run() {
 	http.HandleFunc("/debug/latency", latencyHandler)
 
 	var listener net.Listener
-	var listenErr error
-	err := netns.Do(s.vrfName, func() {
-		listener, listenErr = net.Listen("tcp", s.serverName)
+	err := netns.Do(s.vrfName, func() error {
+		var err error
+		listener, err = net.Listen("tcp", s.serverName)
+		return err
 	})
 	if err != nil {
-		glog.Fatalf("Failed to go to network namespace for vrf %s: %s", s.vrfName, err)
-	}
-	if listenErr != nil {
-		glog.Fatal("Could not start monitor server:", listenErr)
+		glog.Fatalf("Could not start monitor server in VRF %q: %s", s.vrfName, err)
 	}
 
 	err = http.Serve(listener, nil)
