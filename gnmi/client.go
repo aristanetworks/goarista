@@ -80,3 +80,14 @@ func NewContext(ctx context.Context, cfg Config) context.Context {
 	}
 	return ctx
 }
+
+// NewGetRequest returns a GetRequest for the given paths
+func NewGetRequest(paths [][]string) *gnmipb.GetRequest {
+	req := &gnmipb.GetRequest{
+		Path: make([]*gnmipb.Path, len(paths)),
+	}
+	for i, p := range paths {
+		req.Path[i] = &gnmipb.Path{Element: p}
+	}
+	return req
+}

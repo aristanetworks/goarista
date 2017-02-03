@@ -8,9 +8,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/aristanetworks/goarista/gnmi"
+	gnmipb "github.com/openconfig/reference/rpc/gnmi"
 )
 
 // TODO: Make this more clear
@@ -53,8 +55,6 @@ func main() {
 
 	ctx := gnmi.NewContext(context.Background(), cfg)
 	client := gnmi.Dial(cfg)
-	_ = ctx
-	_ = client
 
 	var setOps []*operation
 	for i := 0; i < len(args); i++ {
@@ -69,7 +69,10 @@ func main() {
 			if len(setOps) != 0 {
 				exitWithError("error: 'get' not allowed after 'merge|replace|delete'")
 			}
-			exitWithError("error: 'get' not supported")
+			err := get(ctx, client, gnmi.SplitPaths(args[i+1:]))
+			if err != nil {
+				log.Fatal(err)
+			}
 			return
 		case "subscribe":
 			if len(setOps) != 0 {
@@ -100,4 +103,19 @@ func main() {
 		}
 	}
 	_ = setOps
+}
+
+func get(ctx context.Context, gnmiClient gnmipb.GNMIClient, paths [][]string) error {
+	req := gnmi.NewGetRequest(paths)
+	resp, err := gnmiClient.Get(ctx, req)
+	if err != nil {
+		return err
+	}
+	for _, notif := range resp.Notification {
+		for _, update := range notif.Update {
+			fmt.Printf("%s:\n", gnmi.JoinPath(update.Path.Element))
+			fmt.Println(string(update.Value.Value))
+		}
+	}
+	return nil
 }
