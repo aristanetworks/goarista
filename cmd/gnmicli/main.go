@@ -6,13 +6,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 
-	"github.com/aristanetworks/goarista/gnmi"
 	gnmipb "github.com/openconfig/reference/rpc/gnmi"
+	"google.golang.org/grpc/codes"
+
+	"github.com/aristanetworks/goarista/gnmi"
 )
 
 // TODO: Make this more clear
@@ -97,17 +101,24 @@ func main() {
 				op.val = args[i]
 			}
 			setOps = append(setOps, op)
-			exitWithError(fmt.Sprintf("error: '%s' not supported", op.opType))
 		default:
 			exitWithError(fmt.Sprintf("error: unknown operation %q", args[i]))
 		}
 	}
-	_ = setOps
+	if len(setOps) == 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+	err := set(ctx, client, setOps)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
-func get(ctx context.Context, gnmiClient gnmipb.GNMIClient, paths [][]string) error {
+func get(ctx context.Context, client gnmipb.GNMIClient, paths [][]string) error {
 	req := gnmi.NewGetRequest(paths)
-	resp, err := gnmiClient.Get(ctx, req)
+	resp, err := client.Get(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -117,5 +128,44 @@ func get(ctx context.Context, gnmiClient gnmipb.GNMIClient, paths [][]string) er
 			fmt.Println(string(update.Value.Value))
 		}
 	}
+	return nil
+}
+
+// val may be a path to a file or it may be json. First see if it is a
+// file, if so return its contents, otherwise return val
+func extractJSON(val string) []byte {
+	jsonBytes, err := ioutil.ReadFile(val)
+	if err != nil {
+		jsonBytes = []byte(val)
+	}
+	return jsonBytes
+}
+
+func set(ctx context.Context, client gnmipb.GNMIClient, setOps []*operation) error {
+	req := &gnmipb.SetRequest{}
+	for _, op := range setOps {
+		switch op.opType {
+		case "delete":
+			req.Delete = append(req.Delete, &gnmipb.Path{Element: op.path})
+		case "update":
+			req.Update = append(req.Update, &gnmipb.Update{
+				Value: &gnmipb.Value{Value: extractJSON(op.val)},
+				Path:  &gnmipb.Path{Element: op.path}})
+		case "replace":
+			req.Replace = append(req.Replace, &gnmipb.Update{
+				Value: &gnmipb.Value{Value: extractJSON(op.val)},
+				Path:  &gnmipb.Path{Element: op.path}})
+		}
+	}
+
+	resp, err := client.Set(ctx, req)
+	if err != nil {
+		return err
+	}
+	if resp.Message != nil && codes.Code(resp.Message.Code) != codes.OK {
+		return errors.New(resp.Message.Message)
+	}
+	// TODO: Iterate over SetResponse.Response for more detailed error message?
+
 	return nil
 }
