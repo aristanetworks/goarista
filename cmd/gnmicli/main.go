@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -34,12 +35,26 @@ type operation struct {
 }
 
 func main() {
+	var cfg gnmi.Config
+	flag.StringVar(&cfg.Addr, "addr", "", "Address of gNMI gRPC server")
+	flag.StringVar(&cfg.CAFile, "cafile", "", "Path to server TLS certificate file")
+	flag.StringVar(&cfg.CertFile, "certfile", "", "Path to client TLS certificate file")
+	flag.StringVar(&cfg.KeyFile, "keyfile", "", "Path to client TLS private key file")
+	flag.StringVar(&cfg.Password, "password", "", "Password to authenticate with")
+	flag.StringVar(&cfg.Username, "username", "", "Username to authenticate with")
+	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
+
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, help)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 	args := flag.Args()
+
+	ctx := gnmi.NewContext(context.Background(), cfg)
+	client := gnmi.Dial(cfg)
+	_ = ctx
+	_ = client
 
 	var setOps []*operation
 	for i := 0; i < len(args); i++ {
