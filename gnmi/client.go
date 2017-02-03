@@ -91,3 +91,15 @@ func NewGetRequest(paths [][]string) *gnmipb.GetRequest {
 	}
 	return req
 }
+
+// NewSubscribeRequest returns a SubscribeRequest for the given paths
+func NewSubscribeRequest(paths [][]string) *gnmipb.SubscribeRequest {
+	subList := &gnmipb.SubscriptionList{
+		Subscription: make([]*gnmipb.Subscription, len(paths)),
+	}
+	for i, p := range paths {
+		subList.Subscription[i] = &gnmipb.Subscription{Path: &gnmipb.Path{Element: p}}
+	}
+	return &gnmipb.SubscribeRequest{
+		Request: &gnmipb.SubscribeRequest_Subscribe{Subscribe: subList}}
+}

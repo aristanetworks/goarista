@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -82,7 +83,10 @@ func main() {
 			if len(setOps) != 0 {
 				exitWithError("error: 'subscribe' not allowed after 'merge|replace|delete'")
 			}
-			exitWithError("error: 'subscribe' not supported")
+			err := subscribe(ctx, client, gnmi.SplitPaths(args[i+1:]))
+			if err != nil {
+				log.Fatal(err)
+			}
 			return
 		case "update", "replace", "delete":
 			op := &operation{
@@ -168,4 +172,40 @@ func set(ctx context.Context, client gnmipb.GNMIClient, setOps []*operation) err
 	// TODO: Iterate over SetResponse.Response for more detailed error message?
 
 	return nil
+}
+
+func subscribe(ctx context.Context, client gnmipb.GNMIClient, paths [][]string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := client.Subscribe(ctx)
+	if err != nil {
+		return err
+	}
+	if err := stream.Send(gnmi.NewSubscribeRequest(paths)); err != nil {
+		return err
+	}
+
+	for {
+		response, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		switch resp := response.Response.(type) {
+		case *gnmipb.SubscribeResponse_Error:
+			return errors.New(resp.Error.Message)
+		case *gnmipb.SubscribeResponse_SyncResponse:
+			if !resp.SyncResponse {
+				return errors.New("initial sync failed," +
+					" check that you're using a client compatible with the server")
+			}
+		case *gnmipb.SubscribeResponse_Update:
+			for _, update := range resp.Update.Update {
+				fmt.Printf("%s = %s\n", gnmi.JoinPath(update.Path.Element),
+					string(update.Value.Value))
+			}
+		}
+	}
 }
