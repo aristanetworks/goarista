@@ -30,7 +30,7 @@ type Config struct {
 }
 
 // Dial connects to a gnmi service and returns a client
-func Dial(cfg Config) pb.GNMIClient {
+func Dial(cfg *Config) pb.GNMIClient {
 	var opts []grpc.DialOption
 	if cfg.TLS || cfg.CAFile != "" || cfg.CertFile != "" {
 		tlsConfig := &tls.Config{}
@@ -72,7 +72,7 @@ func Dial(cfg Config) pb.GNMIClient {
 
 // NewContext returns a new context with username and password
 // metadata if they are set in cfg.
-func NewContext(ctx context.Context, cfg Config) context.Context {
+func NewContext(ctx context.Context, cfg *Config) context.Context {
 	if cfg.Username != "" {
 		ctx = metadata.NewContext(ctx, metadata.Pairs(
 			"username", cfg.Username,

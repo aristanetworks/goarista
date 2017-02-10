@@ -42,7 +42,7 @@ type operation struct {
 }
 
 func main() {
-	var cfg gnmi.Config
+	cfg := &gnmi.Config{}
 	flag.StringVar(&cfg.Addr, "addr", "", "Address of gNMI gRPC server")
 	flag.StringVar(&cfg.CAFile, "cafile", "", "Path to server TLS certificate file")
 	flag.StringVar(&cfg.CertFile, "certfile", "", "Path to client TLS certificate file")
