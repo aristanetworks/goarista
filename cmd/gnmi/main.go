@@ -198,8 +198,7 @@ func subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) erro
 			return errors.New(resp.Error.Message)
 		case *pb.SubscribeResponse_SyncResponse:
 			if !resp.SyncResponse {
-				return errors.New("initial sync failed," +
-					" check that you're using a client compatible with the server")
+				return errors.New("initial sync failed")
 			}
 		case *pb.SubscribeResponse_Update:
 			for _, update := range resp.Update.Update {
