@@ -21,8 +21,8 @@ import (
 )
 
 // TODO: Make this more clear
-var help = `Usage of gnmicli:
-gnmicli [options]
+var help = `Usage of gnmi:
+gnmi [options]
   capabilities
   get PATH+
   subscribe PATH+
