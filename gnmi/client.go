@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
-	gnmipb "github.com/openconfig/reference/rpc/gnmi"
+	pb "github.com/openconfig/reference/rpc/gnmi"
 )
 
 // Config is the gnmi.Client config
@@ -30,7 +30,7 @@ type Config struct {
 }
 
 // Dial connects to a gnmi service and returns a client
-func Dial(cfg Config) gnmipb.GNMIClient {
+func Dial(cfg Config) pb.GNMIClient {
 	var opts []grpc.DialOption
 	if cfg.TLS || cfg.CAFile != "" || cfg.CertFile != "" {
 		tlsConfig := &tls.Config{}
@@ -67,7 +67,7 @@ func Dial(cfg Config) gnmipb.GNMIClient {
 		log.Fatalf("Failed to dial: %s", err)
 	}
 
-	return gnmipb.NewGNMIClient(conn)
+	return pb.NewGNMIClient(conn)
 }
 
 // NewContext returns a new context with username and password
@@ -82,24 +82,24 @@ func NewContext(ctx context.Context, cfg Config) context.Context {
 }
 
 // NewGetRequest returns a GetRequest for the given paths
-func NewGetRequest(paths [][]string) *gnmipb.GetRequest {
-	req := &gnmipb.GetRequest{
-		Path: make([]*gnmipb.Path, len(paths)),
+func NewGetRequest(paths [][]string) *pb.GetRequest {
+	req := &pb.GetRequest{
+		Path: make([]*pb.Path, len(paths)),
 	}
 	for i, p := range paths {
-		req.Path[i] = &gnmipb.Path{Element: p}
+		req.Path[i] = &pb.Path{Element: p}
 	}
 	return req
 }
 
 // NewSubscribeRequest returns a SubscribeRequest for the given paths
-func NewSubscribeRequest(paths [][]string) *gnmipb.SubscribeRequest {
-	subList := &gnmipb.SubscriptionList{
-		Subscription: make([]*gnmipb.Subscription, len(paths)),
+func NewSubscribeRequest(paths [][]string) *pb.SubscribeRequest {
+	subList := &pb.SubscriptionList{
+		Subscription: make([]*pb.Subscription, len(paths)),
 	}
 	for i, p := range paths {
-		subList.Subscription[i] = &gnmipb.Subscription{Path: &gnmipb.Path{Element: p}}
+		subList.Subscription[i] = &pb.Subscription{Path: &pb.Path{Element: p}}
 	}
-	return &gnmipb.SubscribeRequest{
-		Request: &gnmipb.SubscribeRequest_Subscribe{Subscribe: subList}}
+	return &pb.SubscribeRequest{
+		Request: &pb.SubscribeRequest_Subscribe{Subscribe: subList}}
 }

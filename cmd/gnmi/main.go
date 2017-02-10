@@ -14,7 +14,7 @@ import (
 	"log"
 	"os"
 
-	gnmipb "github.com/openconfig/reference/rpc/gnmi"
+	pb "github.com/openconfig/reference/rpc/gnmi"
 	"google.golang.org/grpc/codes"
 
 	"github.com/aristanetworks/goarista/gnmi"
@@ -89,11 +89,11 @@ func main() {
 			}
 			return
 		case "update", "replace", "delete":
-			op := &operation{
-				opType: args[i],
-			}
 			if len(args) == i+1 {
 				exitWithError("error: missing path")
+			}
+			op := &operation{
+				opType: args[i],
 			}
 			i++
 			op.path = gnmi.SplitPath(args[i])
@@ -120,7 +120,7 @@ func main() {
 
 }
 
-func get(ctx context.Context, client gnmipb.GNMIClient, paths [][]string) error {
+func get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 	req := gnmi.NewGetRequest(paths)
 	resp, err := client.Get(ctx, req)
 	if err != nil {
@@ -145,20 +145,20 @@ func extractJSON(val string) []byte {
 	return jsonBytes
 }
 
-func set(ctx context.Context, client gnmipb.GNMIClient, setOps []*operation) error {
-	req := &gnmipb.SetRequest{}
+func set(ctx context.Context, client pb.GNMIClient, setOps []*operation) error {
+	req := &pb.SetRequest{}
 	for _, op := range setOps {
 		switch op.opType {
 		case "delete":
-			req.Delete = append(req.Delete, &gnmipb.Path{Element: op.path})
+			req.Delete = append(req.Delete, &pb.Path{Element: op.path})
 		case "update":
-			req.Update = append(req.Update, &gnmipb.Update{
-				Value: &gnmipb.Value{Value: extractJSON(op.val)},
-				Path:  &gnmipb.Path{Element: op.path}})
+			req.Update = append(req.Update, &pb.Update{
+				Value: &pb.Value{Value: extractJSON(op.val)},
+				Path:  &pb.Path{Element: op.path}})
 		case "replace":
-			req.Replace = append(req.Replace, &gnmipb.Update{
-				Value: &gnmipb.Value{Value: extractJSON(op.val)},
-				Path:  &gnmipb.Path{Element: op.path}})
+			req.Replace = append(req.Replace, &pb.Update{
+				Value: &pb.Value{Value: extractJSON(op.val)},
+				Path:  &pb.Path{Element: op.path}})
 		}
 	}
 
@@ -174,7 +174,7 @@ func set(ctx context.Context, client gnmipb.GNMIClient, setOps []*operation) err
 	return nil
 }
 
-func subscribe(ctx context.Context, client gnmipb.GNMIClient, paths [][]string) error {
+func subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stream, err := client.Subscribe(ctx)
@@ -194,14 +194,14 @@ func subscribe(ctx context.Context, client gnmipb.GNMIClient, paths [][]string) 
 			return err
 		}
 		switch resp := response.Response.(type) {
-		case *gnmipb.SubscribeResponse_Error:
+		case *pb.SubscribeResponse_Error:
 			return errors.New(resp.Error.Message)
-		case *gnmipb.SubscribeResponse_SyncResponse:
+		case *pb.SubscribeResponse_SyncResponse:
 			if !resp.SyncResponse {
 				return errors.New("initial sync failed," +
 					" check that you're using a client compatible with the server")
 			}
-		case *gnmipb.SubscribeResponse_Update:
+		case *pb.SubscribeResponse_Update:
 			for _, update := range resp.Update.Update {
 				fmt.Printf("%s = %s\n", gnmi.JoinPath(update.Path.Element),
 					string(update.Value.Value))
