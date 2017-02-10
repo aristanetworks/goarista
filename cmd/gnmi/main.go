@@ -11,12 +11,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 
 	pb "github.com/openconfig/reference/rpc/gnmi"
 	"google.golang.org/grpc/codes"
 
+	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
 )
 
@@ -76,7 +76,7 @@ func main() {
 			}
 			err := get(ctx, client, gnmi.SplitPaths(args[i+1:]))
 			if err != nil {
-				log.Fatal(err)
+				glog.Fatal(err)
 			}
 			return
 		case "subscribe":
@@ -85,7 +85,7 @@ func main() {
 			}
 			err := subscribe(ctx, client, gnmi.SplitPaths(args[i+1:]))
 			if err != nil {
-				log.Fatal(err)
+				glog.Fatal(err)
 			}
 			return
 		case "update", "replace", "delete":
@@ -115,7 +115,7 @@ func main() {
 	}
 	err := set(ctx, client, setOps)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 }
