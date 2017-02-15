@@ -19,6 +19,6 @@ func (t textDumper) Put(d *DataPoint) error {
 			tags += " " + tag + "=" + value
 		}
 	}
-	fmt.Printf("put %s %d %#v%s\n", d.Metric, d.Timestamp, d.Value, tags)
+	fmt.Printf("put %s %d %#v%s\n", d.Metric, d.Timestamp/1e9, d.Value, tags)
 	return nil
 }
