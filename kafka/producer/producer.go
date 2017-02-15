@@ -68,6 +68,7 @@ func New(topic string, notifsChan chan proto.Message,
 		kafkaConfig.ClientID = hostname
 		kafkaConfig.Producer.Compression = sarama.CompressionSnappy
 		kafkaConfig.Producer.Return.Successes = true
+		kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
 	}
 
 	kafkaProducer, err := sarama.NewAsyncProducer(kafkaAddresses, kafkaConfig)
