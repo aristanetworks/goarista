@@ -61,8 +61,7 @@ func setNsByName(nsName string) error {
 func Do(nsName string, cb Callback) error {
 	// If destNS is empty, the function is called in the caller's namespace
 	if nsName == "" {
-		cb()
-		return nil
+		return cb()
 	}
 
 	// Get the file descriptor to the current namespace
