@@ -55,6 +55,11 @@ func TestConfig(t *testing.T) {
 	}, {
 		path: "/Sysdb/interface/counter/eth/slice/phy/1/intfCounterDir/" +
 			"Ethernet42/intfCounter/lastClear/statistics/inErrors",
+	}, {
+		path: "/Sysdb/interface/counter/eth/slice/phy/1/intfCounterDir/" +
+			"Ethernet42/intfCounter/current/ethStatistics/outPfcClassFrames",
+		metric: "eos.interface.pfcclassframes",
+		tags:   map[string]string{"intf": "Ethernet42", "direction": "out"},
 	}}
 	for i, tcase := range testcases {
 		actualMetric, actualTags := cfg.Match(tcase.path)

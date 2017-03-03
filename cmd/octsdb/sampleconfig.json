@@ -15,6 +15,9 @@
 		"intfPktCounter": {
 			"path": "/Sysdb/(interface)/counter/eth/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter/current/statistics/(?P<direction>(?:in|out))(?P<type>(?:Ucast|Multicast|Broadcast))(Pkt)"
 		},
+		"intfPfcClassCounter": {
+			"path": "/Sysdb/(interface)/counter/eth/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter/current/ethStatistics/(?P<direction>(?:in|out))(PfcClassFrames)"
+		},
 
 		"tempSensor": {
 			"path": "/Sysdb/(environment)/temperature/status/tempSensor/(?P<sensor>.+)/((?:maxT|t)emperature)/value"

@@ -93,6 +93,7 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 		}
 	}
 	prefix := "/" + strings.Join(notif.Prefix.Element, "/")
+
 	for _, update := range notif.Update {
 		if update.Value == nil || update.Value.Type != openconfig.Type_JSON {
 			glog.V(9).Infof("Ignoring incompatible update value in %s", update)
@@ -101,7 +102,6 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 
 		value := parseValue(update)
 		if value == nil {
-			glog.V(9).Infof("Ignoring non-numeric value in %s", update)
 			continue
 		}
 
@@ -113,32 +113,61 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 		}
 		tags["host"] = host
 
-		err := conn.Put(&DataPoint{
-			Metric:    metricName,
-			Timestamp: uint64(notif.Timestamp),
-			Value:     value,
-			Tags:      tags,
-		})
-		if err != nil {
-			glog.Info("Failed to put datapoint: ", err)
+		for i, v := range value {
+			if len(value) > 1 {
+				tags["index"] = strconv.Itoa(i)
+			}
+			err := conn.Put(&DataPoint{
+				Metric:    metricName,
+				Timestamp: uint64(notif.Timestamp),
+				Value:     v,
+				Tags:      tags,
+			})
+			if err != nil {
+				glog.Info("Failed to put datapoint: ", err)
+			}
 		}
 	}
 }
 
-// parseValue returns the integer or floating point value of the given update,
-// or nil if it's not a numerical update.
-func parseValue(update *openconfig.Update) (value interface{}) {
+// parseValue returns either an integer/floating point value of the given update, or if
+// the value is a slice of integers/floating point values. If the value is neither of these
+// or if any element in the slice is non numerical, parseValue returns nil.
+func parseValue(update *openconfig.Update) []interface{} {
+	var value interface{}
+
 	decoder := json.NewDecoder(bytes.NewReader(update.Value.Value))
 	decoder.UseNumber()
 	err := decoder.Decode(&value)
 	if err != nil {
 		glog.Fatalf("Malformed JSON update %q in %s", update.Value.Value, update)
 	}
-	num, ok := value.(json.Number)
-	if !ok {
-		return nil
+
+	switch value := value.(type) {
+	case json.Number:
+		return []interface{}{parseNumber(value, update)}
+	case []interface{}:
+		for i, val := range value {
+			jsonNum, ok := val.(json.Number)
+			if !ok {
+				// If any value is not a number, skip it.
+				glog.Infof("Element %d: %v is %T, not json.Number", i, val, val)
+				continue
+			}
+			num := parseNumber(jsonNum, update)
+			value[i] = num
+		}
+		return value
+	default:
+		glog.V(9).Infof("Ignoring non-numeric or non-numeric slice value in %s", update)
 	}
-	// Convert our json.Number to either an int64, uint64, or float64.
+	return nil
+}
+
+// Convert our json.Number to either an int64, uint64, or float64.
+func parseNumber(num json.Number, update *openconfig.Update) interface{} {
+	var value interface{}
+	var err error
 	if value, err = num.Int64(); err != nil {
 		// num is either a large unsigned integer or a floating point.
 		if strings.Contains(err.Error(), "value out of range") { // Sigh.
@@ -150,5 +179,5 @@ func parseValue(update *openconfig.Update) (value interface{}) {
 			}
 		}
 	}
-	return
+	return value
 }
