@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -81,6 +82,16 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 	}
 
 	host := addr[:strings.IndexRune(addr, ':')]
+	if host == "localhost" {
+		// TODO: On Linux this reads /proc/sys/kernel/hostname each time,
+		// which isn't the most efficient, but at least we don't have to
+		// deal with detecting hostname changes.
+		host, _ = os.Hostname()
+		if host == "" {
+			glog.Info("could not figure out localhost's hostname")
+			return
+		}
+	}
 	prefix := "/" + strings.Join(notif.Prefix.Element, "/")
 	for _, update := range notif.Update {
 		if update.Value == nil || update.Value.Type != openconfig.Type_JSON {
