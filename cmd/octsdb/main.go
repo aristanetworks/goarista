@@ -113,12 +113,15 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 		}
 		tags["host"] = host
 
-		conn.Put(&DataPoint{
+		err := conn.Put(&DataPoint{
 			Metric:    metricName,
 			Timestamp: uint64(notif.Timestamp),
 			Value:     value,
 			Tags:      tags,
 		})
+		if err != nil {
+			glog.Info("Failed to put datapoint: ", err)
+		}
 	}
 }
 
