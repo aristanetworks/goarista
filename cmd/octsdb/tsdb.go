@@ -4,6 +4,8 @@
 
 package main
 
+import "fmt"
+
 // DataPoint for OpenTSDB to store.
 type DataPoint struct {
 	// Metric name.
@@ -17,6 +19,16 @@ type DataPoint struct {
 
 	// Tags.  The host is automatically populated by the OpenTSDBConn.
 	Tags map[string]string `json:"tags"`
+}
+
+func (d *DataPoint) String() string {
+	var tags string
+	if len(d.Tags) != 0 {
+		for tag, value := range d.Tags {
+			tags += " " + tag + "=" + value
+		}
+	}
+	return fmt.Sprintf("put %s %d %#v%s\n", d.Metric, d.Timestamp/1e9, d.Value, tags)
 }
 
 // OpenTSDBConn is a managed connection to an OpenTSDB instance (or cluster).

@@ -4,8 +4,6 @@
 
 package main
 
-import "fmt"
-
 type textDumper struct{}
 
 func newTextDumper() OpenTSDBConn {
@@ -13,12 +11,6 @@ func newTextDumper() OpenTSDBConn {
 }
 
 func (t textDumper) Put(d *DataPoint) error {
-	var tags string
-	if len(d.Tags) != 0 {
-		for tag, value := range d.Tags {
-			tags += " " + tag + "=" + value
-		}
-	}
-	fmt.Printf("put %s %d %#v%s\n", d.Metric, d.Timestamp/1e9, d.Value, tags)
+	print(d.String())
 	return nil
 }
