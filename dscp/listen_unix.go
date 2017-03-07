@@ -19,7 +19,14 @@ func listenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) 
 	}
 	// This works for the UNIX implementation of netFD, i.e. not on Windows and Plan9.
 	// This kludge is needed until https://github.com/golang/go/issues/9661 is fixed.
-	fd := int(reflect.ValueOf(lsnr).Elem().FieldByName("fd").Elem().FieldByName("sysfd").Int())
+	netFD := reflect.ValueOf(lsnr).Elem().FieldByName("fd").Elem()
+	sysfd := netFD.FieldByName("sysfd")
+	var fd int
+	if sysfd.IsValid() {
+		fd = int(sysfd.Int())
+	} else { // After go +3792db5
+		fd = int(netFD.FieldByName("pfd").FieldByName("Sysfd").Int())
+	}
 	var proto, optname int
 	if address.IP.To4() != nil {
 		proto = unix.IPPROTO_IP
