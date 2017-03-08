@@ -31,8 +31,10 @@ func readErrors(conn net.Conn) {
 		if n == 0 {
 			return
 		} else if n > 0 {
-			for line := range bytes.Split(buf[:n], []byte{'\n'}) {
-				glog.Info("tsd replied: ", string(line))
+			for _, line := range bytes.Split(buf[:n], []byte{'\n'}) {
+				if s := string(line); s != "" {
+					glog.Info("tsd replied: ", s)
+				}
 			}
 		}
 		if err != nil {
