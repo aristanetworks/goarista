@@ -74,7 +74,7 @@ func TestKafkaProducer(t *testing.T) {
 		wg:            sync.WaitGroup{},
 	}
 
-	go toDBProducer.Run()
+	toDBProducer.Start()
 
 	response := &pb.SubscribeResponse{
 		Response: &pb.SubscribeResponse_Update{
@@ -125,4 +125,24 @@ func TestKafkaProducer(t *testing.T) {
 	}
 
 	toDBProducer.Stop()
+}
+
+func TestProducerStartStop(t *testing.T) {
+	// this test checks that Start() followed by Stop() doesn't cause any race conditions.
+
+	mock := newMockAsyncProducer()
+	toDB := make(chan proto.Message)
+	topic := "occlient"
+	systemID := "Foobar"
+	p := &producer{
+		notifsChan:    toDB,
+		kafkaProducer: mock,
+		topic:         topic,
+		key:           sarama.StringEncoder(systemID),
+		encoder:       openconfig.ElasticsearchMessageEncoder,
+		done:          make(chan struct{}),
+	}
+
+	p.Start()
+	p.Stop()
 }

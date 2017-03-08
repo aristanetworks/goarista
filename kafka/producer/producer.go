@@ -30,7 +30,7 @@ type MessageEncoder func(string, sarama.Encoder, string, proto.Message) (*sarama
 
 // Producer forwards messages recvd on a channel to kafka.
 type Producer interface {
-	Run()
+	Start()
 	Write(proto.Message)
 	Stop()
 }
@@ -104,12 +104,16 @@ func New(topic string, notifsChan chan proto.Message,
 	return p, nil
 }
 
-func (p *producer) Run() {
-	p.wg.Add(2)
+// Start makes producer to start processing writes.
+// This method is non-blocking.
+func (p *producer) Start() {
+	p.wg.Add(3)
 	go p.handleSuccesses()
 	go p.handleErrors()
+	go p.run()
+}
 
-	p.wg.Add(1)
+func (p *producer) run() {
 	defer p.wg.Done()
 	for {
 		select {
