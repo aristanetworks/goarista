@@ -36,3 +36,39 @@ func (c *udpClient) Put(d *DataPoint) error {
 	}
 	return err
 }
+
+type udpServer struct {
+	lis    *kcp.Listener
+	telnet *telnetClient
+}
+
+func newUDPServer(udpAddr, tsdbAddr string) (*udpServer, error) {
+	lis, err := kcp.ListenWithOptions(udpAddr, nil, 10, 3)
+	if err != nil {
+		return nil, err
+	}
+	return &udpServer{
+		lis:    lis,
+		telnet: newTelnetClient(tsdbAddr).(*telnetClient),
+	}, nil
+}
+
+func (c *udpServer) Run() error {
+	conn, err := c.lis.AcceptKCP()
+	if err != nil {
+		return err
+	}
+
+	var buf [4096]byte
+	for {
+		n, err := conn.Read(buf[:])
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		err = c.telnet.PutBytes(buf[:n])
+		if err != nil {
+			return err
+		}
+	}
+}

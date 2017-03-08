@@ -44,6 +44,10 @@ func readErrors(conn net.Conn) {
 }
 
 func (c *telnetClient) Put(d *DataPoint) error {
+	return c.PutBytes([]byte(d.String()))
+}
+
+func (c *telnetClient) PutBytes(d []byte) error {
 	var err error
 	if c.conn == nil {
 		c.conn, err = net.Dial("tcp", c.addr)
@@ -52,7 +56,7 @@ func (c *telnetClient) Put(d *DataPoint) error {
 		}
 		go readErrors(c.conn)
 	}
-	_, err = c.conn.Write([]byte(d.String()))
+	_, err = c.conn.Write(d)
 	if err != nil {
 		c.conn.Close()
 		c.conn = nil

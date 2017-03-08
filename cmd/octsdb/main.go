@@ -27,6 +27,8 @@ func main() {
 		"Print the output as simple text")
 	configFlag := flag.String("config", "",
 		"Config to turn OpenConfig telemetry into OpenTSDB put requests")
+	isUDPServerFlag := flag.Bool("isudpserver", false,
+		"Set to true to run as a UDP to TCP to OpenTSDB server.")
 	udpAddrFlag := flag.String("udpaddr", "",
 		"Address of the UDP server to connect to/serve on.")
 	username, password, subscriptions, addrs, opts := client.ParseFlags()
@@ -48,6 +50,18 @@ func main() {
 	}
 	// Add the subscriptions from the config file.
 	subscriptions = append(subscriptions, config.Subscriptions...)
+
+	// Run a UDP server that forwards messages to OpenTSDB via Telnet (TCP)
+	if *isUDPServerFlag {
+		if *udpAddrFlag == "" {
+			glog.Fatal("Specify the address for the UDP server to listen on with -udpaddr")
+		}
+		server, err := newUDPServer(*udpAddrFlag, *tsdbFlag)
+		if err != nil {
+			glog.Fatal("Failed to create UDP server: ", err)
+		}
+		glog.Fatal(server.Run())
+	}
 
 	var c OpenTSDBConn
 	if *textFlag {
