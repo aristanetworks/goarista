@@ -27,9 +27,11 @@ func main() {
 		"Print the output as simple text")
 	configFlag := flag.String("config", "",
 		"Config to turn OpenConfig telemetry into OpenTSDB put requests")
+	udpAddrFlag := flag.String("udpaddr", "",
+		"Address of the UDP server to connect to/serve on.")
 	username, password, subscriptions, addrs, opts := client.ParseFlags()
 
-	if !(*tsdbFlag != "" || *textFlag) {
+	if !(*tsdbFlag != "" || *textFlag || *udpAddrFlag != "") {
 		glog.Fatal("Specify the address of the OpenTSDB server to write to with -tsdb")
 	} else if *configFlag == "" {
 		glog.Fatal("Specify a JSON configuration file with -config")
@@ -50,6 +52,8 @@ func main() {
 	var c OpenTSDBConn
 	if *textFlag {
 		c = newTextDumper()
+	} else if *udpAddrFlag != "" {
+		c = newUDPClient(*udpAddrFlag)
 	} else {
 		// TODO: support HTTP(S).
 		c = newTelnetClient(*tsdbFlag)
