@@ -7,6 +7,7 @@ package main
 import (
 	"net"
 
+	"github.com/aristanetworks/glog"
 	kcp "github.com/xtaci/kcp-go"
 )
 
@@ -54,21 +55,29 @@ func newUDPServer(udpAddr, tsdbAddr string) (*udpServer, error) {
 }
 
 func (c *udpServer) Run() error {
-	conn, err := c.lis.AcceptKCP()
-	if err != nil {
-		return err
-	}
-
-	var buf [4096]byte
 	for {
-		n, err := conn.Read(buf[:])
-		if err != nil {
-			conn.Close()
-			return err
-		}
-		err = c.telnet.PutBytes(buf[:n])
+		conn, err := c.lis.AcceptKCP()
 		if err != nil {
 			return err
 		}
+
+		go func() {
+			defer conn.Close()
+			var buf [4096]byte
+			for {
+				n, err := conn.Read(buf[:])
+				if err != nil {
+					if n != 0 { // Not EOF
+						glog.Error(err)
+					}
+					return
+				}
+				err = c.telnet.PutBytes(buf[:n])
+				if err != nil {
+					glog.Error(err)
+					return
+				}
+			}
+		}()
 	}
 }
