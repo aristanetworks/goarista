@@ -30,6 +30,9 @@ func (c *udpClient) Put(d *DataPoint) error {
 			return err
 		}
 	}
+	if glog.V(3) {
+		glog.Info(d.String())
+	}
 	_, err = c.conn.Write([]byte(d.String()))
 	if err != nil {
 		c.conn.Close()
@@ -71,6 +74,9 @@ func (c *udpServer) Run() error {
 						glog.Error(err)
 					}
 					return
+				}
+				if glog.V(3) {
+					glog.Info(string(buf[:n]))
 				}
 				err = c.telnet.PutBytes(buf[:n])
 				if err != nil {
