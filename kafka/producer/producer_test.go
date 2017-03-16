@@ -67,9 +67,7 @@ func TestKafkaProducer(t *testing.T) {
 	toDBProducer := &producer{
 		notifsChan:    toDB,
 		kafkaProducer: mock,
-		topic:         topic,
-		key:           sarama.StringEncoder(systemID),
-		encoder:       openconfig.ElasticsearchMessageEncoder,
+		encoder:       openconfig.NewEncoder(topic, sarama.StringEncoder(systemID), ""),
 		done:          make(chan struct{}),
 		wg:            sync.WaitGroup{},
 	}
@@ -137,9 +135,7 @@ func TestProducerStartStop(t *testing.T) {
 	p := &producer{
 		notifsChan:    toDB,
 		kafkaProducer: mock,
-		topic:         topic,
-		key:           sarama.StringEncoder(systemID),
-		encoder:       openconfig.ElasticsearchMessageEncoder,
+		encoder:       openconfig.NewEncoder(topic, sarama.StringEncoder(systemID), ""),
 		done:          make(chan struct{}),
 	}
 
