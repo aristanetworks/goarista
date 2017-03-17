@@ -31,11 +31,8 @@ type producer struct {
 }
 
 // New creates new Kafka producer
-func New(notifsChan chan proto.Message, encoder kafka.MessageEncoder,
+func New(encoder kafka.MessageEncoder,
 	kafkaAddresses []string, kafkaConfig *sarama.Config) (Producer, error) {
-	if notifsChan == nil {
-		notifsChan = make(chan proto.Message)
-	}
 
 	if kafkaConfig == nil {
 		kafkaConfig := sarama.NewConfig()
@@ -55,7 +52,7 @@ func New(notifsChan chan proto.Message, encoder kafka.MessageEncoder,
 	}
 
 	p := &producer{
-		notifsChan:    notifsChan,
+		notifsChan:    make(chan proto.Message),
 		kafkaProducer: kafkaProducer,
 		encoder:       encoder,
 		done:          make(chan struct{}),
@@ -93,8 +90,8 @@ func (p *producer) run() {
 	}
 }
 
-func (p *producer) Write(m proto.Message) {
-	p.notifsChan <- m
+func (p *producer) Write(msg proto.Message) {
+	p.notifsChan <- msg
 }
 
 func (p *producer) Stop() {
