@@ -5,35 +5,47 @@
 package main
 
 import (
-	"net"
+	"math/rand"
+	"time"
 
 	"github.com/aristanetworks/glog"
 	kcp "github.com/xtaci/kcp-go"
 )
 
 type udpClient struct {
-	addr string
-	conn net.Conn
+	addr    string
+	conn    *kcp.UDPSession
+	parity  int
+	timeout time.Duration
 }
 
-func newUDPClient(addr string) OpenTSDBConn {
+func newUDPClient(addr string, parity int, timeout time.Duration) OpenTSDBConn {
 	return &udpClient{
-		addr: addr,
+		addr:    addr,
+		parity:  parity,
+		timeout: timeout,
 	}
 }
 
 func (c *udpClient) Put(d *DataPoint) error {
 	var err error
 	if c.conn == nil {
-		c.conn, err = kcp.DialWithOptions(c.addr, nil, 10, 3)
+		// Prevent a bunch of clients all disconnecting and attempting to reconnect
+		// at nearly the same time.
+		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+
+		c.conn, err = kcp.DialWithOptions(c.addr, nil, 10, c.parity)
 		if err != nil {
 			return err
 		}
+		c.conn.SetNoDelay(1, 40, 1, 1) // Suggested by kcp-go to lower cpu usage
 	}
-	if glog.V(3) {
-		glog.Info(d.String())
-	}
-	_, err = c.conn.Write([]byte(d.String()))
+
+	dStr := d.String()
+	glog.V(3).Info(dStr)
+
+	c.conn.SetWriteDeadline(time.Now().Add(c.timeout))
+	_, err = c.conn.Write([]byte(dStr))
 	if err != nil {
 		c.conn.Close()
 		c.conn = nil
@@ -46,8 +58,8 @@ type udpServer struct {
 	telnet *telnetClient
 }
 
-func newUDPServer(udpAddr, tsdbAddr string) (*udpServer, error) {
-	lis, err := kcp.ListenWithOptions(udpAddr, nil, 10, 3)
+func newUDPServer(udpAddr, tsdbAddr string, parity int) (*udpServer, error) {
+	lis, err := kcp.ListenWithOptions(udpAddr, nil, 10, parity)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +75,10 @@ func (c *udpServer) Run() error {
 		if err != nil {
 			return err
 		}
-
+		conn.SetNoDelay(1, 40, 1, 1) // Suggested by kcp-go to lower cpu usage
+		if glog.V(3) {
+			glog.Infof("New connection from %s", conn.RemoteAddr())
+		}
 		go func() {
 			defer conn.Close()
 			var buf [4096]byte

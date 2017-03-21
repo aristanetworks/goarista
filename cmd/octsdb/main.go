@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig/client"
@@ -31,6 +32,11 @@ func main() {
 		"Set to true to run as a UDP to TCP to OpenTSDB server.")
 	udpAddrFlag := flag.String("udpaddr", "",
 		"Address of the UDP server to connect to/serve on.")
+	parityFlag := flag.Int("parityshards", 0,
+		"Number of parity shards for the Reed Solomon Erasure Coding used for UDP."+
+			" Clients and servers should have the same number.")
+	udpTimeoutFlag := flag.Duration("udptimeout", 2*time.Second,
+		"Timeout for each")
 	username, password, subscriptions, addrs, opts := client.ParseFlags()
 
 	if !(*tsdbFlag != "" || *textFlag || *udpAddrFlag != "") {
@@ -56,7 +62,7 @@ func main() {
 		if *udpAddrFlag == "" {
 			glog.Fatal("Specify the address for the UDP server to listen on with -udpaddr")
 		}
-		server, err := newUDPServer(*udpAddrFlag, *tsdbFlag)
+		server, err := newUDPServer(*udpAddrFlag, *tsdbFlag, *parityFlag)
 		if err != nil {
 			glog.Fatal("Failed to create UDP server: ", err)
 		}
@@ -67,7 +73,7 @@ func main() {
 	if *textFlag {
 		c = newTextDumper()
 	} else if *udpAddrFlag != "" {
-		c = newUDPClient(*udpAddrFlag)
+		c = newUDPClient(*udpAddrFlag, *parityFlag, *udpTimeoutFlag)
 	} else {
 		// TODO: support HTTP(S).
 		c = newTelnetClient(*tsdbFlag)
