@@ -55,7 +55,7 @@ func NewEncoder(topic string, key sarama.Encoder, dataset string) kafka.MessageE
 	}
 }
 
-func (e *elasticsearchMessageEncoder) Encode(message proto.Message) (*sarama.ProducerMessage,
+func (e *elasticsearchMessageEncoder) Encode(message proto.Message) ([]*sarama.ProducerMessage,
 	error) {
 
 	response, ok := message.(*pb.SubscribeResponse)
@@ -78,11 +78,13 @@ func (e *elasticsearchMessageEncoder) Encode(message proto.Message) (*sarama.Pro
 		return nil, err
 	}
 	glog.V(9).Infof("kafka: %s", updateJSON)
-	return &sarama.ProducerMessage{
-		Topic:    e.topic,
-		Key:      e.key,
-		Value:    sarama.ByteEncoder(updateJSON),
-		Metadata: kafka.Metadata{StartTime: time.Unix(0, update.Timestamp), NumMessages: 1},
+	return []*sarama.ProducerMessage{
+		&sarama.ProducerMessage{
+			Topic:    e.topic,
+			Key:      e.key,
+			Value:    sarama.ByteEncoder(updateJSON),
+			Metadata: kafka.Metadata{StartTime: time.Unix(0, update.Timestamp), NumMessages: 1},
+		},
 	}, nil
 
 }

@@ -19,7 +19,7 @@ import (
 // MessageEncoder is an encoder interface
 // which handles encoding proto.Message to sarama.ProducerMessage
 type MessageEncoder interface {
-	Encode(proto.Message) (*sarama.ProducerMessage, error)
+	Encode(proto.Message) ([]*sarama.ProducerMessage, error)
 	HandleSuccess(*sarama.ProducerMessage)
 	HandleError(*sarama.ProducerError)
 }
@@ -60,7 +60,7 @@ func NewBaseEncoder(typ string) *BaseEncoder {
 }
 
 // Encode encodes the proto message to a sarama.ProducerMessage
-func (e *BaseEncoder) Encode(message proto.Message) (*sarama.ProducerMessage,
+func (e *BaseEncoder) Encode(message proto.Message) ([]*sarama.ProducerMessage,
 	error) {
 	// doesn't do anything, but keep it in order for BaseEncoder
 	// to implement MessageEncoder interface

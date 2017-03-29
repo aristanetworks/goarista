@@ -81,7 +81,7 @@ func (p *producer) run() {
 			if !open {
 				return
 			}
-			err := p.produceNotification(batch)
+			err := p.produceNotifications(batch)
 			if err != nil {
 				if _, ok := err.(openconfig.UnhandledSubscribeResponseError); !ok {
 					panic(err)
@@ -103,18 +103,20 @@ func (p *producer) Stop() {
 	p.wg.Wait()
 }
 
-func (p *producer) produceNotification(protoMessage proto.Message) error {
-	message, err := p.encoder.Encode(protoMessage)
+func (p *producer) produceNotifications(protoMessage proto.Message) error {
+	messages, err := p.encoder.Encode(protoMessage)
 	if err != nil {
 		return err
 	}
-	select {
-	case p.kafkaProducer.Input() <- message:
-		glog.V(9).Infof("Message produced to Kafka: %s", message)
-		return nil
-	case <-p.done:
-		return nil
+	for _, m := range messages {
+		select {
+		case <-p.done:
+			return nil
+		case p.kafkaProducer.Input() <- m:
+			glog.V(9).Infof("Message produced to Kafka: %s", m)
+		}
 	}
+	return nil
 }
 
 // handleSuccesses reads from the producer's successes channel and collects some
