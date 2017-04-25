@@ -28,9 +28,9 @@ type MessageEncoder interface {
 // and mainly handle monitoring
 type BaseEncoder struct {
 	// Used for monitoring
-	histogram    *monitor.Histogram
 	numSuccesses monitor.Uint
 	numFailures  monitor.Uint
+	histogram    *monitor.Histogram
 }
 
 // counter counts the number Sysdb clients we have, and is used to guarantee that we
@@ -82,5 +82,4 @@ func (e *BaseEncoder) HandleError(msg *sarama.ProducerError) {
 	e.histogram.UpdateLatencyValues(metadata.StartTime, time.Now())
 	glog.Errorf("Kafka Producer error: %s", msg.Error())
 	e.numFailures.Add(uint64(metadata.NumMessages))
-
 }
