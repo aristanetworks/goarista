@@ -125,6 +125,12 @@ func TestKafkaProducer(t *testing.T) {
 	toDBProducer.Stop()
 }
 
+type mockMsg struct{}
+
+func (m mockMsg) Reset()         {}
+func (m mockMsg) String() string { return "" }
+func (m mockMsg) ProtoMessage()  {}
+
 func TestProducerStartStop(t *testing.T) {
 	// this test checks that Start() followed by Stop() doesn't cause any race conditions.
 
@@ -139,6 +145,22 @@ func TestProducerStartStop(t *testing.T) {
 		done:          make(chan struct{}),
 	}
 
+	msg := &pb.SubscribeResponse{
+		Response: &pb.SubscribeResponse_Update{
+			Update: &pb.Notification{
+				Timestamp: 0,
+				Prefix:    newPath("/foo/bar"),
+				Update:    []*pb.Update{},
+			},
+		},
+	}
+
+	go func() {
+		for {
+			p.Write(msg)
+		}
+	}()
 	p.Start()
+	p.Write(msg)
 	p.Stop()
 }

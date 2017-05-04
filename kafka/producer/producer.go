@@ -96,8 +96,8 @@ func (p *producer) Write(msg proto.Message) {
 
 func (p *producer) Stop() {
 	close(p.done)
-	p.kafkaProducer.Close()
 	p.wg.Wait()
+	p.kafkaProducer.Close()
 }
 
 func (p *producer) produceNotifications(protoMessage proto.Message) error {
@@ -120,8 +120,16 @@ func (p *producer) produceNotifications(protoMessage proto.Message) error {
 // information for monitoring
 func (p *producer) handleSuccesses() {
 	defer p.wg.Done()
-	for msg := range p.kafkaProducer.Successes() {
-		p.encoder.HandleSuccess(msg)
+	for {
+		select {
+		case msg, open := <-p.kafkaProducer.Successes():
+			if !open {
+				return
+			}
+			p.encoder.HandleSuccess(msg)
+		case <-p.done:
+			return
+		}
 	}
 }
 
@@ -129,8 +137,15 @@ func (p *producer) handleSuccesses() {
 // for monitoring
 func (p *producer) handleErrors() {
 	defer p.wg.Done()
-	for msg := range p.kafkaProducer.Errors() {
-		p.encoder.HandleError(msg)
-
+	for {
+		select {
+		case msg, open := <-p.kafkaProducer.Errors():
+			if !open {
+				return
+			}
+			p.encoder.HandleError(msg)
+		case <-p.done:
+			return
+		}
 	}
 }
