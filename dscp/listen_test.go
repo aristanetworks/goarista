@@ -13,7 +13,7 @@ import (
 
 func TestListenTCPWithTOS(t *testing.T) {
 	testListenTCPWithTOS(t, "127.0.0.1")
-	testListenTCPWithTOS(t, "::1")
+	//testListenTCPWithTOS(t, "::1")
 }
 
 func testListenTCPWithTOS(t *testing.T, ip string) {
