@@ -69,7 +69,11 @@ func (e *BaseEncoder) Encode(message proto.Message) ([]*sarama.ProducerMessage,
 
 // HandleSuccess process the metadata of messages from kafka producer Successes channel
 func (e *BaseEncoder) HandleSuccess(msg *sarama.ProducerMessage) {
-	metadata := msg.Metadata.(Metadata)
+	// TODO: Fix this and provide an interface to get the metadata object
+	metadata, ok := msg.Metadata.(Metadata)
+	if !ok {
+		return
+	}
 	// TODO: Add a monotonic clock source when one becomes available
 	e.histogram.UpdateLatencyValues(metadata.StartTime, time.Now())
 	e.numSuccesses.Add(uint64(metadata.NumMessages))
@@ -77,7 +81,11 @@ func (e *BaseEncoder) HandleSuccess(msg *sarama.ProducerMessage) {
 
 // HandleError process the metadata of messages from kafka producer Errors channel
 func (e *BaseEncoder) HandleError(msg *sarama.ProducerError) {
-	metadata := msg.Msg.Metadata.(Metadata)
+	// TODO: Fix this and provide an interface to get the metadata object
+	metadata, ok := msg.Msg.Metadata.(Metadata)
+	if !ok {
+		return
+	}
 	// TODO: Add a monotonic clock source when one becomes available
 	e.histogram.UpdateLatencyValues(metadata.StartTime, time.Now())
 	glog.Errorf("Kafka Producer error: %s", msg.Error())
