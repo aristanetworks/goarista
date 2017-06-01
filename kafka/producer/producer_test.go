@@ -155,12 +155,35 @@ func TestProducerStartStop(t *testing.T) {
 		},
 	}
 
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
+			select {
+			case <-mock.input:
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
 			p.Write(msg)
 		}
 	}()
 	p.Start()
 	p.Write(msg)
 	p.Stop()
+	close(done)
+	wg.Wait()
 }

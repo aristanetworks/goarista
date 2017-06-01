@@ -91,7 +91,12 @@ func (p *producer) run() {
 }
 
 func (p *producer) Write(msg proto.Message) {
-	p.notifsChan <- msg
+	select {
+	case p.notifsChan <- msg:
+	case <-p.done:
+		// TODO: This should probably return an EOF error, but that
+		// would change the API
+	}
 }
 
 func (p *producer) Stop() {
