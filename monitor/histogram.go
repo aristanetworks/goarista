@@ -42,11 +42,17 @@ func NewHistogram(name string, numBuckets int, growth float64, smallest float64,
 
 }
 
-func (h *Histogram) String() string {
+// Print returns the histogram as a chart
+func (h *Histogram) Print() string {
 	return h.addUnits(h.histogram.Delta1m().String()) +
 		h.addUnits(h.histogram.Delta10m().String()) +
 		h.addUnits(h.histogram.Delta1h().String()) +
 		h.addUnits(h.histogram.Value().String())
+}
+
+// String returns the histogram as JSON.
+func (h *Histogram) String() string {
+	return h.histogram.String()
 }
 
 // UpdateLatencyValues updates the stats.Histogram's buckets with the new

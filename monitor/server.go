@@ -9,11 +9,9 @@ package monitor
 import (
 	"expvar"
 	"fmt"
-	"html/template"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Go documentation recommended usage
-	"strings"
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/netns"
@@ -58,20 +56,17 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, indexTmpl)
 }
 
+// PrintableHistogram represents a Histogram that can be printed as
+// a chart.
+type PrintableHistogram interface {
+	Print() string
+}
+
 // Pretty prints the latency histograms
-func latencyHandler(w http.ResponseWriter, r *http.Request) {
+func histogramHandler(w http.ResponseWriter, r *http.Request) {
 	expvar.Do(func(kv expvar.KeyValue) {
-		if strings.HasSuffix(kv.Key, "Histogram") {
-			template.Must(template.New("latency").Parse(
-				`<html>
-					<head>
-						<title>/debug/latency</title>
-					</head>
-					<body>
-						<pre>{{.}}</pre>
-					</body>
-				</html>
-			`)).Execute(w, template.HTML(strings.Replace(kv.Value.String(), "\\n", "<br />", -1)))
+		if hist, ok := kv.Value.(PrintableHistogram); ok {
+			w.Write([]byte(hist.Print()))
 		}
 	})
 }
@@ -79,7 +74,7 @@ func latencyHandler(w http.ResponseWriter, r *http.Request) {
 // Run sets up the HTTP server and any handlers
 func (s *server) Run() {
 	http.HandleFunc("/debug", debugHandler)
-	http.HandleFunc("/debug/latency", latencyHandler)
+	http.HandleFunc("/debug/histograms", histogramHandler)
 
 	var listener net.Listener
 	err := netns.Do(s.vrfName, func() error {

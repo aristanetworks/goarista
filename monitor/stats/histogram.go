@@ -2,6 +2,7 @@ package stats
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -31,8 +32,8 @@ type HistogramBucket struct {
 	Count int64
 }
 
-// Print writes textual output of the histogram values.
-func (v HistogramValue) Print(w io.Writer) {
+// PrintChart writes textual output of the histogram values.
+func (v HistogramValue) PrintChart(w io.Writer) {
 	avg := float64(v.Sum) / float64(v.Count)
 	fmt.Fprintf(w, "Count: %d  Min: %d  Max: %d  Avg: %.2f\n", v.Count, v.Min, v.Max, avg)
 	fmt.Fprintf(w, "%s\n", strings.Repeat("-", 60))
@@ -101,7 +102,7 @@ func (v HistogramValue) MarshalJSON() ([]byte, error) {
 // String returns the textual output of the histogram values as string.
 func (v HistogramValue) String() string {
 	var b bytes.Buffer
-	v.Print(&b)
+	v.PrintChart(&b)
 	return b.String()
 }
 
@@ -168,6 +169,20 @@ func NewHistogram(opts HistogramOptions) *Histogram {
 // Opts returns a copy of the options used to create the Histogram.
 func (h *Histogram) Opts() HistogramOptions {
 	return h.opts
+}
+
+// Print returns the histogram as a chart.
+func (h *Histogram) Print() string {
+	return h.Value().String()
+}
+
+// String returns a JSON representation of the histogram for expvars.
+func (h *Histogram) String() string {
+	j, err := json.Marshal(h.Value())
+	if err != nil {
+		return ""
+	}
+	return string(j)
 }
 
 // Add adds a value to the histogram.
