@@ -67,6 +67,37 @@ func (v HistogramValue) Print(w io.Writer) {
 	}
 }
 
+// MarshalJSON marshal the HistogramValue into JSON.
+func (v HistogramValue) MarshalJSON() ([]byte, error) {
+	if v.Count <= 0 {
+		return nil, nil
+	}
+
+	var b bytes.Buffer
+	avg := float64(v.Sum) / float64(v.Count)
+	fmt.Fprintf(&b,
+		`{"stats":{"count":%d,"min":%d,"max":%d,"avg":%.2f}, "buckets": {`,
+		v.Count, v.Min, v.Max, avg)
+
+	percentMulti := 100 / float64(v.Count)
+	for i, bucket := range v.Buckets {
+		fmt.Fprintf(&b, `"[%d,`, bucket.LowBound)
+		if i+1 < len(v.Buckets) {
+			fmt.Fprintf(&b, `%d)":{`, v.Buckets[i+1].LowBound)
+		} else {
+			fmt.Fprintf(&b, `%s)":{`, "inf")
+		}
+
+		fmt.Fprintf(&b, `"count":%d,"percentage":%.1f}`,
+			bucket.Count, float64(bucket.Count)*percentMulti)
+		if i != len(v.Buckets)-1 {
+			fmt.Fprintf(&b, ",")
+		}
+	}
+	fmt.Fprint(&b, `}}`)
+	return b.Bytes(), nil
+}
+
 // String returns the textual output of the histogram values as string.
 func (v HistogramValue) String() string {
 	var b bytes.Buffer
