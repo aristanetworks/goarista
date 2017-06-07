@@ -54,10 +54,12 @@ func setNsByName(nsName string) error {
 // the given function, or if the given function itself returns an error.
 //
 // The callback function is expected to do something simple such as just
-// creating a socket / opening a connection, as it's not desirable to start
-// complex logic in a goroutine that is pinned to the current OS thread.
-// Also any goroutine started from the callback function may or may not
-// execute in the desired namespace.
+// creating a socket / opening a connection, and you should not kick off any
+// complex logic from the callback or call any complicated code or create any
+// new goroutine from the callback.  The callback should not panic or use defer.
+// The behavior of this function is undefined if the callback doesn't conform
+// these demands.
+//go:nosplit
 func Do(nsName string, cb Callback) error {
 	// If destNS is empty, the function is called in the caller's namespace
 	if nsName == "" {
@@ -71,13 +73,13 @@ func Do(nsName string, cb Callback) error {
 	} else if err != nil {
 		return fmt.Errorf("Failed to open %s: %s", selfNsFile, err)
 	}
-	defer currNsFd.close()
 
 	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
 
 	// Jump to the new network namespace
 	if err := setNsByName(nsName); err != nil {
+		runtime.UnlockOSThread()
+		currNsFd.close()
 		return fmt.Errorf("Failed to set the namespace to %s: %s", nsName, err)
 	}
 
@@ -86,9 +88,11 @@ func Do(nsName string, cb Callback) error {
 
 	// Come back to the original namespace
 	if err = setNs(currNsFd); err != nil {
-		return fmt.Errorf("Failed to return to the original namespace: %s (callback returned %v)",
+		cbErr = fmt.Errorf("Failed to return to the original namespace: %s (callback returned %v)",
 			err, cbErr)
 	}
 
+	runtime.UnlockOSThread()
+	currNsFd.close()
 	return cbErr
 }
