@@ -20,8 +20,13 @@ import (
 // prevents us from re-implementing DeepEqual properly or implementing some other
 // reflection-based tools.  So this is our cheat on top of theirs.  It makes
 // the given reflect.Value appear as if it was exported.
+//
+// This function requires go1.6 or newer.
 func ForceExport(v reflect.Value) reflect.Value {
-	const flagRO uintptr = 1 << 5 // from reflect/value.go
+	// constants from reflect/value.go
+	const flagStickyRO uintptr = 1 << 5
+	const flagEmbedRO uintptr = 1 << 6 // new in go1.6 (was flagIndir before)
+	const flagRO uintptr = flagStickyRO | flagEmbedRO
 	ptr := unsafe.Pointer(&v)
 	rv := (*struct {
 		typ  unsafe.Pointer // a *reflect.rtype (reflect.Type)

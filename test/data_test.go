@@ -5,6 +5,7 @@
 package test
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/aristanetworks/goarista/key"
@@ -18,6 +19,10 @@ type builtinCompare struct {
 type complexCompare struct {
 	m map[builtinCompare]int8
 	p *complexCompare
+}
+
+type embedder struct {
+	builtinCompare
 }
 
 type partialCompare struct {
@@ -456,5 +461,11 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a:    []byte("foo"),
 		b:    []byte("bar"),
 		diff: `[]byte("foo") != []byte("bar")`,
+	}, {
+		a: embedder{builtinCompare: builtinCompare{}},
+		b: embedder{builtinCompare: builtinCompare{}},
+	}, {
+		a: regexp.MustCompile("foo.*bar"),
+		b: regexp.MustCompile("foo.*bar"),
 	}}
 }

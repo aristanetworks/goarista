@@ -9,8 +9,12 @@ import (
 	"testing"
 )
 
+type embedme struct {
+}
+
 type somestruct struct {
 	a uint32
+	embedme
 }
 
 func TestForcePublic(t *testing.T) {
@@ -24,5 +28,9 @@ func TestForcePublic(t *testing.T) {
 		t.Fatalf("Should have gotten a uint32 but got a %T", a)
 	} else if i != 42 {
 		t.Fatalf("Should have gotten 42 but got a %d", i)
+	}
+	e := ForceExport(v.FieldByName("embedme")).Interface()
+	if _, ok := e.(embedme); !ok {
+		t.Fatalf("Should have gotten a embedme but got a %T", e)
 	}
 }
