@@ -15,13 +15,14 @@ import (
 // LatencyHistogram contains the data needed to properly export itself to expvar
 // and provide a pretty printed version
 type LatencyHistogram struct {
-	name      string
-	histogram *stats.Histogram
+	name        string
+	histogram   *stats.Histogram
+	latencyUnit time.Duration
 }
 
 // NewLatencyHistogram creates a new histogram and registers an HTTP handler for it.
-func NewLatencyHistogram(name string, numBuckets int, growth float64, smallest float64,
-	minValue int64) *LatencyHistogram {
+func NewLatencyHistogram(name string, latencyUnit time.Duration, numBuckets int,
+	growth float64, smallest float64, minValue int64) *LatencyHistogram {
 
 	histogramOptions := stats.HistogramOptions{
 		NumBuckets:         numBuckets,
@@ -30,8 +31,9 @@ func NewLatencyHistogram(name string, numBuckets int, growth float64, smallest f
 		MinValue:           minValue,
 	}
 	histogram := &LatencyHistogram{
-		name:      name,
-		histogram: stats.NewHistogram(histogramOptions),
+		name:        name,
+		histogram:   stats.NewHistogram(histogramOptions),
+		latencyUnit: latencyUnit,
 	}
 	expvar.Publish(name, histogram)
 	return histogram
@@ -50,10 +52,10 @@ func (h *LatencyHistogram) String() string {
 	return h.histogram.String()
 }
 
-// UpdateLatencyValues updates the stats.Histogram's buckets with the new
+// UpdateLatencyValues updates the LatencyHistogram's buckets with the new
 // datapoint and updates the string associated with the expvar.String
-func (h *LatencyHistogram) UpdateLatencyValues(t0, t1 time.Time) {
-	h.histogram.Add(int64(t1.Sub(t0) / time.Microsecond))
+func (h *LatencyHistogram) UpdateLatencyValues(delta time.Duration) {
+	h.histogram.Add(int64(delta / h.latencyUnit))
 }
 
 func (h *LatencyHistogram) addUnits(hist string) string {
