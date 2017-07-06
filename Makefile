@@ -36,6 +36,7 @@ coverage: coverdata
 fmtcheck:
 	errors=`gofmt -l .`; if test -n "$$errors"; then echo Check these files for style errors:; echo "$$errors"; exit 1; fi
 	find . -name '*.go' ! -name '*.pb.go' -exec ./check_line_len.awk {} +
+	./check_copyright_notice.sh
 
 vet:
 	$(GO) vet ./...
