@@ -30,7 +30,7 @@ type BaseEncoder struct {
 	// Used for monitoring
 	numSuccesses monitor.Uint
 	numFailures  monitor.Uint
-	histogram    *monitor.Histogram
+	histogram    *monitor.LatencyHistogram
 }
 
 // counter counts the number Sysdb clients we have, and is used to guarantee that we
@@ -47,7 +47,7 @@ func NewBaseEncoder(typ string) *BaseEncoder {
 		histName = fmt.Sprintf("%s-%d", histName, id)
 		statsName = fmt.Sprintf("%s-%d", statsName, id)
 	}
-	hist := monitor.NewHistogram(histName, 32, 0.3, 1000, 0)
+	hist := monitor.NewLatencyHistogram(histName, 32, 0.3, 1000, 0)
 	e := &BaseEncoder{
 		histogram: hist,
 	}
