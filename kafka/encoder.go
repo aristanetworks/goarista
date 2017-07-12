@@ -75,7 +75,7 @@ func (e *BaseEncoder) HandleSuccess(msg *sarama.ProducerMessage) {
 		return
 	}
 	// TODO: Add a monotonic clock source when one becomes available
-	e.histogram.UpdateLatencyValues(time.Now().Sub(metadata.StartTime))
+	e.histogram.UpdateLatencyValues(time.Since(metadata.StartTime))
 	e.numSuccesses.Add(uint64(metadata.NumMessages))
 }
 
@@ -87,7 +87,7 @@ func (e *BaseEncoder) HandleError(msg *sarama.ProducerError) {
 		return
 	}
 	// TODO: Add a monotonic clock source when one becomes available
-	e.histogram.UpdateLatencyValues(time.Now().Sub(metadata.StartTime))
+	e.histogram.UpdateLatencyValues(time.Since(metadata.StartTime))
 	glog.Errorf("Kafka Producer error: %s", msg.Error())
 	e.numFailures.Add(uint64(metadata.NumMessages))
 }
