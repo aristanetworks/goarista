@@ -4,7 +4,13 @@
 
 package gnmi
 
-import "strings"
+import (
+	"bytes"
+	"fmt"
+	"strings"
+
+	pb "github.com/openconfig/reference/rpc/gnmi"
+)
 
 // nextTokenIndex returns the end index of the first token.
 func nextTokenIndex(path string) int {
@@ -66,4 +72,104 @@ func SplitPaths(paths []string) [][]string {
 // JoinPath joins a gnmi path
 func JoinPath(path []string) string {
 	return "/" + strings.Join(path, "/")
+}
+
+// ParseGNMIElements builds up a gnmi path, from user-supplied text
+func ParseGNMIElements(elms []string) ([]*pb.PathElem, error) {
+	var ret []*pb.PathElem
+	for _, e := range elms {
+		n, keys, err := parseElement(e)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, &pb.PathElem{Name: n, Key: keys})
+	}
+	return ret, nil
+}
+
+// parseElement parses a path element, according to the gNMI specification. See
+// https://github.com/openconfig/reference/blame/master/rpc/gnmi/gnmi-path-conventions.md
+//
+// It returns the first string (the current element name), and an optional map of key name
+// value pairs.
+func parseElement(pathElement string) (string, map[string]string, error) {
+	// First check if there are any keys, i.e. do we have at least one '[' in the element
+	name, keyStart := findUnescaped(pathElement, '[')
+	if keyStart < 0 {
+		return name, nil, nil
+	}
+
+	// Error if there is no element name or if the "[" is at the beginning of the path element
+	if len(name) == 0 {
+		return "", nil, fmt.Errorf("failed to find element name in %q", pathElement)
+	}
+
+	// Look at the keys now.
+	keys := make(map[string]string)
+	keyPart := pathElement[keyStart:]
+	for keyPart != "" {
+		k, v, nextKey, err := parseKey(keyPart)
+		if err != nil {
+			return "", nil, err
+		}
+		keys[k] = v
+		keyPart = nextKey
+	}
+	return name, keys, nil
+}
+
+// parseKey returns the key name, key value and the remaining string to be parsed,
+func parseKey(s string) (string, string, string, error) {
+	if s[0] != '[' {
+		return "", "", "", fmt.Errorf("failed to find opening '[' in %q", s)
+	}
+	k, iEq := findUnescaped(s[1:], '=')
+	if iEq < 0 {
+		return "", "", "", fmt.Errorf("failed to find '=' in %q", s)
+	}
+	if k == "" {
+		return "", "", "", fmt.Errorf("failed to find key name in %q", s)
+	}
+
+	rhs := s[1+iEq+1:]
+	v, iClosBr := findUnescaped(rhs, ']')
+	if iClosBr < 0 {
+		return "", "", "", fmt.Errorf("failed to find ']' in %q", s)
+	}
+	if v == "" {
+		return "", "", "", fmt.Errorf("failed to find key value in %q", s)
+	}
+
+	next := rhs[iClosBr+1:]
+	return k, v, next, nil
+}
+
+// findUnescaped will return the index of the first unescaped match of 'find', and the unescaped
+// string leading up to it.
+func findUnescaped(s string, find byte) (string, int) {
+	// Take a fast track if there are no escape sequences
+	if strings.IndexByte(s, '\\') == -1 {
+		i := strings.IndexByte(s, find)
+		if i < 0 {
+			return s, -1
+		}
+		return s[:i], i
+	}
+
+	// Find the first match, taking care of escaped chars.
+	buf := &bytes.Buffer{}
+	var i int
+	len := len(s)
+	for i = 0; i < len; {
+		ch := s[i]
+		if ch == find {
+			return buf.String(), i
+		} else if ch == '\\' && i < len-1 {
+			i++
+			ch = s[i]
+		}
+		buf.WriteByte(ch)
+		i++
+	}
+	return buf.String(), -1
 }
