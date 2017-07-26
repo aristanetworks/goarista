@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
+	pb "github.com/openconfig/reference/rpc/gnmi"
 )
 
 func p(s ...string) []string {
@@ -51,6 +52,41 @@ func TestSplitPath(t *testing.T) {
 		if !test.DeepEqual(tc.exp, got) {
 			t.Errorf("[%d] unexpect split for %q. Expected: %v, Got: %v",
 				i, tc.in, tc.exp, got)
+		}
+	}
+}
+
+func TestStrPath(t *testing.T) {
+	for i, tc := range []struct {
+		path, alt string
+	}{{
+		path: "/",
+	}, {
+		path: "/foo/bar",
+	}, {
+		path: "/foo[name=a]/bar",
+	}, {
+		path: "/foo[a=1][b=2]/bar",
+		alt:  "/foo[b=2][a=1]/bar",
+	}, {
+		path: "/foo[a=1\\]2][b=2]/bar",
+		alt:  "/foo[b=2][a=1\\]2]/bar",
+	}, {
+		path: "/foo[a=1][b=2]/bar\\/baz",
+		alt:  "/foo[b=2][a=1]/bar\\/baz",
+	}} {
+		sElms := SplitPath(tc.path)
+		pbElms, err := ParseGNMIElements(sElms)
+		if err != nil {
+			t.Errorf("failed to parse %s: %s", sElms, err)
+		}
+		s := StrPath(&pb.Path{Elem: pbElms})
+		if !test.DeepEqual(tc.path, s) {
+			if tc.alt == "" {
+				t.Errorf("[%d] want %s, got %s", i, tc.path, s)
+			} else if !test.DeepEqual(tc.alt, s) {
+				t.Errorf("[%d] want %s OR %s, got %s", i, tc.path, tc.alt, s)
+			}
 		}
 	}
 }

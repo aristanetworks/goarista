@@ -87,7 +87,11 @@ func NewGetRequest(paths [][]string) (*pb.GetRequest, error) {
 		Path: make([]*pb.Path, len(paths)),
 	}
 	for i, p := range paths {
-		req.Path[i] = &pb.Path{Element: p}
+		elm, err := ParseGNMIElements(p)
+		if err != nil {
+			return nil, err
+		}
+		req.Path[i] = &pb.Path{Elem: elm}
 	}
 	return req, nil
 }
@@ -98,7 +102,11 @@ func NewSubscribeRequest(paths [][]string) (*pb.SubscribeRequest, error) {
 		Subscription: make([]*pb.Subscription, len(paths)),
 	}
 	for i, p := range paths {
-		subList.Subscription[i] = &pb.Subscription{Path: &pb.Path{Element: p}}
+		elm, err := ParseGNMIElements(p)
+		if err != nil {
+			return nil, err
+		}
+		subList.Subscription[i] = &pb.Subscription{Path: &pb.Path{Elem: elm}}
 	}
 	return &pb.SubscribeRequest{
 		Request: &pb.SubscribeRequest_Subscribe{Subscribe: subList}}, nil

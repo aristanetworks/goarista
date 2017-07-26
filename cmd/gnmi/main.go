@@ -131,7 +131,7 @@ func get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 	}
 	for _, notif := range resp.Notification {
 		for _, update := range notif.Update {
-			fmt.Printf("%s:\n", gnmi.JoinPath(update.Path.Element))
+			fmt.Printf("%s:\n", gnmi.StrPath(update.Path))
 			fmt.Println(string(update.Value.Value))
 		}
 	}
@@ -151,17 +151,21 @@ func extractJSON(val string) []byte {
 func set(ctx context.Context, client pb.GNMIClient, setOps []*operation) error {
 	req := &pb.SetRequest{}
 	for _, op := range setOps {
+		elm, err := gnmi.ParseGNMIElements(op.path)
+		if err != nil {
+			return err
+		}
 		switch op.opType {
 		case "delete":
-			req.Delete = append(req.Delete, &pb.Path{Element: op.path})
+			req.Delete = append(req.Delete, &pb.Path{Elem: elm})
 		case "update":
 			req.Update = append(req.Update, &pb.Update{
 				Value: &pb.Value{Value: extractJSON(op.val)},
-				Path:  &pb.Path{Element: op.path}})
+				Path:  &pb.Path{Elem: elm}})
 		case "replace":
 			req.Replace = append(req.Replace, &pb.Update{
 				Value: &pb.Value{Value: extractJSON(op.val)},
-				Path:  &pb.Path{Element: op.path}})
+				Path:  &pb.Path{Elem: elm}})
 		}
 	}
 
@@ -209,7 +213,7 @@ func subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) erro
 			}
 		case *pb.SubscribeResponse_Update:
 			for _, update := range resp.Update.Update {
-				fmt.Printf("%s = %s\n", gnmi.JoinPath(update.Path.Element),
+				fmt.Printf("%s = %s\n", gnmi.StrPath(update.Path),
 					string(update.Value.Value))
 			}
 		}

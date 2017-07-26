@@ -69,9 +69,36 @@ func SplitPaths(paths []string) [][]string {
 	return out
 }
 
-// JoinPath joins a gnmi path
-func JoinPath(path []string) string {
-	return "/" + strings.Join(path, "/")
+// StrPath builds a human-readable form of a gnmi path.
+// e.g. /a/b/c[e=f]
+func StrPath(path *pb.Path) string {
+	if len(path.Elem) == 0 {
+		return "/"
+	}
+	buf := &bytes.Buffer{}
+	for _, elm := range path.Elem {
+		buf.WriteRune('/')
+		writeSafeString(buf, elm.Name, '/')
+		if len(elm.Key) > 0 {
+			for k, v := range elm.Key {
+				buf.WriteRune('[')
+				buf.WriteString(k)
+				buf.WriteRune('=')
+				writeSafeString(buf, v, ']')
+				buf.WriteRune(']')
+			}
+		}
+	}
+	return buf.String()
+}
+
+func writeSafeString(buf *bytes.Buffer, s string, esc rune) {
+	for _, c := range s {
+		if c == esc || c == '\\' {
+			buf.WriteRune('\\')
+		}
+		buf.WriteRune(c)
+	}
 }
 
 // ParseGNMIElements builds up a gnmi path, from user-supplied text
