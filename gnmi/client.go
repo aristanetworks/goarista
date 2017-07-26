@@ -82,18 +82,18 @@ func NewContext(ctx context.Context, cfg *Config) context.Context {
 }
 
 // NewGetRequest returns a GetRequest for the given paths
-func NewGetRequest(paths [][]string) *pb.GetRequest {
+func NewGetRequest(paths [][]string) (*pb.GetRequest, error) {
 	req := &pb.GetRequest{
 		Path: make([]*pb.Path, len(paths)),
 	}
 	for i, p := range paths {
 		req.Path[i] = &pb.Path{Element: p}
 	}
-	return req
+	return req, nil
 }
 
 // NewSubscribeRequest returns a SubscribeRequest for the given paths
-func NewSubscribeRequest(paths [][]string) *pb.SubscribeRequest {
+func NewSubscribeRequest(paths [][]string) (*pb.SubscribeRequest, error) {
 	subList := &pb.SubscriptionList{
 		Subscription: make([]*pb.Subscription, len(paths)),
 	}
@@ -101,5 +101,5 @@ func NewSubscribeRequest(paths [][]string) *pb.SubscribeRequest {
 		subList.Subscription[i] = &pb.Subscription{Path: &pb.Path{Element: p}}
 	}
 	return &pb.SubscribeRequest{
-		Request: &pb.SubscribeRequest_Subscribe{Subscribe: subList}}
+		Request: &pb.SubscribeRequest_Subscribe{Subscribe: subList}}, nil
 }

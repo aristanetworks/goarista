@@ -121,7 +121,10 @@ func main() {
 }
 
 func get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
-	req := gnmi.NewGetRequest(paths)
+	req, err := gnmi.NewGetRequest(paths)
+	if err != nil {
+		return err
+	}
 	resp, err := client.Get(ctx, req)
 	if err != nil {
 		return err
@@ -181,7 +184,11 @@ func subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) erro
 	if err != nil {
 		return err
 	}
-	if err := stream.Send(gnmi.NewSubscribeRequest(paths)); err != nil {
+	req, err := gnmi.NewSubscribeRequest(paths)
+	if err != nil {
+		return err
+	}
+	if err := stream.Send(req); err != nil {
 		return err
 	}
 
