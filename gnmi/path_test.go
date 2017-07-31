@@ -40,6 +40,12 @@ func TestSplitPath(t *testing.T) {
 	}, {
 		in:  "/foo[a=1][b=2]/bar",
 		exp: p("foo[a=1][b=2]", "bar"),
+	}, {
+		in:  "/foo[a=1\\]2][b=2]/bar",
+		exp: p("foo[a=1\\]2][b=2]", "bar"),
+	}, {
+		in:  "/foo[a=1][b=2]/bar\\baz",
+		exp: p("foo[a=1][b=2]", "bar\\baz"),
 	}} {
 		got := SplitPath(tc.in)
 		if !test.DeepEqual(tc.exp, got) {

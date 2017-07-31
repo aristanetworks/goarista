@@ -29,7 +29,7 @@ func nextTokenIndex(path string) int {
 		case '\\':
 			escape = !escape
 		case '/':
-			if !inBrackets {
+			if !inBrackets && !escape {
 				return i
 			}
 			escape = false
