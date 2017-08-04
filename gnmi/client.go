@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/aristanetworks/glog"
-	pb "github.com/openconfig/reference/rpc/gnmi"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 // Config is the gnmi.Client config

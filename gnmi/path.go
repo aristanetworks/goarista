@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	pb "github.com/openconfig/reference/rpc/gnmi"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 // nextTokenIndex returns the end index of the first token.

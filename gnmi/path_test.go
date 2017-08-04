@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
-	pb "github.com/openconfig/reference/rpc/gnmi"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 func p(s ...string) []string {

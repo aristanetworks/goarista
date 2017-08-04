@@ -13,7 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	pb "github.com/openconfig/reference/rpc/gnmi"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
 
 	"github.com/aristanetworks/glog"
