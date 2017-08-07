@@ -47,14 +47,7 @@ func StringifyInterface(key interface{}) (string, error) {
 	case float64:
 		str = "f" + strconv.FormatInt(int64(math.Float64bits(key)), 10)
 	case string:
-		str = key
-		for i := 0; i < len(str); i++ {
-			if chr := str[i]; chr < 0x20 || chr > 0x7E {
-				str = strconv.QuoteToASCII(str)
-				str = str[1 : len(str)-1] // Drop the leading and trailing quotes.
-				break
-			}
-		}
+		str = escape(key)
 	case map[string]interface{}:
 		keys := SortedKeys(key)
 		for i, k := range keys {
@@ -83,6 +76,17 @@ func StringifyInterface(key interface{}) (string, error) {
 	}
 
 	return str, nil
+}
+
+func escape(str string) string {
+	for i := 0; i < len(str); i++ {
+		if chr := str[i]; chr < 0x20 || chr > 0x7E {
+			str = strconv.QuoteToASCII(str)
+			str = str[1 : len(str)-1] // Drop the leading and trailing quotes.
+			break
+		}
+	}
+	return str
 }
 
 func stringify(key interface{}) string {
