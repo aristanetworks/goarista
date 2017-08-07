@@ -25,6 +25,8 @@ type keyImpl struct {
 	key interface{}
 }
 
+type strKey string
+
 // New wraps the given value in a Key.
 // This function panics if the value passed in isn't allowed in a Key or
 // doesn't implement value.Value.
@@ -32,9 +34,11 @@ func New(intf interface{}) Key {
 	switch t := intf.(type) {
 	case map[string]interface{}:
 		return composite{sentinel, t}
+	case string:
+		return strKey(t)
 	case int8, int16, int32, int64,
 		uint8, uint16, uint32, uint64,
-		float32, float64, string, bool,
+		float32, float64, bool,
 		value.Value:
 		return keyImpl{key: intf}
 	default:
@@ -101,4 +105,28 @@ func keyEqual(a, b interface{}) bool {
 	}
 
 	return a == b
+}
+
+func (k strKey) Key() interface{} {
+	return string(k)
+}
+
+func (k strKey) String() string {
+	return escape(string(k))
+}
+
+func (k strKey) GoString() string {
+	return fmt.Sprintf("key.New(%q)", string(k))
+}
+
+func (k strKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(k))
+}
+
+func (k strKey) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return string(k) == o.Key()
 }
