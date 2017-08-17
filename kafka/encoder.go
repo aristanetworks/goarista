@@ -44,8 +44,8 @@ func NewBaseEncoder(typ string) *BaseEncoder {
 	histName := "kafkaProducerHistogram_" + typ
 	statsName := "messagesStats"
 	if id := atomic.AddUint32(&counter, 1); id > 1 {
-		histName = fmt.Sprintf("%s-%d", histName, id)
-		statsName = fmt.Sprintf("%s-%d", statsName, id)
+		histName = fmt.Sprintf("%s_%d", histName, id)
+		statsName = fmt.Sprintf("%s_%d", statsName, id)
 	}
 	hist := monitor.NewLatencyHistogram(histName, time.Microsecond, 32, 0.3, 1000, 0)
 	e := &BaseEncoder{
