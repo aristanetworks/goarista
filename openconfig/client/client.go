@@ -45,7 +45,7 @@ func New(username, password, addr string, opts []grpc.DialOption) *Client {
 
 	ctx := context.Background()
 	if username != "" {
-		ctx = metadata.NewContext(ctx, metadata.Pairs(
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(
 			"username", username,
 			"password", password))
 	}

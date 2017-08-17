@@ -74,7 +74,7 @@ func Dial(cfg *Config) pb.GNMIClient {
 // metadata if they are set in cfg.
 func NewContext(ctx context.Context, cfg *Config) context.Context {
 	if cfg.Username != "" {
-		ctx = metadata.NewContext(ctx, metadata.Pairs(
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(
 			"username", cfg.Username,
 			"password", cfg.Password))
 	}
