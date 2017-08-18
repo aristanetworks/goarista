@@ -7,6 +7,7 @@ package key
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/aristanetworks/goarista/value"
@@ -38,6 +39,9 @@ type uint16Key int16
 type uint32Key int32
 type uint64Key int64
 
+type float32Key float32
+type float64Key float64
+
 // New wraps the given value in a Key.
 // This function panics if the value passed in isn't allowed in a Key or
 // doesn't implement value.Value.
@@ -63,8 +67,11 @@ func New(intf interface{}) Key {
 		return uint32Key(t)
 	case uint64:
 		return uint64Key(t)
-	case float32, float64, bool,
-		value.Value:
+	case float32:
+		return float32Key(t)
+	case float64:
+		return float64Key(t)
+	case bool, value.Value:
 		return keyImpl{key: intf}
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
@@ -354,4 +361,54 @@ func (k uint64Key) Equal(other interface{}) bool {
 		return false
 	}
 	return uint64(k) == o.Key()
+}
+
+// Key interface implementation for float32
+func (k float32Key) Key() interface{} {
+	return float32(k)
+}
+
+func (k float32Key) String() string {
+	return "f" + strconv.FormatInt(int64(math.Float32bits(float32(k))), 10)
+}
+
+func (k float32Key) GoString() string {
+	return fmt.Sprintf("key.New(%v)", float32(k))
+}
+
+func (k float32Key) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatFloat(float64(k), 'g', -1, 32)), nil
+}
+
+func (k float32Key) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return float32(k) == o.Key()
+}
+
+// Key interface implementation for float64
+func (k float64Key) Key() interface{} {
+	return float64(k)
+}
+
+func (k float64Key) String() string {
+	return "f" + strconv.FormatInt(int64(math.Float64bits(float64(k))), 10)
+}
+
+func (k float64Key) GoString() string {
+	return fmt.Sprintf("key.New(%v)", float64(k))
+}
+
+func (k float64Key) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatFloat(float64(k), 'g', -1, 64)), nil
+}
+
+func (k float64Key) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return float64(k) == o.Key()
 }
