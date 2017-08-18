@@ -27,10 +27,16 @@ type keyImpl struct {
 }
 
 type strKey string
+
 type int8Key int8
 type int16Key int16
 type int32Key int32
 type int64Key int64
+
+type uint8Key int8
+type uint16Key int16
+type uint32Key int32
+type uint64Key int64
 
 // New wraps the given value in a Key.
 // This function panics if the value passed in isn't allowed in a Key or
@@ -49,8 +55,15 @@ func New(intf interface{}) Key {
 		return int32Key(t)
 	case int64:
 		return int64Key(t)
-	case uint8, uint16, uint32, uint64,
-		float32, float64, bool,
+	case uint8:
+		return uint8Key(t)
+	case uint16:
+		return uint16Key(t)
+	case uint32:
+		return uint32Key(t)
+	case uint64:
+		return uint64Key(t)
+	case float32, float64, bool,
 		value.Value:
 		return keyImpl{key: intf}
 	default:
@@ -241,4 +254,104 @@ func (k int64Key) Equal(other interface{}) bool {
 		return false
 	}
 	return int64(k) == o.Key()
+}
+
+// Key interface implementation for uint8
+func (k uint8Key) Key() interface{} {
+	return uint8(k)
+}
+
+func (k uint8Key) String() string {
+	return strconv.FormatUint(uint64(k), 10)
+}
+
+func (k uint8Key) GoString() string {
+	return fmt.Sprintf("key.New(%d)", uint8(k))
+}
+
+func (k uint8Key) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatUint(uint64(k), 10)), nil
+}
+
+func (k uint8Key) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return uint8(k) == o.Key()
+}
+
+// Key interface implementation for uint16
+func (k uint16Key) Key() interface{} {
+	return uint16(k)
+}
+
+func (k uint16Key) String() string {
+	return strconv.FormatUint(uint64(k), 10)
+}
+
+func (k uint16Key) GoString() string {
+	return fmt.Sprintf("key.New(%d)", uint16(k))
+}
+
+func (k uint16Key) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatUint(uint64(k), 10)), nil
+}
+
+func (k uint16Key) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return uint16(k) == o.Key()
+}
+
+// Key interface implementation for uint32
+func (k uint32Key) Key() interface{} {
+	return uint32(k)
+}
+
+func (k uint32Key) String() string {
+	return strconv.FormatUint(uint64(k), 10)
+}
+
+func (k uint32Key) GoString() string {
+	return fmt.Sprintf("key.New(%d)", uint32(k))
+}
+
+func (k uint32Key) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatUint(uint64(k), 10)), nil
+}
+
+func (k uint32Key) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return uint32(k) == o.Key()
+}
+
+// Key interface implementation for uint64
+func (k uint64Key) Key() interface{} {
+	return uint64(k)
+}
+
+func (k uint64Key) String() string {
+	return strconv.FormatUint(uint64(k), 10)
+}
+
+func (k uint64Key) GoString() string {
+	return fmt.Sprintf("key.New(%d)", uint64(k))
+}
+
+func (k uint64Key) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatUint(uint64(k), 10)), nil
+}
+
+func (k uint64Key) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return uint64(k) == o.Key()
 }
