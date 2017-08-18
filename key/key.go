@@ -42,6 +42,8 @@ type uint64Key int64
 type float32Key float32
 type float64Key float64
 
+type boolKey bool
+
 // New wraps the given value in a Key.
 // This function panics if the value passed in isn't allowed in a Key or
 // doesn't implement value.Value.
@@ -71,7 +73,9 @@ func New(intf interface{}) Key {
 		return float32Key(t)
 	case float64:
 		return float64Key(t)
-	case bool, value.Value:
+	case bool:
+		return boolKey(t)
+	case value.Value:
 		return keyImpl{key: intf}
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
@@ -411,4 +415,29 @@ func (k float64Key) Equal(other interface{}) bool {
 		return false
 	}
 	return float64(k) == o.Key()
+}
+
+// Key interface implementation for bool
+func (k boolKey) Key() interface{} {
+	return bool(k)
+}
+
+func (k boolKey) String() string {
+	return strconv.FormatBool(bool(k))
+}
+
+func (k boolKey) GoString() string {
+	return fmt.Sprintf("key.New(%v)", bool(k))
+}
+
+func (k boolKey) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatBool(bool(k))), nil
+}
+
+func (k boolKey) Equal(other interface{}) bool {
+	o, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return bool(k) == o.Key()
 }
