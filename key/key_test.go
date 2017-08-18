@@ -535,3 +535,59 @@ func BenchmarkBigMapWithCompositeKeys(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkBuiltInType(b *testing.B) {
+	benches := []struct {
+		val interface{}
+	}{
+		{
+			val: "foo",
+		},
+		{
+			val: int8(-12),
+		},
+		{
+			val: int16(123),
+		},
+		{
+			val: int32(123),
+		},
+		{
+			val: int64(123456),
+		},
+		{
+			val: uint8(12),
+		},
+		{
+			val: uint16(123),
+		},
+		{
+			val: uint32(123),
+		},
+		{
+			val: uint64(123456),
+		},
+		{
+			val: float32(123456.12),
+		},
+		{
+			val: float64(123456.12),
+		},
+		{
+			val: true,
+		},
+	}
+
+	for _, bench := range benches {
+		var k Key
+		b.Run(fmt.Sprintf("%T", bench.val), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				// create the key.Key and call some function here
+				if k = New(bench.val); k == nil {
+					b.Fatalf("expect to get key.Key, but got nil")
+				}
+			}
+		})
+	}
+}
