@@ -91,6 +91,23 @@ func TestStrPath(t *testing.T) {
 	}
 }
 
+func TestStrPathBackwardsCompat(t *testing.T) {
+	for i, tc := range []struct {
+		path *pb.Path
+		str  string
+	}{{
+		path: &pb.Path{
+			Element: p("foo[a=1][b=2]", "bar"),
+		},
+		str: "/foo[a=1][b=2]/bar",
+	}} {
+		got := StrPath(tc.path)
+		if got != tc.str {
+			t.Errorf("[%d] want %q, got %q", i, tc.str, got)
+		}
+	}
+}
+
 func TestParseElement(t *testing.T) {
 	// test cases
 	cases := []struct {
