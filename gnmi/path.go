@@ -7,6 +7,7 @@ package gnmi
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
@@ -88,11 +89,19 @@ func strPathV04(path *pb.Path) string {
 		buf.WriteRune('/')
 		writeSafeString(buf, elm.Name, '/')
 		if len(elm.Key) > 0 {
-			for k, v := range elm.Key {
+			// Sort the keys so that they print in a conistent
+			// order. We don't have the YANG AST information, so the
+			// best we can do is sort them alphabetically.
+			keys := make([]string, 0, len(elm.Key))
+			for k := range elm.Key {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
 				buf.WriteRune('[')
 				buf.WriteString(k)
 				buf.WriteRune('=')
-				writeSafeString(buf, v, ']')
+				writeSafeString(buf, elm.Key[k], ']')
 				buf.WriteRune(']')
 			}
 		}
