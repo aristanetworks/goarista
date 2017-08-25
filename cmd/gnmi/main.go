@@ -157,15 +157,21 @@ func set(ctx context.Context, client pb.GNMIClient, setOps []*operation) error {
 		}
 		switch op.opType {
 		case "delete":
-			req.Delete = append(req.Delete, &pb.Path{Elem: elm})
+			req.Delete = append(req.Delete, &pb.Path{
+				Element: op.path, // Backwards compatibility with pre-v0.4 gnmi
+				Elem:    elm})
 		case "update":
 			req.Update = append(req.Update, &pb.Update{
 				Value: &pb.Value{Value: extractJSON(op.val)},
-				Path:  &pb.Path{Elem: elm}})
+				Path: &pb.Path{
+					Element: op.path, // Backwards compatibility with pre-v0.4 gnmi
+					Elem:    elm}})
 		case "replace":
 			req.Replace = append(req.Replace, &pb.Update{
 				Value: &pb.Value{Value: extractJSON(op.val)},
-				Path:  &pb.Path{Elem: elm}})
+				Path: &pb.Path{
+					Element: op.path, // Backwards compatibility with pre-v0.4 gnmi
+					Elem:    elm}})
 		}
 	}
 

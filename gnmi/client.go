@@ -91,7 +91,9 @@ func NewGetRequest(paths [][]string) (*pb.GetRequest, error) {
 		if err != nil {
 			return nil, err
 		}
-		req.Path[i] = &pb.Path{Elem: elm}
+		req.Path[i] = &pb.Path{
+			Element: p, // Backwards compatibility with pre-v0.4 gnmi
+			Elem:    elm}
 	}
 	return req, nil
 }
@@ -106,7 +108,9 @@ func NewSubscribeRequest(paths [][]string) (*pb.SubscribeRequest, error) {
 		if err != nil {
 			return nil, err
 		}
-		subList.Subscription[i] = &pb.Subscription{Path: &pb.Path{Elem: elm}}
+		subList.Subscription[i] = &pb.Subscription{Path: &pb.Path{
+			Element: p, // Backwards compatibility with pre-v0.4 gnmi
+			Elem:    elm}}
 	}
 	return &pb.SubscribeRequest{
 		Request: &pb.SubscribeRequest_Subscribe{Subscribe: subList}}, nil
