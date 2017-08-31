@@ -191,6 +191,14 @@ func strDecimal64(d *pb.Decimal64) string {
 	return fmt.Sprintf("%d.%d", i, frac)
 }
 
+func update(p *pb.Path, v []byte) *pb.Update {
+	return &pb.Update{Path: p, Val: jsonval(v)}
+}
+
+func jsonval(j []byte) *pb.TypedValue {
+	return &pb.TypedValue{Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: j}}
+}
+
 func set(ctx context.Context, client pb.GNMIClient, setOps []*operation) error {
 	req := &pb.SetRequest{}
 	for _, op := range setOps {
@@ -198,24 +206,18 @@ func set(ctx context.Context, client pb.GNMIClient, setOps []*operation) error {
 		if err != nil {
 			return err
 		}
+		p := &pb.Path{
+			Element: op.path, // Backwards compatibility with pre-v0.4 gnmi
+			Elem:    elm,
+		}
 
 		switch op.opType {
 		case "delete":
-			req.Delete = append(req.Delete, &pb.Path{
-				Element: op.path, // Backwards compatibility with pre-v0.4 gnmi
-				Elem:    elm})
+			req.Delete = append(req.Delete, p)
 		case "update":
-			req.Update = append(req.Update, &pb.Update{
-				Value: &pb.Value{Value: extractJSON(op.val)},
-				Path: &pb.Path{
-					Element: op.path, // Backwards compatibility with pre-v0.4 gnmi
-					Elem:    elm}})
+			req.Update = append(req.Update, update(p, extractJSON(op.val)))
 		case "replace":
-			req.Replace = append(req.Replace, &pb.Update{
-				Value: &pb.Value{Value: extractJSON(op.val)},
-				Path: &pb.Path{
-					Element: op.path, // Backwards compatibility with pre-v0.4 gnmi
-					Elem:    elm}})
+			req.Replace = append(req.Replace, update(p, extractJSON(op.val)))
 		}
 	}
 
