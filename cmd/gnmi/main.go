@@ -132,7 +132,7 @@ func get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 	for _, notif := range resp.Notification {
 		for _, update := range notif.Update {
 			fmt.Printf("%s:\n", gnmi.StrPath(update.Path))
-			fmt.Println(string(update.Value.Value))
+			fmt.Println(strVal(update))
 		}
 	}
 	return nil
@@ -148,6 +148,49 @@ func extractJSON(val string) []byte {
 	return jsonBytes
 }
 
+// strVal will return a string representing the value within the supplied update
+func strVal(u *pb.Update) string {
+	if u.Value != nil {
+		return string(u.Value.Value) // Backwards compatibility with pre-v0.4 gnmi
+	}
+
+	switch v := u.Val.GetValue().(type) {
+	case *pb.TypedValue_StringVal:
+		return v.StringVal
+	case *pb.TypedValue_JsonIetfVal:
+		return string(v.JsonIetfVal)
+	case *pb.TypedValue_IntVal:
+		return fmt.Sprintf("%v", v.IntVal)
+	case *pb.TypedValue_UintVal:
+		return fmt.Sprintf("%v", v.UintVal)
+	case *pb.TypedValue_BoolVal:
+		return fmt.Sprintf("%v", v.BoolVal)
+	case *pb.TypedValue_BytesVal:
+		return string(v.BytesVal)
+	case *pb.TypedValue_DecimalVal:
+		return strDecimal64(v.DecimalVal)
+	default:
+		return fmt.Sprintf("[oops - %T]", v)
+	}
+}
+
+func strDecimal64(d *pb.Decimal64) string {
+	var i, frac uint64
+	if d.Precision > 0 {
+		div := uint64(10)
+		it := d.Precision - 1
+		for it > 0 {
+			div *= 10
+			it--
+		}
+		i = d.Digits / div
+		frac = d.Digits % div
+	} else {
+		i = d.Digits
+	}
+	return fmt.Sprintf("%d.%d", i, frac)
+}
+
 func set(ctx context.Context, client pb.GNMIClient, setOps []*operation) error {
 	req := &pb.SetRequest{}
 	for _, op := range setOps {
@@ -155,6 +198,7 @@ func set(ctx context.Context, client pb.GNMIClient, setOps []*operation) error {
 		if err != nil {
 			return err
 		}
+
 		switch op.opType {
 		case "delete":
 			req.Delete = append(req.Delete, &pb.Path{
@@ -220,7 +264,7 @@ func subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) erro
 		case *pb.SubscribeResponse_Update:
 			for _, update := range resp.Update.Update {
 				fmt.Printf("%s = %s\n", gnmi.StrPath(update.Path),
-					string(update.Value.Value))
+					strVal(update))
 			}
 		}
 	}
