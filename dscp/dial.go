@@ -1,4 +1,4 @@
-// Copyright (C) 2016  Arista Networks, Inc.
+// Copyright (C) 2017  Arista Networks, Inc.
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
@@ -10,18 +10,18 @@ import (
 	"reflect"
 )
 
-// ListenTCPWithTOS is similar to net.ListenTCP but with the socket configured
+// DialTCPWithTOS is similar to net.DialTCP but with the socket configured
 // to the use the given ToS (Type of Service), to specify DSCP / ECN / class
 // of service flags to use for incoming connections.
-func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) {
-	lsnr, err := net.ListenTCP("tcp", address)
+func DialTCPWithTOS(laddr, raddr *net.TCPAddr, tos byte) (*net.TCPConn, error) {
+	conn, err := net.DialTCP("tcp", laddr, raddr)
 	if err != nil {
 		return nil, err
 	}
-	value := reflect.ValueOf(lsnr)
-	if err = setTOS(address, value, tos); err != nil {
-		lsnr.Close()
+	value := reflect.ValueOf(conn)
+	if err = setTOS(raddr, value, tos); err != nil {
+		conn.Close()
 		return nil, err
 	}
-	return lsnr, err
+	return conn, err
 }
