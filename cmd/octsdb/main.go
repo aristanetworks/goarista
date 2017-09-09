@@ -182,6 +182,12 @@ func parseValue(update *openconfig.Update) []interface{} {
 			value[i] = num
 		}
 		return value
+	case map[string]interface{}:
+		// Special case for simple value types that just have a "value"
+		// attribute (common case).
+		if val, ok := value["value"].(json.Number); ok && len(value) == 1 {
+			return []interface{}{parseNumber(val, update)}
+		}
 	default:
 		glog.V(9).Infof("Ignoring non-numeric or non-numeric slice value in %s", update)
 	}
