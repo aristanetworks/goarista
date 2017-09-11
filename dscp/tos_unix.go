@@ -15,11 +15,11 @@ import (
 // This works for the UNIX implementation of netFD, i.e. not on Windows and Plan9.
 // This kludge is needed until https://github.com/golang/go/issues/9661 is fixed.
 // value can be the reflection of a connection or a dialer.
-func setTOS(address *net.TCPAddr, value reflect.Value, tos byte) error {
+func setTOS(ip net.IP, value reflect.Value, tos byte) error {
 	netFD := value.Elem().FieldByName("fd").Elem()
 	fd := int(netFD.FieldByName("pfd").FieldByName("Sysfd").Int())
 	var proto, optname int
-	if address.IP.To4() != nil {
+	if ip.To4() != nil {
 		proto = unix.IPPROTO_IP
 		optname = unix.IP_TOS
 	} else {

@@ -19,7 +19,7 @@ func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) 
 		return nil, err
 	}
 	value := reflect.ValueOf(lsnr)
-	if err = setTOS(address, value, tos); err != nil {
+	if err = setTOS(address.IP, value, tos); err != nil {
 		lsnr.Close()
 		return nil, err
 	}
