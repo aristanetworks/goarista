@@ -21,7 +21,7 @@ See the [cmd](cmd) directory.
 
 Provides `ListenTCPWithTOS()`, which is a replacement for `net.ListenTCP()`
 that allows specifying the ToS (Type of Service), to specify DSCP / ECN /
-class of service flags to use for incoming connections.
+class of service flags to use for incoming connections. Requires `go1.9`.
 
 ## key
 
