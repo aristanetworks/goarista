@@ -6,6 +6,7 @@
 package dscp
 
 import (
+	"fmt"
 	"net"
 	"reflect"
 	"time"
@@ -36,9 +37,24 @@ func DialTimeoutWithTOS(network, address string, timeout time.Duration, tos byte
 	if err != nil {
 		return nil, err
 	}
-	ip := net.ParseIP(address)
-	value := reflect.ValueOf(conn)
-	if err = setTOS(ip, value, tos); err != nil {
+	var ip net.IP
+	// Unfortunately we have to explicitly switch on the address type here to
+	// avoid calling net.ResolveIpAddr(), as this would resolve the address
+	// again leading to a potentially different result.
+	switch addr := conn.RemoteAddr().(type) {
+	case *net.TCPAddr:
+		ip = addr.IP
+	case *net.UDPAddr:
+		ip = addr.IP
+	case *net.IPAddr:
+		ip = addr.IP
+	case *net.IPNet:
+		ip = addr.IP
+	default:
+		conn.Close()
+		return nil, fmt.Errorf("DialTimeoutWithTOS: cannot set TOS on a %s socket", network)
+	}
+	if err = setTOS(ip, reflect.ValueOf(conn), tos); err != nil {
 		conn.Close()
 		return nil, err
 	}
