@@ -264,8 +264,9 @@ func subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) erro
 				return errors.New("initial sync failed")
 			}
 		case *pb.SubscribeResponse_Update:
+			prefix := gnmi.StrPath(resp.Update.Prefix)
 			for _, update := range resp.Update.Update {
-				fmt.Printf("%s = %s\n", gnmi.StrPath(update.Path),
+				fmt.Printf("%s%s = %s\n", prefix, gnmi.StrPath(update.Path),
 					strVal(update))
 			}
 		}
