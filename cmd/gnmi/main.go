@@ -22,7 +22,7 @@ import (
 
 // TODO: Make this more clear
 var help = `Usage of gnmi:
-gnmi [options]
+gnmi -addr ADDRESS:PORT [options...]
   capabilities
   get PATH+
   subscribe PATH+
@@ -56,6 +56,10 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if cfg.Addr == "" {
+		exitWithError("error: address not specified")
+	}
+
 	args := flag.Args()
 
 	ctx := gnmi.NewContext(context.Background(), cfg)
