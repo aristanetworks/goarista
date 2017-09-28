@@ -72,7 +72,10 @@ func main() {
 			if len(setOps) != 0 {
 				exitWithError("error: 'capabilities' not allowed after 'merge|replace|delete'")
 			}
-			exitWithError("error: 'capabilities' not supported")
+			err := capabilities(ctx, client)
+			if err != nil {
+				glog.Fatal(err)
+			}
 			return
 		case "get":
 			if len(setOps) != 0 {
@@ -138,6 +141,21 @@ func get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 			fmt.Printf("%s:\n", gnmi.StrPath(update.Path))
 			fmt.Println(strVal(update))
 		}
+	}
+	return nil
+}
+
+func capabilities(ctx context.Context, client pb.GNMIClient) error {
+	resp, err := client.Capabilities(ctx, &pb.CapabilityRequest{})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Version: %s\n", resp.GNMIVersion)
+	for _, mod := range resp.SupportedModels {
+		fmt.Printf("SupportedModel: %s\n", mod)
+	}
+	for _, enc := range resp.SupportedEncodings {
+		fmt.Printf("SupportedEncoding: %s\n", enc)
 	}
 	return nil
 }
