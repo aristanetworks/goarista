@@ -12,6 +12,8 @@ import (
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
+
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 // TODO: Make this more clear
@@ -78,11 +80,21 @@ func main() {
 			if len(setOps) != 0 {
 				exitWithError("error: 'subscribe' not allowed after 'merge|replace|delete'")
 			}
-			err := gnmi.Subscribe(ctx, client, gnmi.SplitPaths(args[i+1:]))
-			if err != nil {
-				glog.Fatal(err)
+			respChan := make(chan *pb.SubscribeResponse)
+			errChan := make(chan error)
+			defer close(respChan)
+			defer close(errChan)
+			go gnmi.Subscribe(ctx, client, gnmi.SplitPaths(args[i+1:]), respChan, errChan)
+			for {
+				select {
+				case resp := <-respChan:
+					if err := gnmi.LogSubscribeResponse(resp); err != nil {
+						exitWithError(err.Error())
+					}
+				case err := <-errChan:
+					exitWithError(err.Error())
+				}
 			}
-			return
 		case "update", "replace", "delete":
 			if len(args) == i+1 {
 				exitWithError("error: missing path")

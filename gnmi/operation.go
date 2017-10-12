@@ -155,42 +155,53 @@ func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
 }
 
 // Subscribe sends a SubscribeRequest to the given client.
-func Subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
+func Subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string,
+	respChan chan<- *pb.SubscribeResponse, errChan chan<- error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stream, err := client.Subscribe(ctx)
 	if err != nil {
-		return err
+		errChan <- err
+		return
 	}
 	req, err := NewSubscribeRequest(paths)
 	if err != nil {
-		return err
+		errChan <- err
+		return
 	}
 	if err := stream.Send(req); err != nil {
-		return err
+		errChan <- err
+		return
 	}
 
 	for {
-		response, err := stream.Recv()
+		resp, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				return nil
+				return
 			}
-			return err
+			errChan <- err
+			return
 		}
-		switch resp := response.Response.(type) {
-		case *pb.SubscribeResponse_Error:
-			return errors.New(resp.Error.Message)
-		case *pb.SubscribeResponse_SyncResponse:
-			if !resp.SyncResponse {
-				return errors.New("initial sync failed")
-			}
-		case *pb.SubscribeResponse_Update:
-			prefix := StrPath(resp.Update.Prefix)
-			for _, update := range resp.Update.Update {
-				fmt.Printf("%s = %s\n", path.Join(prefix, StrPath(update.Path)),
-					strVal(update))
-			}
+		respChan <- resp
+	}
+}
+
+// LogSubscribeResponse logs update responses to stderr.
+func LogSubscribeResponse(response *pb.SubscribeResponse) error {
+	switch resp := response.Response.(type) {
+	case *pb.SubscribeResponse_Error:
+		return errors.New(resp.Error.Message)
+	case *pb.SubscribeResponse_SyncResponse:
+		if !resp.SyncResponse {
+			return errors.New("initial sync failed")
+		}
+	case *pb.SubscribeResponse_Update:
+		prefix := StrPath(resp.Update.Prefix)
+		for _, update := range resp.Update.Update {
+			fmt.Printf("%s = %s\n", path.Join(prefix, StrPath(update.Path)),
+				strVal(update))
 		}
 	}
+	return nil
 }
