@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -16,6 +17,10 @@ import (
 
 	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+)
+
+const (
+	defaultPort = "6042"
 )
 
 // Config is the gnmi.Client config
@@ -62,6 +67,9 @@ func Dial(cfg *Config) pb.GNMIClient {
 		opts = append(opts, grpc.WithInsecure())
 	}
 
+	if !strings.ContainsRune(cfg.Addr, ':') {
+		cfg.Addr += ":" + defaultPort
+	}
 	conn, err := grpc.Dial(cfg.Addr, opts...)
 	if err != nil {
 		glog.Fatalf("Failed to dial: %s", err)
