@@ -73,13 +73,14 @@ func SplitPaths(paths []string) [][]string {
 // StrPath builds a human-readable form of a gnmi path.
 // e.g. /a/b/c[e=f]
 func StrPath(path *pb.Path) string {
-	if len(path.Elem) != 0 {
+	if path == nil {
+		return "/"
+	} else if len(path.Elem) != 0 {
 		return strPathV04(path)
 	} else if len(path.Element) != 0 {
 		return strPathV03(path)
-	} else {
-		return "/"
 	}
+	return "/"
 }
 
 // strPathV04 handles the v0.4 gnmi and later path.Elem member.
