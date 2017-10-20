@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
@@ -187,7 +188,7 @@ func Subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string) erro
 		case *pb.SubscribeResponse_Update:
 			prefix := StrPath(resp.Update.Prefix)
 			for _, update := range resp.Update.Update {
-				fmt.Printf("%s%s = %s\n", prefix, StrPath(update.Path),
+				fmt.Printf("%s = %s\n", path.Join(prefix, StrPath(update.Path)),
 					strVal(update))
 			}
 		}
