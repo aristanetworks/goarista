@@ -83,7 +83,7 @@ func strVal(u *pb.Update) string {
 	case *pb.TypedValue_DecimalVal:
 		return strDecimal64(v.DecimalVal)
 	default:
-		return fmt.Sprintf("[oops - %T]", v)
+		panic(v)
 	}
 }
 
