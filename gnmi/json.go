@@ -31,5 +31,5 @@ func NotificationToMap(notif *gnmi.Notification) (map[string]interface{}, error)
 		}
 		m["deletes"] = deletes
 	}
-	return map[string]interface{}{"notification": m}, nil
+	return m, nil
 }
