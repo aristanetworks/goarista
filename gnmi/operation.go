@@ -5,6 +5,7 @@
 package gnmi
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,7 +30,7 @@ func Get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 	for _, notif := range resp.Notification {
 		for _, update := range notif.Update {
 			fmt.Printf("%s:\n", StrPath(update.Path))
-			fmt.Println(strVal(update))
+			fmt.Println(strUpdateVal(update))
 		}
 	}
 	return nil
@@ -61,13 +62,17 @@ func extractJSON(val string) []byte {
 	return jsonBytes
 }
 
-// strVal will return a string representing the value within the supplied update
-func strVal(u *pb.Update) string {
+// strUpdateVal will return a string representing the value within the supplied update
+func strUpdateVal(u *pb.Update) string {
 	if u.Value != nil {
 		return string(u.Value.Value) // Backwards compatibility with pre-v0.4 gnmi
 	}
+	return strVal(u.Val)
+}
 
-	switch v := u.Val.GetValue().(type) {
+// strVal will return a string representing the supplied value
+func strVal(val *pb.TypedValue) string {
+	switch v := val.GetValue().(type) {
 	case *pb.TypedValue_StringVal:
 		return v.StringVal
 	case *pb.TypedValue_JsonIetfVal:
@@ -82,6 +87,8 @@ func strVal(u *pb.Update) string {
 		return string(v.BytesVal)
 	case *pb.TypedValue_DecimalVal:
 		return strDecimal64(v.DecimalVal)
+	case *pb.TypedValue_LeaflistVal:
+		return strLeaflist(v.LeaflistVal)
 	default:
 		panic(v)
 	}
@@ -102,6 +109,32 @@ func strDecimal64(d *pb.Decimal64) string {
 		i = d.Digits
 	}
 	return fmt.Sprintf("%d.%d", i, frac)
+}
+
+// strLeafList builds a human-readable form of a leaf-list. e.g. [1,2,3] or [a,b,c]
+func strLeaflist(v *pb.ScalarArray) string {
+	s := make([]string, 0, len(v.Element))
+	sz := 2 // []
+
+	// convert arbitrary TypedValues to string form
+	for _, elm := range v.Element {
+		str := strVal(elm)
+		s = append(s, str)
+		sz += len(str) + 1 // %v + ,
+	}
+
+	b := make([]byte, sz)
+	buf := bytes.NewBuffer(b)
+
+	buf.WriteRune('[')
+	for i := range v.Element {
+		buf.WriteString(s[i])
+		if i < len(v.Element)-1 {
+			buf.WriteRune(',')
+		}
+	}
+	buf.WriteRune(']')
+	return buf.String()
 }
 
 func update(p *pb.Path, v []byte) *pb.Update {
@@ -200,7 +233,7 @@ func LogSubscribeResponse(response *pb.SubscribeResponse) error {
 		prefix := StrPath(resp.Update.Prefix)
 		for _, update := range resp.Update.Update {
 			fmt.Printf("%s = %s\n", path.Join(prefix, StrPath(update.Path)),
-				strVal(update))
+				strUpdateVal(update))
 		}
 	}
 	return nil
