@@ -91,7 +91,7 @@ func sortImports(in []byte) []byte {
 
 		found := false
 		for j, sect := range sections.vals {
-			if strings.HasPrefix(s, sect) {
+			if strings.HasPrefix(s, sect) && (len(sect) == len(s) || s[len(sect)] == '/') {
 				addImport(j+offset, i, s)
 				found = true
 				break
@@ -227,7 +227,7 @@ func main() {
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error determining VCS root: %s", err)
 			} else {
-				sections.vals = append(sections.vals, root+"/")
+				sections.vals = append(sections.vals, root)
 			}
 		}
 		diff := processFile(f)

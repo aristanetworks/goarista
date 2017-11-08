@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"strings"
 
+	"foobar"
 	"foobar/baz"
 
 	"cvshub.com/foobar/import"
@@ -17,6 +18,7 @@ import (
 	"bytes"
 	"strings"
 
+	"foobar"
 	"foobar/baz"
 
 	"cvshub.com/foobar/import"
@@ -30,6 +32,7 @@ import (
 	z "bytes"
 	"strings"
 
+	"foobar"
 	_ "foobar/baz" // in line comment
 	. "foobar/qux" // in line comment
 
