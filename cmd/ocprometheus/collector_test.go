@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
+
 	"github.com/openconfig/reference/rpc/openconfig"
 	"github.com/prometheus/client_golang/prometheus"
 )

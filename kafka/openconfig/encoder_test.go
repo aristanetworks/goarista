@@ -10,6 +10,7 @@ import (
 
 	"github.com/aristanetworks/goarista/openconfig"
 	"github.com/aristanetworks/goarista/test"
+
 	pb "github.com/openconfig/reference/rpc/openconfig"
 )
 

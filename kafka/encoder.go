@@ -10,9 +10,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/aristanetworks/goarista/monitor"
+
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
-	"github.com/aristanetworks/goarista/monitor"
 	"github.com/golang/protobuf/proto"
 )
 

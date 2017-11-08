@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
 
+	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 

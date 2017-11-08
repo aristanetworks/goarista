@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 

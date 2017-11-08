@@ -13,8 +13,9 @@ import (
 	"net/http"
 	_ "net/http/pprof" // Go documentation recommended usage
 
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/netns"
+
+	"github.com/aristanetworks/glog"
 )
 
 // Server represents a monitoring server

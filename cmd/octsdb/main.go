@@ -15,8 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig/client"
+
+	"github.com/aristanetworks/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/openconfig/reference/rpc/openconfig"
 )

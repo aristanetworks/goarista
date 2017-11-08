@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
+
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 

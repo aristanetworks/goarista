@@ -10,9 +10,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/goarista/kafka/openconfig"
 	"github.com/aristanetworks/goarista/test"
+
+	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/reference/rpc/openconfig"
 )

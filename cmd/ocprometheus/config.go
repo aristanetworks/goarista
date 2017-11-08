@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
-
 	"gopkg.in/yaml.v2"
 )
 

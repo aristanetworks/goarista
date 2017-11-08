@@ -11,12 +11,11 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/aristanetworks/glog"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
-
-	"github.com/aristanetworks/glog"
-	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 const (

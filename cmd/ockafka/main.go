@@ -12,12 +12,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Shopify/sarama"
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/kafka/openconfig"
 	"github.com/aristanetworks/goarista/kafka/producer"
 	"github.com/aristanetworks/goarista/openconfig/client"
+
+	"github.com/Shopify/sarama"
+	"github.com/aristanetworks/glog"
 	"github.com/golang/protobuf/proto"
 )
 

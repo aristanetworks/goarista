@@ -11,8 +11,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/openconfig/client"
+
+	"github.com/aristanetworks/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

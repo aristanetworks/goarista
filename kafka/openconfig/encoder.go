@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Shopify/sarama"
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/elasticsearch"
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/openconfig"
-	"github.com/golang/protobuf/proto"
 
+	"github.com/Shopify/sarama"
+	"github.com/aristanetworks/glog"
+	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/reference/rpc/openconfig"
 )
 
