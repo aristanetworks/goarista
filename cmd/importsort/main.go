@@ -8,11 +8,14 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"golang.org/x/tools/go/vcs"
 )
 
 // csv is a comma-separated flag.Value
@@ -38,7 +41,7 @@ func init() {
 	flag.BoolVar(&writeFile, "w", false, "write result to file instead of stdout")
 	flag.BoolVar(&listDiffFiles, "l", false, "list files whose formatting differs from importsort")
 	flag.Var(&sections, "s", "comma-seperated list of prefixes to define import sections,"+
-		` ex: "cvshub.com/company/"`)
+		` ex: "cvshub.com/company". Default value is to use repository information.`)
 }
 
 // Implementation taken from "isStandardImportPath" in go's source.
@@ -200,9 +203,33 @@ func processFile(filename string) bool {
 	return true
 }
 
+func vcsRootImportPath(f string) (string, error) {
+	path, err := filepath.Abs(f)
+	if err != nil {
+		return "", err
+	}
+	gopath := build.Default.GOPATH
+	var root string
+	_, root, err = vcs.FromDir(filepath.Dir(path), filepath.Join(gopath, "src"))
+	if err != nil {
+		return "", err
+	}
+	return root, nil
+}
+
 func main() {
 	flag.Parse()
 	for _, f := range flag.Args() {
+		if len(sections.vals) == 0 {
+			// Note: the vcs root will only be searched for on the
+			// first file, because later on section.vals will be non-empty
+			root, err := vcsRootImportPath(f)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error determining VCS root: %s", err)
+			} else {
+				sections.vals = append(sections.vals, root+"/")
+			}
+		}
 		diff := processFile(f)
 		if listDiffFiles && diff {
 			fmt.Println(f)
