@@ -177,17 +177,25 @@ func processFile(filename string, writeFile, listDiffFiles bool, sections []stri
 	return true
 }
 
+// maps directory to vcsRoot
+var vcsRootCache = make(map[string]string)
+
 func vcsRootImportPath(f string) (string, error) {
 	path, err := filepath.Abs(f)
 	if err != nil {
 		return "", err
 	}
+	dir := filepath.Dir(path)
+	if root, ok := vcsRootCache[dir]; ok {
+		return root, nil
+	}
 	gopath := build.Default.GOPATH
 	var root string
-	_, root, err = vcs.FromDir(filepath.Dir(path), filepath.Join(gopath, "src"))
+	_, root, err = vcs.FromDir(dir, filepath.Join(gopath, "src"))
 	if err != nil {
 		return "", err
 	}
+	vcsRootCache[dir] = root
 	return root, nil
 }
 
@@ -199,15 +207,15 @@ func main() {
 		` ex: "cvshub.com/company". Default value is to use repository information.`)
 
 	flag.Parse()
+
+	checkVCSRoot := sections.vals == nil
 	for _, f := range flag.Args() {
-		if len(sections.vals) == 0 {
-			// Note: the vcs root will only be searched for on the
-			// first file, because later on section.vals will be non-empty
+		if checkVCSRoot {
 			root, err := vcsRootImportPath(f)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error determining VCS root: %s", err)
 			} else {
-				sections.vals = append(sections.vals, root)
+				sections.vals = []string{root}
 			}
 		}
 		diff := processFile(f, *writeFile, *listDiffFiles, sections.vals)
