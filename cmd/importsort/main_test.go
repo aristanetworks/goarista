@@ -24,12 +24,12 @@ func TestImportSort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sections.Set("foobar,cvshub.com/foobar")
-	if out := genFile(gold); !bytes.Equal(out, gold) {
+	sections := []string{"foobar", "cvshub.com/foobar"}
+	if out := genFile(gold, sections); !bytes.Equal(out, gold) {
 		t.Error("importsort on test.go.gold file produced a change")
 		t.Log(string(out))
 	}
-	if out := genFile(in); !bytes.Equal(out, gold) {
+	if out := genFile(in, sections); !bytes.Equal(out, gold) {
 		t.Error("importsort on test.go.in different than gold")
 		t.Log(string(out))
 	}

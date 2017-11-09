@@ -18,32 +18,6 @@ import (
 	"golang.org/x/tools/go/vcs"
 )
 
-// csv is a comma-separated flag.Value
-type csv struct {
-	vals []string
-}
-
-func (c *csv) String() string {
-	return strings.Join(c.vals, ", ")
-}
-func (c *csv) Set(s string) error {
-	c.vals = strings.Split(s, ",")
-	return nil
-}
-
-var (
-	writeFile     bool
-	listDiffFiles bool
-	sections      csv
-)
-
-func init() {
-	flag.BoolVar(&writeFile, "w", false, "write result to file instead of stdout")
-	flag.BoolVar(&listDiffFiles, "l", false, "list files whose formatting differs from importsort")
-	flag.Var(&sections, "s", "comma-seperated list of prefixes to define import sections,"+
-		` ex: "cvshub.com/company". Default value is to use repository information.`)
-}
-
 // Implementation taken from "isStandardImportPath" in go's source.
 func isStdLibPath(path string) bool {
 	i := strings.Index(path, "/")
@@ -55,7 +29,7 @@ func isStdLibPath(path string) bool {
 }
 
 // sortImports takes in an "import" body and returns it sorted
-func sortImports(in []byte) []byte {
+func sortImports(in []byte, sections []string) []byte {
 	type importLine struct {
 		index int    // index into inLines
 		path  string // import path used for sorting
@@ -64,7 +38,7 @@ func sortImports(in []byte) []byte {
 	// first section is for stdlib imports, the following sections
 	// hold the user specified sections, the final section is for
 	// everything else.
-	imports := make([][]importLine, len(sections.vals)+2)
+	imports := make([][]importLine, len(sections)+2)
 	addImport := func(section, index int, importPath string) {
 		imports[section] = append(imports[section], importLine{index, importPath})
 	}
@@ -90,7 +64,7 @@ func sortImports(in []byte) []byte {
 		s := string(l[start:end])
 
 		found := false
-		for j, sect := range sections.vals {
+		for j, sect := range sections {
 			if strings.HasPrefix(s, sect) && (len(sect) == len(s) || s[len(sect)] == '/') {
 				addImport(j+offset, i, s)
 				found = true
@@ -129,7 +103,7 @@ func sortImports(in []byte) []byte {
 	return out
 }
 
-func genFile(in []byte) []byte {
+func genFile(in []byte, sections []string) []byte {
 	out := make([]byte, 0, len(in)+3) // Add some fudge to avoid re-allocation
 
 	for {
@@ -147,7 +121,7 @@ func genFile(in []byte) []byte {
 			panic("file missing close ')'")
 		}
 		// Sort body of "import" and write it to `out`
-		out = append(out, sortImports(in[:importLen])...)
+		out = append(out, sortImports(in[:importLen], sections)...)
 		out = append(out, []byte(")")...)
 		in = in[importLen+2:]
 	}
@@ -157,12 +131,12 @@ func genFile(in []byte) []byte {
 }
 
 // returns true if the file changed
-func processFile(filename string) bool {
+func processFile(filename string, writeFile, listDiffFiles bool, sections []string) bool {
 	in, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
-	out := genFile(in)
+	out := genFile(in, sections)
 
 	equal := bytes.Equal(in, out)
 	if listDiffFiles {
@@ -218,6 +192,12 @@ func vcsRootImportPath(f string) (string, error) {
 }
 
 func main() {
+	writeFile := flag.Bool("w", false, "write result to file instead of stdout")
+	listDiffFiles := flag.Bool("l", false, "list files whose formatting differs from importsort")
+	var sections csv
+	flag.Var(&sections, "s", "comma-seperated list of prefixes to define import sections,"+
+		` ex: "cvshub.com/company". Default value is to use repository information.`)
+
 	flag.Parse()
 	for _, f := range flag.Args() {
 		if len(sections.vals) == 0 {
@@ -230,9 +210,22 @@ func main() {
 				sections.vals = append(sections.vals, root)
 			}
 		}
-		diff := processFile(f)
-		if listDiffFiles && diff {
+		diff := processFile(f, *writeFile, *listDiffFiles, sections.vals)
+		if *listDiffFiles && diff {
 			fmt.Println(f)
 		}
 	}
+}
+
+// csv is a comma-separated flag.Value
+type csv struct {
+	vals []string
+}
+
+func (c *csv) String() string {
+	return strings.Join(c.vals, ", ")
+}
+func (c *csv) Set(s string) error {
+	c.vals = strings.Split(s, ",")
+	return nil
 }
