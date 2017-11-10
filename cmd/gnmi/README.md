@@ -113,6 +113,20 @@ Note: String values must be quoted. For example, setting the hostname to `"tor13
 gnmi [OPTIONS] update '/system/config/hostname' '"tor13"'
 ```
 
+### CLI requests
+`gnmi` offers the ability to send CLI text inside an `update` or
+`replace` operation. This is achieved by doing an `update` or
+`replace` and using `"cli"` as the path and a set of configure-mode
+CLI commands separated by `\n`.
+
+Example:
+
+Configure the idle-timeout on SSH connections
+```
+gnmi [OPTIONS] update 'cli' 'management ssh
+idle-timeout 300'
+```
+
 ## Paths
 
 Paths in `gnmi` use a simplified xpath style. Path elements are
