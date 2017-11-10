@@ -137,8 +137,9 @@ func strLeaflist(v *pb.ScalarArray) string {
 	return buf.String()
 }
 
-func update(p *pb.Path, v []byte) *pb.Update {
-	return &pb.Update{Path: p, Val: jsonval(v)}
+func update(p *pb.Path, val string) *pb.Update {
+	json := extractJSON(val)
+	return &pb.Update{Path: p, Val: jsonval(json)}
 }
 
 func jsonval(j []byte) *pb.TypedValue {
@@ -156,22 +157,18 @@ type Operation struct {
 func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
 	req := &pb.SetRequest{}
 	for _, op := range setOps {
-		elm, err := ParseGNMIElements(op.Path)
+		p, err := ParseGNMIElements(op.Path)
 		if err != nil {
 			return err
-		}
-		p := &pb.Path{
-			Element: op.Path, // Backwards compatibility with pre-v0.4 gnmi
-			Elem:    elm,
 		}
 
 		switch op.Type {
 		case "delete":
 			req.Delete = append(req.Delete, p)
 		case "update":
-			req.Update = append(req.Update, update(p, extractJSON(op.Val)))
+			req.Update = append(req.Update, update(p, op.Val))
 		case "replace":
-			req.Replace = append(req.Replace, update(p, extractJSON(op.Val)))
+			req.Replace = append(req.Replace, update(p, op.Val))
 		}
 	}
 

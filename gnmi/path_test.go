@@ -74,11 +74,11 @@ func TestStrPath(t *testing.T) {
 		path: "/foo[a=1][b=2]/bar\\/baz",
 	}} {
 		sElms := SplitPath(tc.path)
-		pbElms, err := ParseGNMIElements(sElms)
+		pbPath, err := ParseGNMIElements(sElms)
 		if err != nil {
 			t.Errorf("failed to parse %s: %s", sElms, err)
 		}
-		s := StrPath(&pb.Path{Elem: pbElms})
+		s := StrPath(pbPath)
 		if !test.DeepEqual(tc.path, s) {
 			t.Errorf("[%d] want %s, got %s", i, tc.path, s)
 		}
