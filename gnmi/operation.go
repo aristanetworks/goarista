@@ -153,13 +153,12 @@ type Operation struct {
 	Val  string
 }
 
-// Set sends a SetRequest to the given client.
-func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
+func newSetRequest(setOps []*Operation) (*pb.SetRequest, error) {
 	req := &pb.SetRequest{}
 	for _, op := range setOps {
 		p, err := ParseGNMIElements(op.Path)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		switch op.Type {
@@ -171,7 +170,15 @@ func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
 			req.Replace = append(req.Replace, update(p, op.Val))
 		}
 	}
+	return req, nil
+}
 
+// Set sends a SetRequest to the given client.
+func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
+	req, err := newSetRequest(setOps)
+	if err != nil {
+		return err
+	}
 	resp, err := client.Set(ctx, req)
 	if err != nil {
 		return err
