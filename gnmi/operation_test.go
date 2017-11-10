@@ -17,6 +17,9 @@ func TestNewSetRequest(t *testing.T) {
 		Element: []string{"foo"},
 		Elem:    []*pb.PathElem{&pb.PathElem{Name: "foo"}},
 	}
+	pathCli := &pb.Path{
+		Origin: "cli",
+	}
 
 	testCases := map[string]struct {
 		setOps []*Operation
@@ -43,6 +46,17 @@ func TestNewSetRequest(t *testing.T) {
 					Path: pathFoo,
 					Val: &pb.TypedValue{
 						Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte("true")}},
+				}},
+			},
+		},
+		"cli-replace": {
+			setOps: []*Operation{&Operation{Type: "replace", Path: []string{"cli"},
+				Val: "hostname foo\nip routing"}},
+			exp: pb.SetRequest{
+				Replace: []*pb.Update{&pb.Update{
+					Path: pathCli,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_AsciiVal{AsciiVal: "hostname foo\nip routing"}},
 				}},
 			},
 		},

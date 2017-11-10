@@ -138,12 +138,19 @@ func strLeaflist(v *pb.ScalarArray) string {
 }
 
 func update(p *pb.Path, val string) *pb.Update {
-	json := extractJSON(val)
-	return &pb.Update{Path: p, Val: jsonval(json)}
-}
+	var v *pb.TypedValue
+	switch p.Origin {
+	case "":
+		v = &pb.TypedValue{
+			Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: extractJSON(val)}}
+	case "cli":
+		v = &pb.TypedValue{
+			Value: &pb.TypedValue_AsciiVal{AsciiVal: val}}
+	default:
+		panic(fmt.Errorf("unexpected origin: %q", p.Origin))
+	}
 
-func jsonval(j []byte) *pb.TypedValue {
-	return &pb.TypedValue{Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: j}}
+	return &pb.Update{Path: p, Val: v}
 }
 
 // Operation describes an gNMI operation.
