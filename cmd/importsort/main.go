@@ -202,38 +202,36 @@ func vcsRootImportPath(f string) (string, error) {
 func main() {
 	writeFile := flag.Bool("w", false, "write result to file instead of stdout")
 	listDiffFiles := flag.Bool("l", false, "list files whose formatting differs from importsort")
-	var sections csv
-	flag.Var(&sections, "s", "comma-seperated list of prefixes to define import sections,"+
-		` ex: "cvshub.com/company". Default value is to use repository information.`)
+	var sections multistring
+	flag.Var(&sections, "s", "package `prefix` to define an import section,"+
+		` ex: "cvshub.com/company". May be specified multiple times.`+
+		" If not specified the repository root is used.")
 
 	flag.Parse()
 
-	checkVCSRoot := sections.vals == nil
+	checkVCSRoot := sections == nil
 	for _, f := range flag.Args() {
 		if checkVCSRoot {
 			root, err := vcsRootImportPath(f)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error determining VCS root: %s", err)
 			} else {
-				sections.vals = []string{root}
+				sections = multistring{root}
 			}
 		}
-		diff := processFile(f, *writeFile, *listDiffFiles, sections.vals)
+		diff := processFile(f, *writeFile, *listDiffFiles, sections)
 		if *listDiffFiles && diff {
 			fmt.Println(f)
 		}
 	}
 }
 
-// csv is a comma-separated flag.Value
-type csv struct {
-	vals []string
-}
+type multistring []string
 
-func (c *csv) String() string {
-	return strings.Join(c.vals, ", ")
+func (m *multistring) String() string {
+	return strings.Join(*m, ", ")
 }
-func (c *csv) Set(s string) error {
-	c.vals = strings.Split(s, ",")
+func (m *multistring) Set(s string) error {
+	*m = append(*m, s)
 	return nil
 }
