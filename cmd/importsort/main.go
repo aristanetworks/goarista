@@ -48,21 +48,21 @@ func sortImports(in []byte, sections []string) []byte {
 	other := len(imports) - 1
 
 	inLines := bytes.Split(in, []byte{'\n'})
-	for i, l := range inLines {
-		if len(l) == 0 {
+	for i, line := range inLines {
+		if len(line) == 0 {
 			continue
 		}
-		start := bytes.IndexByte(l, '"')
+		start := bytes.IndexByte(line, '"')
 		if start == -1 {
 			continue
 		}
-		if comment := bytes.Index(l, []byte("//")); comment > -1 && comment < start {
+		if comment := bytes.Index(line, []byte("//")); comment > -1 && comment < start {
 			continue
 		}
 
 		start++ // skip '"'
-		end := bytes.IndexByte(l[start:], '"') + start
-		s := string(l[start:end])
+		end := bytes.IndexByte(line[start:], '"') + start
+		s := string(line[start:end])
 
 		found := false
 		for j, sect := range sections {
@@ -72,13 +72,14 @@ func sortImports(in []byte, sections []string) []byte {
 				break
 			}
 		}
+		if found {
+			continue
+		}
 
-		if !found {
-			if isStdLibPath(s) {
-				addImport(stdlib, i, s)
-			} else {
-				addImport(other, i, s)
-			}
+		if isStdLibPath(s) {
+			addImport(stdlib, i, s)
+		} else {
+			addImport(other, i, s)
 		}
 	}
 

@@ -28,13 +28,13 @@ func TestImportSort(t *testing.T) {
 	if out, err := genFile(gold, sections); err != nil {
 		t.Fatal(err)
 	} else if !bytes.Equal(out, gold) {
-		t.Error("importsort on test.go.gold file produced a change")
+		t.Errorf("importsort on %s file produced a change", goldFile)
 		t.Log(string(out))
 	}
 	if out, err := genFile(in, sections); err != nil {
 		t.Fatal(err)
 	} else if !bytes.Equal(out, gold) {
-		t.Error("importsort on test.go.in different than gold")
+		t.Errorf("importsort on %s different than gold", inFile)
 		t.Log(string(out))
 	}
 }
