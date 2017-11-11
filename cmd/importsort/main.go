@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"go/build"
@@ -103,7 +104,7 @@ func sortImports(in []byte, sections []string) []byte {
 	return out
 }
 
-func genFile(in []byte, sections []string) []byte {
+func genFile(in []byte, sections []string) ([]byte, error) {
 	out := make([]byte, 0, len(in)+3) // Add some fudge to avoid re-allocation
 
 	for {
@@ -118,7 +119,7 @@ func genFile(in []byte, sections []string) []byte {
 		in = in[importStart+importLineLen:]
 		importLen := bytes.Index(in, []byte("\n)\n"))
 		if importLen == -1 {
-			panic("file missing close ')'")
+			return nil, errors.New(`parsing error: missing ")"`)
 		}
 		// Sort body of "import" and write it to `out`
 		out = append(out, sortImports(in[:importLen], sections)...)
@@ -127,54 +128,55 @@ func genFile(in []byte, sections []string) []byte {
 	}
 	// Write everything leftover to out
 	out = append(out, in...)
-	return out
+	return out, nil
 }
 
 // returns true if the file changed
-func processFile(filename string, writeFile, listDiffFiles bool, sections []string) bool {
+func processFile(filename string, writeFile, listDiffFiles bool, sections []string) (bool, error) {
 	in, err := ioutil.ReadFile(filename)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
-	out := genFile(in, sections)
+	out, err := genFile(in, sections)
+	if err != nil {
+		return false, err
+	}
 
 	equal := bytes.Equal(in, out)
 	if listDiffFiles {
-		return !equal
+		return !equal, nil
 	}
 	if !writeFile {
 		os.Stdout.Write(out)
-		return !equal
+		return !equal, nil
 	}
 
 	if equal {
-		return false
+		return false, nil
 	}
 	temp, err := ioutil.TempFile(filepath.Dir(filename), filepath.Base(filename))
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 	defer os.RemoveAll(temp.Name())
 	s, err := os.Stat(filename)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 	if _, err = temp.Write(out); err != nil {
-		panic(err)
+		return false, err
 	}
 	if err := temp.Close(); err != nil {
-		panic(err)
+		return false, err
 	}
-	err = os.Chmod(temp.Name(), s.Mode())
-	if err != nil {
-		panic(err)
+	if err := os.Chmod(temp.Name(), s.Mode()); err != nil {
+		return false, err
 	}
-
 	if err := os.Rename(temp.Name(), filename); err != nil {
-		panic(err)
+		return false, err
 	}
 
-	return true
+	return true, nil
 }
 
 // maps directory to vcsRoot
@@ -214,12 +216,17 @@ func main() {
 		if checkVCSRoot {
 			root, err := vcsRootImportPath(f)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error determining VCS root: %s", err)
+				fmt.Fprintf(os.Stderr, "error determining VCS root for file %q: %s", f, err)
+				continue
 			} else {
 				sections = multistring{root}
 			}
 		}
-		diff := processFile(f, *writeFile, *listDiffFiles, sections)
+		diff, err := processFile(f, *writeFile, *listDiffFiles, sections)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error while proccessing file %q: %s", f, err)
+			continue
+		}
 		if *listDiffFiles && diff {
 			fmt.Println(f)
 		}

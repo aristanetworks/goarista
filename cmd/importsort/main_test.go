@@ -25,11 +25,15 @@ func TestImportSort(t *testing.T) {
 		t.Fatal(err)
 	}
 	sections := []string{"foobar", "cvshub.com/foobar"}
-	if out := genFile(gold, sections); !bytes.Equal(out, gold) {
+	if out, err := genFile(gold, sections); err != nil {
+		t.Fatal(err)
+	} else if !bytes.Equal(out, gold) {
 		t.Error("importsort on test.go.gold file produced a change")
 		t.Log(string(out))
 	}
-	if out := genFile(in, sections); !bytes.Equal(out, gold) {
+	if out, err := genFile(in, sections); err != nil {
+		t.Fatal(err)
+	} else if !bytes.Equal(out, gold) {
 		t.Error("importsort on test.go.in different than gold")
 		t.Log(string(out))
 	}
