@@ -100,10 +100,7 @@ func (k keyImpl) MarshalJSON() ([]byte, error) {
 
 func (k keyImpl) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return keyEqual(k.key, o.Key())
+	return ok && keyEqual(k.key, o.Key())
 }
 
 // Comparable types have an equality-testing method.
@@ -161,10 +158,7 @@ func (k strKey) MarshalJSON() ([]byte, error) {
 
 func (k strKey) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return string(k) == o.Key()
+	return ok && string(k) == o.Key()
 }
 
 // Key interface implementation for int8
@@ -186,10 +180,7 @@ func (k int8Key) MarshalJSON() ([]byte, error) {
 
 func (k int8Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return int8(k) == o.Key()
+	return ok && int8(k) == o.Key()
 }
 
 // Key interface implementation for int16
@@ -211,10 +202,7 @@ func (k int16Key) MarshalJSON() ([]byte, error) {
 
 func (k int16Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return int16(k) == o.Key()
+	return ok && int16(k) == o.Key()
 }
 
 // Key interface implementation for int32
@@ -236,10 +224,7 @@ func (k int32Key) MarshalJSON() ([]byte, error) {
 
 func (k int32Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return int32(k) == o.Key()
+	return ok && int32(k) == o.Key()
 }
 
 // Key interface implementation for int64
@@ -261,10 +246,7 @@ func (k int64Key) MarshalJSON() ([]byte, error) {
 
 func (k int64Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return int64(k) == o.Key()
+	return ok && int64(k) == o.Key()
 }
 
 // Key interface implementation for uint8
@@ -286,10 +268,7 @@ func (k uint8Key) MarshalJSON() ([]byte, error) {
 
 func (k uint8Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return uint8(k) == o.Key()
+	return ok && uint8(k) == o.Key()
 }
 
 // Key interface implementation for uint16
@@ -311,10 +290,7 @@ func (k uint16Key) MarshalJSON() ([]byte, error) {
 
 func (k uint16Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return uint16(k) == o.Key()
+	return ok && uint16(k) == o.Key()
 }
 
 // Key interface implementation for uint32
@@ -336,10 +312,7 @@ func (k uint32Key) MarshalJSON() ([]byte, error) {
 
 func (k uint32Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return uint32(k) == o.Key()
+	return ok && uint32(k) == o.Key()
 }
 
 // Key interface implementation for uint64
@@ -361,10 +334,7 @@ func (k uint64Key) MarshalJSON() ([]byte, error) {
 
 func (k uint64Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return uint64(k) == o.Key()
+	return ok && uint64(k) == o.Key()
 }
 
 // Key interface implementation for float32
@@ -386,10 +356,7 @@ func (k float32Key) MarshalJSON() ([]byte, error) {
 
 func (k float32Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return float32(k) == o.Key()
+	return ok && float32(k) == o.Key()
 }
 
 // Key interface implementation for float64
@@ -411,10 +378,7 @@ func (k float64Key) MarshalJSON() ([]byte, error) {
 
 func (k float64Key) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return float64(k) == o.Key()
+	return ok && float64(k) == o.Key()
 }
 
 // Key interface implementation for bool
@@ -436,8 +400,5 @@ func (k boolKey) MarshalJSON() ([]byte, error) {
 
 func (k boolKey) Equal(other interface{}) bool {
 	o, ok := other.(Key)
-	if !ok {
-		return false
-	}
-	return bool(k) == o.Key()
+	return ok && bool(k) == o.Key()
 }
