@@ -9,7 +9,7 @@ set -e
 
 if [ "$#" -lt 1 ]
 then
-   echo "usage: $0 <host> [<port>]"
+   echo "usage: $0 <host> [<gNMI port>]"
    exit 1
 fi
 
