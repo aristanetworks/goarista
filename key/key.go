@@ -109,19 +109,23 @@ type Comparable interface {
 	Equal(other interface{}) bool
 }
 
+func mapStringEqual(a, b map[string]interface{}) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, av := range a {
+		if bv, ok := b[k]; !ok || !keyEqual(av, bv) {
+			return false
+		}
+	}
+	return true
+}
+
 func keyEqual(a, b interface{}) bool {
 	switch a := a.(type) {
 	case map[string]interface{}:
 		b, ok := b.(map[string]interface{})
-		if !ok || len(a) != len(b) {
-			return false
-		}
-		for k, av := range a {
-			if bv, ok := b[k]; !ok || !keyEqual(av, bv) {
-				return false
-			}
-		}
-		return true
+		return ok && mapStringEqual(a, b)
 	case map[Key]interface{}:
 		b, ok := b.(map[Key]interface{})
 		if !ok || len(a) != len(b) {
