@@ -587,6 +587,9 @@ func BenchmarkBuiltInType(b *testing.B) {
 				if k = New(bench.val); k == nil {
 					b.Fatalf("expect to get key.Key, but got nil")
 				}
+				if !k.Equal(New(bench.val)) {
+					b.Fatalf("k is not equal to itself: %v", bench.val)
+				}
 			}
 		})
 	}
