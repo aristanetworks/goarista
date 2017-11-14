@@ -20,7 +20,7 @@ import (
 
 // Server represents a monitoring server
 type Server interface {
-	Run()
+	Run(serveMux *http.ServeMux)
 }
 
 // server contains information for the monitoring server
@@ -73,9 +73,9 @@ func histogramHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Run sets up the HTTP server and any handlers
-func (s *server) Run() {
-	http.HandleFunc("/debug", debugHandler)
-	http.HandleFunc("/debug/histograms", histogramHandler)
+func (s *server) Run(serveMux *http.ServeMux) {
+	serveMux.HandleFunc("/debug", debugHandler)
+	serveMux.HandleFunc("/debug/histograms", histogramHandler)
 
 	var listener net.Listener
 	err := netns.Do(s.vrfName, func() error {
@@ -87,7 +87,7 @@ func (s *server) Run() {
 		glog.Fatalf("Could not start monitor server in VRF %q: %s", s.vrfName, err)
 	}
 
-	err = http.Serve(listener, nil)
+	err = http.Serve(listener, serveMux)
 	if err != nil {
 		glog.Fatal("http serve returned with error:", err)
 	}
