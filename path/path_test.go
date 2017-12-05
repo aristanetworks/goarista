@@ -209,7 +209,8 @@ func TestPathHasPrefix(t *testing.T) {
 	}
 	for i, tcase := range tcases {
 		if result := tcase.base.HasPrefix(tcase.prefix); result != tcase.expected {
-			t.Fatalf("Test %d failed: %t != %t", i, result, tcase.expected)
+			t.Fatalf("Test %d failed: base: %#v; prefix: %#v, expected: %t",
+				i, tcase.base, tcase.prefix, tcase.expected)
 		}
 	}
 }
