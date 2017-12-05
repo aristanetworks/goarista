@@ -8,6 +8,7 @@ package path
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/aristanetworks/goarista/key"
 )
@@ -33,6 +34,24 @@ func copyElements(path Path, elements ...interface{}) {
 func New(elements ...interface{}) Path {
 	path := make(Path, len(elements))
 	copyElements(path, elements...)
+	return path
+}
+
+// FromString constructs a Path from the elements resulting
+// from a split of the input string by "/". The string MUST
+// begin with a '/' character unless it is the empty string
+// in which case an empty Path is returned.
+func FromString(str string) Path {
+	if str == "" {
+		return Path{}
+	} else if str[0] != '/' {
+		panic(fmt.Errorf("not an absolute path: %q", str))
+	}
+	elements := strings.Split(str, "/")[1:]
+	path := make(Path, len(elements))
+	for i, element := range elements {
+		path[i] = key.New(element)
+	}
 	return path
 }
 

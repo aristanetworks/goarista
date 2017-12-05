@@ -215,6 +215,44 @@ func TestPathHasPrefix(t *testing.T) {
 	}
 }
 
+func TestPathFromString(t *testing.T) {
+	tcases := []struct {
+		in  string
+		out Path
+	}{
+		{
+			in:  "",
+			out: Path{},
+		}, {
+			in:  "/",
+			out: Path{key.New("")},
+		}, {
+			in:  "//",
+			out: Path{key.New(""), key.New("")},
+		}, {
+			in:  "/foo",
+			out: Path{key.New("foo")},
+		}, {
+			in:  "/foo/bar",
+			out: Path{key.New("foo"), key.New("bar")},
+		}, {
+			in:  "/foo/bar/baz",
+			out: Path{key.New("foo"), key.New("bar"), key.New("baz")},
+		}, {
+			in:  "/0/123/456/789",
+			out: Path{key.New("0"), key.New("123"), key.New("456"), key.New("789")},
+		}, {
+			in:  "/`~!@#$%^&*()_+{}\\/|[];':\"<>?,./",
+			out: Path{key.New("`~!@#$%^&*()_+{}\\"), key.New("|[];':\"<>?,."), key.New("")},
+		},
+	}
+	for i, tcase := range tcases {
+		if p := FromString(tcase.in); !p.Equal(tcase.out) {
+			t.Fatalf("Test %d failed: %#v != %#v", i, p, tcase.out)
+		}
+	}
+}
+
 func TestPathToString(t *testing.T) {
 	tcases := []struct {
 		in  Path
