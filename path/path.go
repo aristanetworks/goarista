@@ -91,12 +91,7 @@ func (p Path) Equal(other interface{}) bool {
 	if len(o) != len(p) {
 		return false
 	}
-	for i := range p {
-		if !p[i].Equal(o[i]) {
-			return false
-		}
-	}
-	return true
+	return o.hasPrefix(p)
 }
 
 // HasPrefix returns whether the Path is prefixed by the other Path.
@@ -104,6 +99,10 @@ func (p Path) HasPrefix(prefix Path) bool {
 	if len(prefix) > len(p) {
 		return false
 	}
+	return p.hasPrefix(prefix)
+}
+
+func (p Path) hasPrefix(prefix Path) bool {
 	for i := range prefix {
 		if !prefix[i].Equal(p[i]) {
 			return false
