@@ -1,7 +1,8 @@
 # ocprometheus
 
 This is a client for the OpenConfig gRPC interface that pushes telemetry to
-Prometheus.  Non-numerical data isn't supported by Prometheus and is silently
+Prometheus. Numerical and boolean (converted to 1 for true and 0 for false) are
+supported. Non-numerical data isn't supported by Prometheus and is silently
 dropped. Arrays (even with numeric values) are not yet supported.
 
 This tool requires a config file to specify how to map the path of the

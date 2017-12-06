@@ -129,6 +129,11 @@ func parseValue(update *openconfig.Update) (float64, string, bool) {
 				return val, "value", true
 			}
 		}
+	case bool:
+		if value {
+			return 1, "", true
+		}
+		return 0, "", true
 	default:
 		glog.V(9).Infof("Ignorig non-numeric update: %v", update)
 	}

@@ -47,13 +47,17 @@ devicelabels:
 subscriptions:
         - /Sysdb/environment/cooling/status
         - /Sysdb/environment/power/status
+        - /Sysdb/bridging/igmpsnooping/forwarding/forwarding/status
 metrics:
         - name: intfCounter
           path: /Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter
           help: Per-Interface Bytes/Errors/Discards Counters
         - name: fanSpeed
           path: /Sysdb/environment/cooling/status/fan/speed/value
-          help: Fan Speed`)
+          help: Fan Speed
+        - name: igmpSnoopingInf
+          path: /Sysdb/igmpsnooping/vlanStatus/(?P<vlan>.+)/ethGroup/(?P<mac>.+)/intf/(?P<intf>.+)
+          help: IGMP snooping status`)
 	cfg, err := parseConfig(config)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -81,6 +85,16 @@ metrics:
 					Value: []byte("{\"value\": 45}"),
 				},
 			},
+			{
+				Path: &openconfig.Path{
+					Element: []string{"igmpsnooping", "vlanStatus", "2050", "ethGroup",
+						"01:00:5e:01:01:01", "intf", "Cpu"},
+				},
+				Value: &openconfig.Value{
+					Type:  openconfig.Type_JSON,
+					Value: []byte("true"),
+				},
+			},
 		},
 	}
 	expValues := map[source]float64{
@@ -92,6 +106,10 @@ metrics:
 			addr: "10.1.1.1",
 			path: "/Sysdb/environment/cooling/status/fan/speed/value",
 		}: 45,
+		source{
+			addr: "10.1.1.1",
+			path: "/Sysdb/igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:01/intf/Cpu",
+		}: 1,
 	}
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
