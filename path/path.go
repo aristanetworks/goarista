@@ -2,7 +2,7 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-// Package path provides functionality for dealing with absolute paths elementally.
+// Package path provides functionality for dealing with paths elementally.
 package path
 
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/aristanetworks/goarista/key"
 )
 
-// Path is an absolute path broken down into elements where each element is a key.Key.
+// Path is a path broken down into elements where each element is a key.Key.
 type Path []key.Key
 
 func copyElements(path Path, elements ...interface{}) {
@@ -38,16 +38,15 @@ func New(elements ...interface{}) Path {
 }
 
 // FromString constructs a Path from the elements resulting
-// from a split of the input string by "/". The string MUST
-// begin with a '/' character unless it is the empty string
-// in which case an empty Path is returned.
+// from a split of the input string by "/". Strings that do
+// not lead with a '/' are accepted but not reconstructable.
 func FromString(str string) Path {
 	if str == "" {
 		return Path{}
-	} else if str[0] != '/' {
-		panic(fmt.Errorf("not an absolute path: %q", str))
+	} else if str[0] == '/' {
+		str = str[1:]
 	}
-	elements := strings.Split(str, "/")[1:]
+	elements := strings.Split(str, "/")
 	path := make(Path, len(elements))
 	for i, element := range elements {
 		path[i] = key.New(element)
