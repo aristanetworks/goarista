@@ -36,6 +36,9 @@ func New(username, password, addr string, opts []grpc.DialOption) *Client {
 	if !strings.ContainsRune(addr, ':') {
 		addr += ":" + defaultPort
 	}
+	// Make sure we don't move past the grpc.Dial() call until we actually
+	// established an HTTP/2 connection successfully.
+	opts = append(opts, grpc.WithBlock(), grpc.WithWaitForHandshake())
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		glog.Fatalf("Failed to dial: %s", err)
