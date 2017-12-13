@@ -48,6 +48,18 @@ func TestNewPath(t *testing.T) {
 	}
 }
 
+func TestClone(t *testing.T) {
+	if !Clone(Path{}).Equal(Path{}) {
+		t.Error("Clone(Path{}) != Path{}")
+	}
+	a := Path{key.New("foo"), key.New("bar")}
+	b, c := Clone(a), Clone(a)
+	b[1] = key.New("baz")
+	if a.Equal(b) || !a.Equal(c) {
+		t.Error("Clone is not making a copied path")
+	}
+}
+
 func TestAppendPath(t *testing.T) {
 	tcases := []struct {
 		a      Path

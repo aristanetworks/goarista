@@ -49,6 +49,13 @@ func Base(path Path) key.Key {
 	return nil
 }
 
+// Clone constructs a copy of a Path.
+func Clone(path Path) Path {
+	p := make(Path, len(path))
+	copy(p, path)
+	return p
+}
+
 func copyElements(path Path, elements ...interface{}) {
 	for i, element := range elements {
 		switch val := element.(type) {
