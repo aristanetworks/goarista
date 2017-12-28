@@ -7,12 +7,14 @@ package gnmi
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"path"
+	"strconv"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
@@ -81,17 +83,17 @@ func strVal(val *pb.TypedValue) string {
 	case *pb.TypedValue_JsonVal:
 		return strJSON(v.JsonVal)
 	case *pb.TypedValue_IntVal:
-		return fmt.Sprintf("%v", v.IntVal)
+		return strconv.FormatInt(v.IntVal, 10)
 	case *pb.TypedValue_UintVal:
-		return fmt.Sprintf("%v", v.UintVal)
+		return strconv.FormatUint(v.UintVal, 10)
 	case *pb.TypedValue_BoolVal:
-		return fmt.Sprintf("%v", v.BoolVal)
+		return strconv.FormatBool(v.BoolVal)
 	case *pb.TypedValue_BytesVal:
-		return string(v.BytesVal)
+		return base64.StdEncoding.EncodeToString(v.BytesVal)
 	case *pb.TypedValue_DecimalVal:
 		return strDecimal64(v.DecimalVal)
 	case *pb.TypedValue_FloatVal:
-		return fmt.Sprintf("%v", v.FloatVal)
+		return strconv.FormatFloat(float64(v.FloatVal), 'g', -1, 32)
 	case *pb.TypedValue_LeaflistVal:
 		return strLeaflist(v.LeaflistVal)
 	case *pb.TypedValue_AsciiVal:
