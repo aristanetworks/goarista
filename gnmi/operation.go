@@ -77,6 +77,8 @@ func strVal(val *pb.TypedValue) string {
 		return v.StringVal
 	case *pb.TypedValue_JsonIetfVal:
 		return string(v.JsonIetfVal)
+	case *pb.TypedValue_JsonVal:
+		return string(v.JsonVal)
 	case *pb.TypedValue_IntVal:
 		return fmt.Sprintf("%v", v.IntVal)
 	case *pb.TypedValue_UintVal:
@@ -87,8 +89,14 @@ func strVal(val *pb.TypedValue) string {
 		return string(v.BytesVal)
 	case *pb.TypedValue_DecimalVal:
 		return strDecimal64(v.DecimalVal)
+	case *pb.TypedValue_FloatVal:
+		return fmt.Sprintf("%v", v.FloatVal)
 	case *pb.TypedValue_LeaflistVal:
 		return strLeaflist(v.LeaflistVal)
+	case *pb.TypedValue_AsciiVal:
+		return v.AsciiVal
+	case *pb.TypedValue_AnyVal:
+		return v.AnyVal.String()
 	default:
 		panic(v)
 	}
