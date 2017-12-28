@@ -7,6 +7,7 @@ package gnmi
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -76,9 +77,9 @@ func strVal(val *pb.TypedValue) string {
 	case *pb.TypedValue_StringVal:
 		return v.StringVal
 	case *pb.TypedValue_JsonIetfVal:
-		return string(v.JsonIetfVal)
+		return strJSON(v.JsonIetfVal)
 	case *pb.TypedValue_JsonVal:
-		return string(v.JsonVal)
+		return strJSON(v.JsonVal)
 	case *pb.TypedValue_IntVal:
 		return fmt.Sprintf("%v", v.IntVal)
 	case *pb.TypedValue_UintVal:
@@ -100,6 +101,15 @@ func strVal(val *pb.TypedValue) string {
 	default:
 		panic(v)
 	}
+}
+
+func strJSON(inJSON []byte) string {
+	var out bytes.Buffer
+	err := json.Indent(&out, inJSON, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("(error unmarshalling json: %s)\n", err) + string(inJSON)
+	}
+	return out.String()
 }
 
 func strDecimal64(d *pb.Decimal64) string {
