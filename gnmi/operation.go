@@ -68,7 +68,17 @@ func extractJSON(val string) []byte {
 // strUpdateVal will return a string representing the value within the supplied update
 func strUpdateVal(u *pb.Update) string {
 	if u.Value != nil {
-		return string(u.Value.Value) // Backwards compatibility with pre-v0.4 gnmi
+		// Backwards compatibility with pre-v0.4 gnmi
+		switch u.Value.Type {
+		case pb.Encoding_JSON, pb.Encoding_JSON_IETF:
+			return strJSON(u.Value.Value)
+		case pb.Encoding_BYTES, pb.Encoding_PROTO:
+			base64.StdEncoding.EncodeToString(u.Value.Value)
+		case pb.Encoding_ASCII:
+			return string(u.Value.Value)
+		default:
+			return string(u.Value.Value)
+		}
 	}
 	return strVal(u.Val)
 }
