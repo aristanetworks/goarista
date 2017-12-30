@@ -16,6 +16,9 @@ func TestConfig(t *testing.T) {
 		t.Fatal("Managed to load a nonexistent config!")
 	}
 	cfg, err = loadConfig("sampleconfig.json")
+	if err != nil {
+		t.Fatal("Failed to load config:", err)
+	}
 
 	testcases := []struct {
 		path   string
