@@ -6,12 +6,11 @@
 package util
 
 import (
+	"errors"
 	"reflect"
 	"unsafe"
 
 	"github.com/aristanetworks/goarista/areflect"
-
-	"github.com/golang/glog"
 )
 
 // blocks are used to keep track of which memory areas were already
@@ -26,18 +25,18 @@ func (b block) size() uintptr {
 }
 
 // DeepSizeof returns total memory occupied by each type for val.
-func DeepSizeof(val interface{}) map[string]uintptr {
+// The value passed in argument must be a pointer.
+func DeepSizeof(val interface{}) (map[string]uintptr, error) {
 	value := reflect.ValueOf(val)
 	// We want to force val to be a pointer to the original value, because if we get a copy, we
 	// can get some pointers that will point back to our original value.
 	if value.Kind() != reflect.Ptr {
-		glog.Errorf("Cannot get the deep size of a non-pointer value.")
-		return nil
+		return nil, errors.New("cannot get the deep size of a non-pointer value")
 	}
 	m := make(map[string]uintptr)
 	ptrsTypes := make(map[uintptr]map[string]struct{})
 	sizeof(value.Elem(), m, ptrsTypes, false, block{start: uintptr(value.Pointer())}, nil)
-	return m
+	return m, nil
 }
 
 // Check if curBlock overlap tmpBlock

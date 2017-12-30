@@ -450,8 +450,11 @@ func TestDeepSizeof(t *testing.T) {
 	for key, tcase := range tests {
 		t.Run(key, func(t *testing.T) {
 			v := tcase.getStruct()
-			m := DeepSizeof(v)
-			totalSize := uintptr(0)
+			m, err := DeepSizeof(v)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var totalSize uintptr
 			for _, size := range m {
 				totalSize += size
 			}
