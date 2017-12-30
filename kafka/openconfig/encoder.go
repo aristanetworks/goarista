@@ -79,7 +79,7 @@ func (e *elasticsearchMessageEncoder) Encode(message proto.Message) ([]*sarama.P
 	}
 	glog.V(9).Infof("kafka: %s", updateJSON)
 	return []*sarama.ProducerMessage{
-		&sarama.ProducerMessage{
+		{
 			Topic:    e.topic,
 			Key:      e.key,
 			Value:    sarama.ByteEncoder(updateJSON),

@@ -80,11 +80,11 @@ func TestNotificationToMap(t *testing.T) {
 				},
 			},
 			Delete: []*openconfig.Path{
-				&openconfig.Path{
+				{
 					Element: []string{
 						"route", "237.255.255.250_0.0.0.0",
 					}},
-				&openconfig.Path{
+				{
 					Element: []string{
 						"route", "238.255.255.250_0.0.0.0",
 					},

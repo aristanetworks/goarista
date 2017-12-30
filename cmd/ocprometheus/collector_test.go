@@ -98,15 +98,15 @@ metrics:
 		},
 	}
 	expValues := map[source]float64{
-		source{
+		{
 			addr: "10.1.1.1",
 			path: "/Sysdb/lag/intfCounterDir/Ethernet1/intfCounter",
 		}: 42,
-		source{
+		{
 			addr: "10.1.1.1",
 			path: "/Sysdb/environment/cooling/status/fan/speed/value",
 		}: 45,
-		source{
+		{
 			addr: "10.1.1.1",
 			path: "/Sysdb/igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:01/intf/Cpu",
 		}: 1,

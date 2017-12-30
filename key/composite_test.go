@@ -19,7 +19,7 @@ type unhashable struct {
 func TestBadComposite(t *testing.T) {
 	test.ShouldPanicWith(t, "use of unhashable type in a map", func() {
 		m := map[interface{}]struct{}{
-			unhashable{func() {}, 0x42}: struct{}{},
+			unhashable{func() {}, 0x42}: {},
 		}
 		// Use Key here to make sure init() is called.
 		if _, ok := m[New("foo")]; ok {

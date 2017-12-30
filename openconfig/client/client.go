@@ -96,7 +96,7 @@ func (c *Client) Subscribe(wg *sync.WaitGroup, subscriptions []string,
 			Request: &openconfig.SubscribeRequest_Subscribe{
 				Subscribe: &openconfig.SubscriptionList{
 					Subscription: []*openconfig.Subscription{
-						&openconfig.Subscription{
+						{
 							Path: &openconfig.Path{Element: strings.Split(path, "/")},
 						},
 					},

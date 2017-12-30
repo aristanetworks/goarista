@@ -474,84 +474,84 @@ func TestUpdateSeenAreas(t *testing.T) {
 		update       block
 	}{{
 		seen: []block{
-			block{start: 0x100000, end: 0x100050},
+			{start: 0x100000, end: 0x100050},
 		},
 		expectedSeen: []block{
-			block{start: 0x100000, end: 0x100050},
-			block{start: 0x100100, end: 0x100150},
+			{start: 0x100000, end: 0x100050},
+			{start: 0x100100, end: 0x100150},
 		},
 		expectedSize: 0x50,
 		update:       block{start: 0x100100, end: 0x100150},
 	}, {
 		seen: []block{
-			block{start: 0x100000, end: 0x100050},
+			{start: 0x100000, end: 0x100050},
 		},
 		expectedSeen: []block{
-			block{start: 0x100, end: 0x150},
-			block{start: 0x100000, end: 0x100050},
+			{start: 0x100, end: 0x150},
+			{start: 0x100000, end: 0x100050},
 		},
 		expectedSize: 0x50,
 		update:       block{start: 0x100, end: 0x150},
 	}, {
 		seen: []block{
-			block{start: 0x100000, end: 0x100500},
+			{start: 0x100000, end: 0x100500},
 		},
 		expectedSeen: []block{
-			block{start: 0x100000, end: 0x100750},
+			{start: 0x100000, end: 0x100750},
 		},
 		expectedSize: 0x250,
 		update:       block{start: 0x100250, end: 0x100750},
 	}, {
 		seen: []block{
-			block{start: 0x100250, end: 0x100750},
+			{start: 0x100250, end: 0x100750},
 		},
 		expectedSeen: []block{
-			block{start: 0x100000, end: 0x100750},
+			{start: 0x100000, end: 0x100750},
 		},
 		expectedSize: 0x250,
 		update:       block{start: 0x100000, end: 0x100500},
 	}, {
 		seen: []block{
-			block{start: 0x1000, end: 0x1250},
-			block{start: 0x1500, end: 0x1750},
+			{start: 0x1000, end: 0x1250},
+			{start: 0x1500, end: 0x1750},
 		},
 		expectedSeen: []block{
-			block{start: 0x1000, end: 0x1750},
+			{start: 0x1000, end: 0x1750},
 		},
 		expectedSize: 0x2B0,
 		update:       block{start: 0x1200, end: 0x1700},
 	}, {
 		seen: []block{
-			block{start: 0x1000, end: 0x1250},
-			block{start: 0x1500, end: 0x1750},
-			block{start: 0x1F50, end: 0x21A0},
+			{start: 0x1000, end: 0x1250},
+			{start: 0x1500, end: 0x1750},
+			{start: 0x1F50, end: 0x21A0},
 		},
 		expectedSeen: []block{
-			block{start: 0xF00, end: 0x1F00},
-			block{start: 0x1F50, end: 0x21A0},
+			{start: 0xF00, end: 0x1F00},
+			{start: 0x1F50, end: 0x21A0},
 		},
 		expectedSize: 0xB60,
 		update:       block{start: 0xF00, end: 0x1F00},
 	}, {
 		seen: []block{
-			block{start: 0x1000, end: 0x1250},
-			block{start: 0x1500, end: 0x1750},
-			block{start: 0x1F00, end: 0x2150},
+			{start: 0x1000, end: 0x1250},
+			{start: 0x1500, end: 0x1750},
+			{start: 0x1F00, end: 0x2150},
 		},
 		expectedSeen: []block{
-			block{start: 0xF00, end: 0x2150},
+			{start: 0xF00, end: 0x2150},
 		},
 		expectedSize: 0xB60,
 		update:       block{start: 0xF00, end: 0x1F00},
 	}, {
 		seen: []block{
-			block{start: 0x1000, end: 0x1250},
-			block{start: 0x1500, end: 0x1750},
-			block{start: 0x1F00, end: 0x2150},
+			{start: 0x1000, end: 0x1250},
+			{start: 0x1500, end: 0x1750},
+			{start: 0x1F00, end: 0x2150},
 		},
 		expectedSeen: []block{
-			block{start: 0x1000, end: 0x1750},
-			block{start: 0x1F00, end: 0x2150},
+			{start: 0x1000, end: 0x1750},
+			{start: 0x1F00, end: 0x2150},
 		},
 		expectedSize: 0x2B0,
 		update:       block{start: 0x1250, end: 0x1500},

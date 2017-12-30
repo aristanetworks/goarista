@@ -357,21 +357,21 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b: complexCompare{},
 	}, {
 		a: complexCompare{
-			m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			m: map[builtinCompare]int8{{1, "foo"}: 42}},
 		b: complexCompare{
-			m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			m: map[builtinCompare]int8{{1, "foo"}: 42}},
 	}, {
 		a: complexCompare{
-			m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			m: map[builtinCompare]int8{{1, "foo"}: 42}},
 		b: complexCompare{
-			m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 51}},
+			m: map[builtinCompare]int8{{1, "foo"}: 51}},
 		diff: `attributes "m" are different: for key test.builtinCompare{a:uint32(1),` +
 			` b:"foo"} in map, values are different: int8(42) != int8(51)`,
 	}, {
 		a: complexCompare{
-			m: map[builtinCompare]int8{builtinCompare{1, "foo"}: 42}},
+			m: map[builtinCompare]int8{{1, "foo"}: 42}},
 		b: complexCompare{
-			m: map[builtinCompare]int8{builtinCompare{1, "bar"}: 42}},
+			m: map[builtinCompare]int8{{1, "bar"}: 42}},
 		diff: `attributes "m" are different: key test.builtinCompare{a:uint32(1),` +
 			` b:"foo"} in map is missing in the actual map`,
 	}, {
@@ -404,16 +404,16 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: partialCompare{a: 42, b: "foo"},
 		b: partialCompare{a: 42, b: "bar"},
 	}, {
-		a: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
-		b: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
+		a: map[*builtinCompare]uint32{{1, "foo"}: 42},
+		b: map[*builtinCompare]uint32{{1, "foo"}: 42},
 	}, {
-		a: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
-		b: map[*builtinCompare]uint32{&builtinCompare{2, "foo"}: 42},
+		a: map[*builtinCompare]uint32{{1, "foo"}: 42},
+		b: map[*builtinCompare]uint32{{2, "foo"}: 42},
 		diff: `complex key *test.builtinCompare{a:uint32(1), b:"foo"}` +
 			` in map is missing in the actual map`,
 	}, {
-		a: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 42},
-		b: map[*builtinCompare]uint32{&builtinCompare{1, "foo"}: 51},
+		a: map[*builtinCompare]uint32{{1, "foo"}: 42},
+		b: map[*builtinCompare]uint32{{1, "foo"}: 51},
 		diff: `for complex key *test.builtinCompare{a:uint32(1), b:"foo"}` +
 			` in map, values are different: uint32(42) != uint32(51)`,
 	}, {

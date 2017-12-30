@@ -15,7 +15,7 @@ import (
 func TestNewSetRequest(t *testing.T) {
 	pathFoo := &pb.Path{
 		Element: []string{"foo"},
-		Elem:    []*pb.PathElem{&pb.PathElem{Name: "foo"}},
+		Elem:    []*pb.PathElem{{Name: "foo"}},
 	}
 	pathCli := &pb.Path{
 		Origin: "cli",
@@ -26,13 +26,13 @@ func TestNewSetRequest(t *testing.T) {
 		exp    pb.SetRequest
 	}{
 		"delete": {
-			setOps: []*Operation{&Operation{Type: "delete", Path: []string{"foo"}}},
+			setOps: []*Operation{{Type: "delete", Path: []string{"foo"}}},
 			exp:    pb.SetRequest{Delete: []*pb.Path{pathFoo}},
 		},
 		"update": {
-			setOps: []*Operation{&Operation{Type: "update", Path: []string{"foo"}, Val: "true"}},
+			setOps: []*Operation{{Type: "update", Path: []string{"foo"}, Val: "true"}},
 			exp: pb.SetRequest{
-				Update: []*pb.Update{&pb.Update{
+				Update: []*pb.Update{{
 					Path: pathFoo,
 					Val: &pb.TypedValue{
 						Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte("true")}},
@@ -40,9 +40,9 @@ func TestNewSetRequest(t *testing.T) {
 			},
 		},
 		"replace": {
-			setOps: []*Operation{&Operation{Type: "replace", Path: []string{"foo"}, Val: "true"}},
+			setOps: []*Operation{{Type: "replace", Path: []string{"foo"}, Val: "true"}},
 			exp: pb.SetRequest{
-				Replace: []*pb.Update{&pb.Update{
+				Replace: []*pb.Update{{
 					Path: pathFoo,
 					Val: &pb.TypedValue{
 						Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte("true")}},
@@ -50,10 +50,10 @@ func TestNewSetRequest(t *testing.T) {
 			},
 		},
 		"cli-replace": {
-			setOps: []*Operation{&Operation{Type: "replace", Path: []string{"cli"},
+			setOps: []*Operation{{Type: "replace", Path: []string{"cli"},
 				Val: "hostname foo\nip routing"}},
 			exp: pb.SetRequest{
-				Replace: []*pb.Update{&pb.Update{
+				Replace: []*pb.Update{{
 					Path: pathCli,
 					Val: &pb.TypedValue{
 						Value: &pb.TypedValue_AsciiVal{AsciiVal: "hostname foo\nip routing"}},
