@@ -70,7 +70,7 @@ func Append(path Path, elements ...interface{}) Path {
 // String returns the Path as a string.
 func (p Path) String() string {
 	if len(p) == 0 {
-		return ""
+		return "/"
 	}
 	var buf bytes.Buffer
 	for _, element := range p {

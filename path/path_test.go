@@ -275,7 +275,7 @@ func TestPathToString(t *testing.T) {
 	}{
 		{
 			in:  Path{},
-			out: "",
+			out: "/",
 		}, {
 			in:  Path{key.New("")},
 			out: "/",
