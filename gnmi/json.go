@@ -17,7 +17,7 @@ func NotificationToMap(notif *gnmi.Notification) (map[string]interface{}, error)
 		updates := make(map[string]interface{}, len(notif.Update))
 		var err error
 		for _, update := range notif.Update {
-			updates[StrPath(update.Path)] = strUpdateVal(update)
+			updates[StrPath(update.Path)] = StrUpdateVal(update)
 			if err != nil {
 				return nil, err
 			}

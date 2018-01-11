@@ -33,7 +33,7 @@ func Get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 	for _, notif := range resp.Notification {
 		for _, update := range notif.Update {
 			fmt.Printf("%s:\n", StrPath(update.Path))
-			fmt.Println(strUpdateVal(update))
+			fmt.Println(StrUpdateVal(update))
 		}
 	}
 	return nil
@@ -65,8 +65,8 @@ func extractJSON(val string) []byte {
 	return jsonBytes
 }
 
-// strUpdateVal will return a string representing the value within the supplied update
-func strUpdateVal(u *pb.Update) string {
+// StrUpdateVal will return a string representing the value within the supplied update
+func StrUpdateVal(u *pb.Update) string {
 	if u.Value != nil {
 		// Backwards compatibility with pre-v0.4 gnmi
 		switch u.Value.Type {
@@ -274,7 +274,7 @@ func LogSubscribeResponse(response *pb.SubscribeResponse) error {
 		prefix := StrPath(resp.Update.Prefix)
 		for _, update := range resp.Update.Update {
 			fmt.Printf("%s = %s\n", path.Join(prefix, StrPath(update.Path)),
-				strUpdateVal(update))
+				StrUpdateVal(update))
 		}
 	}
 	return nil
