@@ -25,9 +25,11 @@ gnmi -addr ADDRESS:PORT [options...]
   ((update|replace PATH JSON)|(delete PATH))+
 `
 
-func exitWithError(s string) {
+func usageAndExit(s string) {
 	flag.Usage()
-	fmt.Fprintln(os.Stderr, s)
+	if s != "" {
+		fmt.Fprintln(os.Stderr, s)
+	}
 	os.Exit(1)
 }
 
@@ -47,7 +49,7 @@ func main() {
 	}
 	flag.Parse()
 	if cfg.Addr == "" {
-		exitWithError("error: address not specified")
+		usageAndExit("error: address not specified")
 	}
 
 	args := flag.Args()
@@ -60,7 +62,7 @@ func main() {
 		switch args[i] {
 		case "capabilities":
 			if len(setOps) != 0 {
-				exitWithError("error: 'capabilities' not allowed after 'merge|replace|delete'")
+				usageAndExit("error: 'capabilities' not allowed after 'merge|replace|delete'")
 			}
 			err := gnmi.Capabilities(ctx, client)
 			if err != nil {
@@ -69,7 +71,7 @@ func main() {
 			return
 		case "get":
 			if len(setOps) != 0 {
-				exitWithError("error: 'get' not allowed after 'merge|replace|delete'")
+				usageAndExit("error: 'get' not allowed after 'merge|replace|delete'")
 			}
 			err := gnmi.Get(ctx, client, gnmi.SplitPaths(args[i+1:]))
 			if err != nil {
@@ -78,7 +80,7 @@ func main() {
 			return
 		case "subscribe":
 			if len(setOps) != 0 {
-				exitWithError("error: 'subscribe' not allowed after 'merge|replace|delete'")
+				usageAndExit("error: 'subscribe' not allowed after 'merge|replace|delete'")
 			}
 			respChan := make(chan *pb.SubscribeResponse)
 			errChan := make(chan error)
@@ -89,15 +91,15 @@ func main() {
 				select {
 				case resp := <-respChan:
 					if err := gnmi.LogSubscribeResponse(resp); err != nil {
-						exitWithError(err.Error())
+						glog.Fatal(err)
 					}
 				case err := <-errChan:
-					exitWithError(err.Error())
+					glog.Fatal(err)
 				}
 			}
 		case "update", "replace", "delete":
 			if len(args) == i+1 {
-				exitWithError("error: missing path")
+				usageAndExit("error: missing path")
 			}
 			op := &gnmi.Operation{
 				Type: args[i],
@@ -106,19 +108,18 @@ func main() {
 			op.Path = gnmi.SplitPath(args[i])
 			if op.Type != "delete" {
 				if len(args) == i+1 {
-					exitWithError("error: missing JSON")
+					usageAndExit("error: missing JSON")
 				}
 				i++
 				op.Val = args[i]
 			}
 			setOps = append(setOps, op)
 		default:
-			exitWithError(fmt.Sprintf("error: unknown operation %q", args[i]))
+			usageAndExit(fmt.Sprintf("error: unknown operation %q", args[i]))
 		}
 	}
 	if len(setOps) == 0 {
-		flag.Usage()
-		os.Exit(1)
+		usageAndExit("")
 	}
 	err := gnmi.Set(ctx, client, setOps)
 	if err != nil {
