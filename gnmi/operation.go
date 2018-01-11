@@ -80,11 +80,11 @@ func StrUpdateVal(u *pb.Update) string {
 			return string(u.Value.Value)
 		}
 	}
-	return strVal(u.Val)
+	return StrVal(u.Val)
 }
 
-// strVal will return a string representing the supplied value
-func strVal(val *pb.TypedValue) string {
+// StrVal will return a string representing the supplied value
+func StrVal(val *pb.TypedValue) string {
 	switch v := val.GetValue().(type) {
 	case *pb.TypedValue_StringVal:
 		return v.StringVal
@@ -148,7 +148,7 @@ func strLeaflist(v *pb.ScalarArray) string {
 
 	// convert arbitrary TypedValues to string form
 	for _, elm := range v.Element {
-		str := strVal(elm)
+		str := StrVal(elm)
 		s = append(s, str)
 		sz += len(str) + 1 // %v + ,
 	}
