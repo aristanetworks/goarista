@@ -3,7 +3,7 @@
 // Subject to Arista Networks, Inc.'s EULA.
 // FOR INTERNAL USE ONLY. NOT FOR DISTRIBUTION.
 
-package util
+package sizeof
 
 import (
 	"errors"
