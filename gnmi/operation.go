@@ -73,7 +73,7 @@ func StrUpdateVal(u *pb.Update) string {
 		case pb.Encoding_JSON, pb.Encoding_JSON_IETF:
 			return strJSON(u.Value.Value)
 		case pb.Encoding_BYTES, pb.Encoding_PROTO:
-			base64.StdEncoding.EncodeToString(u.Value.Value)
+			return base64.StdEncoding.EncodeToString(u.Value.Value)
 		case pb.Encoding_ASCII:
 			return string(u.Value.Value)
 		default:
