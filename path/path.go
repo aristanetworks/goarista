@@ -8,7 +8,6 @@ package path
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/aristanetworks/goarista/key"
@@ -19,7 +18,8 @@ import (
 type Path []key.Key
 
 // New constructs a Path from a variable number of elements.
-// Each element may either be a string or a key.Key.
+// Each element may either be a key.Key or a value that can
+// be wrapped by a key.Key.
 func New(elements ...interface{}) Path {
 	path := make(Path, len(elements))
 	copyElements(path, elements...)
@@ -27,7 +27,8 @@ func New(elements ...interface{}) Path {
 }
 
 // Append appends a variable number of elements to a Path.
-// Each element may either be a string or a key.Key.
+// Each element may either be a key.Key or a value that can
+// be wrapped by a key.Key.
 func Append(path Path, elements ...interface{}) Path {
 	if len(elements) == 0 {
 		return path
@@ -42,12 +43,10 @@ func Append(path Path, elements ...interface{}) Path {
 func copyElements(path Path, elements ...interface{}) {
 	for i, element := range elements {
 		switch val := element.(type) {
-		case string:
-			path[i] = key.New(val)
 		case key.Key:
 			path[i] = val
 		default:
-			panic(fmt.Errorf("unsupported type: %T", element))
+			path[i] = key.New(val)
 		}
 	}
 }

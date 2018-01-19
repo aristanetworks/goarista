@@ -24,23 +24,21 @@ func TestNewPath(t *testing.T) {
 			in:  []interface{}{},
 			out: Path{},
 		}, {
-			in:  []interface{}{""},
-			out: Path{key.New("")},
+			in:  []interface{}{"foo", key.New("bar"), true},
+			out: Path{key.New("foo"), key.New("bar"), key.New(true)},
 		}, {
-			in:  []interface{}{key.New("")},
-			out: Path{key.New("")},
+			in:  []interface{}{int8(5), int16(5), int32(5), int64(5)},
+			out: Path{key.New(int8(5)), key.New(int16(5)), key.New(int32(5)), key.New(int64(5))},
 		}, {
-			in:  []interface{}{"foo"},
-			out: Path{key.New("foo")},
+			in: []interface{}{uint8(5), uint16(5), uint32(5), uint64(5)},
+			out: Path{key.New(uint8(5)), key.New(uint16(5)), key.New(uint32(5)),
+				key.New(uint64(5))},
 		}, {
-			in:  []interface{}{key.New("foo")},
-			out: Path{key.New("foo")},
+			in:  []interface{}{float32(5), float64(5)},
+			out: Path{key.New(float32(5)), key.New(float64(5))},
 		}, {
-			in:  []interface{}{"foo", key.New("bar")},
-			out: Path{key.New("foo"), key.New("bar")},
-		}, {
-			in:  []interface{}{key.New("foo"), "bar", key.New("baz")},
-			out: Path{key.New("foo"), key.New("bar"), key.New("baz")},
+			in:  []interface{}{customKey{i: &a}, map[string]interface{}{}},
+			out: Path{key.New(customKey{i: &a}), key.New(map[string]interface{}{})},
 		},
 	}
 	for i, tcase := range tcases {
@@ -52,39 +50,31 @@ func TestNewPath(t *testing.T) {
 
 func TestAppendPath(t *testing.T) {
 	tcases := []struct {
-		base     Path
-		elements []interface{}
-		expected Path
+		a      Path
+		b      []interface{}
+		result Path
 	}{
 		{
-			base:     Path{},
-			elements: []interface{}{},
-			expected: Path{},
+			a:      Path{},
+			b:      []interface{}{},
+			result: Path{},
 		}, {
-			base:     Path{},
-			elements: []interface{}{""},
-			expected: Path{key.New("")},
+			a:      Path{key.New("foo")},
+			b:      []interface{}{},
+			result: Path{key.New("foo")},
 		}, {
-			base:     Path{},
-			elements: []interface{}{key.New("")},
-			expected: Path{key.New("")},
+			a:      Path{},
+			b:      []interface{}{"foo", key.New("bar")},
+			result: Path{key.New("foo"), key.New("bar")},
 		}, {
-			base:     Path{},
-			elements: []interface{}{"foo", key.New("bar")},
-			expected: Path{key.New("foo"), key.New("bar")},
-		}, {
-			base:     Path{key.New("foo")},
-			elements: []interface{}{key.New("bar"), "baz"},
-			expected: Path{key.New("foo"), key.New("bar"), key.New("baz")},
-		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			elements: []interface{}{key.New("baz")},
-			expected: Path{key.New("foo"), key.New("bar"), key.New("baz")},
+			a:      Path{key.New("foo")},
+			b:      []interface{}{int64(0), key.New("bar")},
+			result: Path{key.New("foo"), key.New(int64(0)), key.New("bar")},
 		},
 	}
 	for i, tcase := range tcases {
-		if p := Append(tcase.base, tcase.elements...); !p.Equal(tcase.expected) {
-			t.Fatalf("Test %d failed: %#v != %#v", i, p, tcase.expected)
+		if p := Append(tcase.a, tcase.b...); !p.Equal(tcase.result) {
+			t.Fatalf("Test %d failed: %#v != %#v", i, p, tcase.result)
 		}
 	}
 }
@@ -119,98 +109,106 @@ var (
 
 func TestPathEquality(t *testing.T) {
 	tcases := []struct {
-		base     Path
-		other    Path
-		expected bool
+		a      Path
+		b      Path
+		result bool
 	}{
 		{
-			base:     Path{},
-			other:    Path{},
-			expected: true,
+			a:      Path{},
+			b:      Path{},
+			result: true,
 		}, {
-			base:     Path{},
-			other:    Path{key.New("")},
-			expected: false,
+			a:      Path{},
+			b:      Path{key.New("")},
+			result: false,
 		}, {
-			base:     Path{key.New("foo")},
-			other:    Path{key.New("foo")},
-			expected: true,
+			a:      Path{key.New("foo")},
+			b:      Path{key.New("foo")},
+			result: true,
 		}, {
-			base:     Path{key.New("foo")},
-			other:    Path{key.New("bar")},
-			expected: false,
+			a:      Path{key.New(true)},
+			b:      Path{key.New(false)},
+			result: false,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			other:    Path{key.New("foo")},
-			expected: false,
+			a:      Path{key.New(int32(5))},
+			b:      Path{key.New(int64(5))},
+			result: false,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			other:    Path{key.New("bar"), key.New("foo")},
-			expected: false,
+			a:      Path{key.New("foo")},
+			b:      Path{key.New("foo"), key.New("bar")},
+			result: false,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar"), key.New("baz")},
-			other:    Path{key.New("foo"), key.New("bar"), key.New("baz")},
-			expected: true,
+			a:      Path{key.New("foo"), key.New("bar")},
+			b:      Path{key.New("foo")},
+			result: false,
+		}, {
+			a:      Path{key.New(uint8(0)), key.New(int8(0))},
+			b:      Path{key.New(int8(0)), key.New(uint8(0))},
+			result: false,
 		},
 		// Ensure that we check deep equality.
 		{
-			base:     Path{key.New(map[string]interface{}{})},
-			other:    Path{key.New(map[string]interface{}{})},
-			expected: true,
+			a:      Path{key.New(map[string]interface{}{})},
+			b:      Path{key.New(map[string]interface{}{})},
+			result: true,
 		}, {
-			base:     Path{key.New(customKey{i: &a})},
-			other:    Path{key.New(customKey{i: &b})},
-			expected: true,
+			a:      Path{key.New(customKey{i: &a})},
+			b:      Path{key.New(customKey{i: &b})},
+			result: true,
 		},
 	}
 	for i, tcase := range tcases {
-		if result := tcase.base.Equal(tcase.other); result != tcase.expected {
-			t.Fatalf("Test %d failed: base: %#v; other: %#v, expected: %t",
-				i, tcase.base, tcase.other, tcase.expected)
+		if result := tcase.a.Equal(tcase.b); result != tcase.result {
+			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
+				i, tcase.a, tcase.b, tcase.result)
 		}
 	}
 }
 
 func TestPathHasPrefix(t *testing.T) {
 	tcases := []struct {
-		base     Path
-		prefix   Path
-		expected bool
+		a      Path
+		b      Path
+		result bool
 	}{
 		{
-			base:     Path{},
-			prefix:   Path{},
-			expected: true,
+			a:      Path{},
+			b:      Path{},
+			result: true,
 		}, {
-			base:     Path{key.New("foo")},
-			prefix:   Path{},
-			expected: true,
+			a:      Path{},
+			b:      Path{key.New("foo")},
+			result: false,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			prefix:   Path{key.New("foo")},
-			expected: true,
+			a:      Path{key.New("foo")},
+			b:      Path{},
+			result: true,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			prefix:   Path{key.New("bar")},
-			expected: false,
+			a:      Path{key.New(true)},
+			b:      Path{key.New(false)},
+			result: false,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			prefix:   Path{key.New("bar"), key.New("foo")},
-			expected: false,
+			a:      Path{key.New("foo"), key.New("bar")},
+			b:      Path{key.New("bar"), key.New("foo")},
+			result: false,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			prefix:   Path{key.New("foo"), key.New("bar")},
-			expected: true,
+			a:      Path{key.New(int8(0)), key.New(uint8(0))},
+			b:      Path{key.New(uint8(0)), key.New(uint8(0))},
+			result: false,
 		}, {
-			base:     Path{key.New("foo"), key.New("bar")},
-			prefix:   Path{key.New("foo"), key.New("bar"), key.New("baz")},
-			expected: false,
+			a:      Path{key.New(true), key.New(true)},
+			b:      Path{key.New(true), key.New(true), key.New(true)},
+			result: false,
+		}, {
+			a:      Path{key.New(true), key.New(true), key.New(true)},
+			b:      Path{key.New(true), key.New(true)},
+			result: true,
 		},
 	}
 	for i, tcase := range tcases {
-		if result := tcase.base.HasPrefix(tcase.prefix); result != tcase.expected {
-			t.Fatalf("Test %d failed: base: %#v; prefix: %#v, expected: %t",
-				i, tcase.base, tcase.prefix, tcase.expected)
+		if result := tcase.a.HasPrefix(tcase.b); result != tcase.result {
+			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
+				i, tcase.a, tcase.b, tcase.result)
 		}
 	}
 }
