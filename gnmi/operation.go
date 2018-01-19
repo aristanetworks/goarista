@@ -141,29 +141,19 @@ func strDecimal64(d *pb.Decimal64) string {
 	return fmt.Sprintf("%d.%d", i, frac)
 }
 
-// strLeafList builds a human-readable form of a leaf-list. e.g. [1,2,3] or [a,b,c]
+// strLeafList builds a human-readable form of a leaf-list. e.g. [1, 2, 3] or [a, b, c]
 func strLeaflist(v *pb.ScalarArray) string {
-	s := make([]string, 0, len(v.Element))
-	sz := 2 // []
+	var buf bytes.Buffer
+	buf.WriteByte('[')
 
-	// convert arbitrary TypedValues to string form
-	for _, elm := range v.Element {
-		str := StrVal(elm)
-		s = append(s, str)
-		sz += len(str) + 1 // %v + ,
-	}
-
-	b := make([]byte, sz)
-	buf := bytes.NewBuffer(b)
-
-	buf.WriteRune('[')
-	for i := range v.Element {
-		buf.WriteString(s[i])
+	for i, elm := range v.Element {
+		buf.WriteString(StrVal(elm))
 		if i < len(v.Element)-1 {
-			buf.WriteRune(',')
+			buf.WriteString(", ")
 		}
 	}
-	buf.WriteRune(']')
+
+	buf.WriteByte(']')
 	return buf.String()
 }
 

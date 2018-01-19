@@ -172,16 +172,16 @@ func TestStrUpdateVal(t *testing.T) {
 				}}},
 			exp: "3.14",
 		},
-		// "LeafListVal": {
-		// 	update: &pb.Update{Val: &pb.TypedValue{
-		// 		Value: &pb.TypedValue_LeaflistVal{
-		// 			LeaflistVal: &pb.ScalarArray{Element: []*pb.TypedValue{
-		// 				&pb.TypedValue{Value: &pb.TypedValue_BoolVal{BoolVal: true}},
-		// 				&pb.TypedValue{Value: &pb.TypedValue_AsciiVal{AsciiVal: "foobar"}},
-		// 			}},
-		// 		}}},
-		// 	exp: "[true, foobar]",
-		// },
+		"LeafListVal": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_LeaflistVal{
+					LeaflistVal: &pb.ScalarArray{Element: []*pb.TypedValue{
+						&pb.TypedValue{Value: &pb.TypedValue_BoolVal{BoolVal: true}},
+						&pb.TypedValue{Value: &pb.TypedValue_AsciiVal{AsciiVal: "foobar"}},
+					}},
+				}}},
+			exp: "[true, foobar]",
+		},
 		"AnyVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
 				Value: &pb.TypedValue_AnyVal{AnyVal: anyMessage}}},
