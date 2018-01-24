@@ -40,6 +40,15 @@ func Append(path Path, elements ...interface{}) Path {
 	return p
 }
 
+// Base returns the last element of the Path. If the Path is
+// empty, Base returns nil.
+func Base(path Path) key.Key {
+	if len(path) > 0 {
+		return path[len(path)-1]
+	}
+	return nil
+}
+
 func copyElements(path Path, elements ...interface{}) {
 	for i, element := range elements {
 		switch val := element.(type) {

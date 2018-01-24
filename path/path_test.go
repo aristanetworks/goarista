@@ -79,6 +79,29 @@ func TestAppendPath(t *testing.T) {
 	}
 }
 
+func TestPathBase(t *testing.T) {
+	if Base(Path{}) != nil {
+		t.Fatal("Base of empty Path should be nil")
+	}
+	tcases := []struct {
+		in  Path
+		out key.Key
+	}{
+		{
+			in:  Path{key.New("foo")},
+			out: key.New("foo"),
+		}, {
+			in:  Path{key.New("foo"), key.New("bar")},
+			out: key.New("bar"),
+		},
+	}
+	for _, tcase := range tcases {
+		if !Base(tcase.in).Equal(tcase.out) {
+			t.Fatalf("Base of %#v != %#v", tcase.in, tcase.out)
+		}
+	}
+}
+
 type customKey struct {
 	i *int
 }
