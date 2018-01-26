@@ -13,6 +13,8 @@ import (
 	"github.com/aristanetworks/goarista/pathmap"
 )
 
+// TODO: Update comments.
+
 // Map associates Paths to values. It allows wildcards. The
 // primary use of Map is to be able to register handlers to paths
 // that can be efficiently looked up every time a path is updated.
@@ -93,7 +95,22 @@ type Map interface {
 }
 
 // Wildcard is a special key representing any possible path
-var Wildcard key.Key = key.New("*")
+var Wildcard = wildcard{}
+
+type wildcard struct{}
+
+func (w wildcard) Key() interface{} {
+	return struct{}{}
+}
+
+func (w wildcard) String() string {
+	return "*"
+}
+
+func (w wildcard) Equal(other interface{}) bool {
+	_, ok := other.(wildcard)
+	return ok
+}
 
 type node struct {
 	val      interface{}
