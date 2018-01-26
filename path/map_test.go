@@ -49,7 +49,7 @@ func TestWildcardUniqueness(t *testing.T) {
 }
 
 func TestVisit(t *testing.T) {
-	m := NewMap()
+	m := Map{}
 	m.Set(Path{key.New("foo"), key.New("bar"), key.New("baz")}, 1)
 	m.Set(Path{Wildcard, key.New("bar"), key.New("baz")}, 2)
 	m.Set(Path{Wildcard, Wildcard, key.New("baz")}, 3)
@@ -112,7 +112,7 @@ func TestVisit(t *testing.T) {
 }
 
 func TestVisitError(t *testing.T) {
-	m := NewMap()
+	m := Map{}
 	m.Set(Path{key.New("foo"), key.New("bar")}, 1)
 	m.Set(Path{Wildcard, key.New("bar")}, 2)
 
@@ -131,7 +131,7 @@ func TestVisitError(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	m := NewMap()
+	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{key.New("foo"), key.New("bar")}, 1)
 	m.Set(Path{key.New("foo"), Wildcard}, 2)
@@ -170,26 +170,26 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func countNodes(n *node) int {
-	if n == nil {
+func countNodes(m *Map) int {
+	if m == nil {
 		return 0
 	}
 	count := 1
-	count += countNodes(n.wildcard)
-	for _, child := range n.children {
+	count += countNodes(m.wildcard)
+	for _, child := range m.children {
 		count += countNodes(child)
 	}
 	return count
 }
 
 func TestDelete(t *testing.T) {
-	m := NewMap()
+	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{Wildcard}, 1)
 	m.Set(Path{key.New("foo"), key.New("bar")}, 2)
 	m.Set(Path{key.New("foo"), Wildcard}, 3)
 
-	n := countNodes(m.(*node))
+	n := countNodes(&m)
 	if n != 5 {
 		t.Errorf("Initial count wrong. Expected: 5, Got: %d", n)
 	}
@@ -266,7 +266,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestVisitPrefix(t *testing.T) {
-	m := NewMap()
+	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{key.New("foo")}, 1)
 	m.Set(Path{key.New("foo"), key.New("bar")}, 2)
@@ -307,7 +307,7 @@ func TestVisitPrefix(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
-	m := NewMap()
+	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{key.New("foo"), key.New("bar")}, 1)
 	m.Set(Path{key.New("foo"), key.New("quux")}, 2)
@@ -322,7 +322,7 @@ Child "foo":
   Child "quux":
     Val: 2
 `
-	got := fmt.Sprint(m)
+	got := fmt.Sprint(&m)
 
 	if expected != got {
 		t.Errorf("Unexpected string. Expected:\n\n%s\n\nGot:\n\n%s", expected, got)
@@ -342,18 +342,16 @@ func genWords(count, wordLength int) Path {
 }
 
 func benchmarkPathMap(pathLength, pathDepth int, b *testing.B) {
-	m := NewMap()
-
 	// Push pathDepth paths, each of length pathLength
 	path := genWords(pathLength, 10)
 	words := genWords(pathDepth, 10)
-	n := m.(*node)
+	m := &Map{}
 	for _, element := range path {
-		n.children = map[key.Key]*node{}
+		m.children = map[key.Key]*Map{}
 		for _, word := range words {
-			n.children[word] = &node{}
+			m.children[word] = &Map{}
 		}
-		n = n.children[element]
+		m = m.children[element]
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
