@@ -10,7 +10,6 @@ import (
 	"sort"
 
 	"github.com/aristanetworks/goarista/key"
-	"github.com/aristanetworks/goarista/pathmap"
 )
 
 // Wildcard is a special key representing any possible path.
@@ -39,6 +38,12 @@ type Map struct {
 	wildcard *Map
 	children map[key.Key]*Map
 }
+
+// VisitorFunc is a function that handles the value associated
+// with a path in a Map. Note that only the value is passed in
+// as an argument since the path can be stored inside the value
+// if needed.
+type VisitorFunc func(v interface{}) error
 
 // Visit calls a function fn for every value in the Map
 // that is registered with a match of a path p. In the
@@ -71,7 +76,7 @@ type Map struct {
 // m.Visit(p, fn)
 //
 // Result: fn(1), fn(2), fn(3), fn(4), fn(5), fn(6), fn(7) and fn(8)
-func (m *Map) Visit(p Path, fn pathmap.VisitorFunc) error {
+func (m *Map) Visit(p Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.wildcard != nil {
 			if err := m.wildcard.Visit(p[i+1:], fn); err != nil {
@@ -112,7 +117,7 @@ func (m *Map) Visit(p Path, fn pathmap.VisitorFunc) error {
 // m.VisitPrefixes(p, fn)
 //
 // Result: fn(1), fn(2), fn(3), fn(5)
-func (m *Map) VisitPrefixes(p Path, fn pathmap.VisitorFunc) error {
+func (m *Map) VisitPrefixes(p Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.val != nil {
 			if err := fn(m.val); err != nil {

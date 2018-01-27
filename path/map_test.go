@@ -10,11 +10,10 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/key"
-	"github.com/aristanetworks/goarista/pathmap"
 	"github.com/aristanetworks/goarista/test"
 )
 
-func accumulator(counter map[int]int) pathmap.VisitorFunc {
+func accumulator(counter map[int]int) VisitorFunc {
 	return func(val interface{}) error {
 		counter[val.(int)]++
 		return nil
