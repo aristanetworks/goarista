@@ -123,7 +123,7 @@ func TestVisitError(t *testing.T) {
 	if err != errTest {
 		t.Errorf("Unexpected error. Expected: %v, Got: %v", errTest, err)
 	}
-	err = m.VisitPrefix(Path{key.New("foo"), key.New("bar"), key.New("baz")},
+	err = m.VisitPrefixes(Path{key.New("foo"), key.New("bar"), key.New("baz")},
 		func(v interface{}) error { return errTest })
 	if err != errTest {
 		t.Errorf("Unexpected error. Expected: %v, Got: %v", errTest, err)
@@ -265,7 +265,7 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestVisitPrefix(t *testing.T) {
+func TestVisitPrefixes(t *testing.T) {
 	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{key.New("foo")}, 1)
@@ -299,7 +299,7 @@ func TestVisitPrefix(t *testing.T) {
 
 	for _, tc := range testCases {
 		result := make(map[int]int, len(tc.expected))
-		m.VisitPrefix(tc.path, accumulator(result))
+		m.VisitPrefixes(tc.path, accumulator(result))
 		if diff := test.Diff(tc.expected, result); diff != "" {
 			t.Errorf("Test case %v: %s", tc.path, diff)
 		}

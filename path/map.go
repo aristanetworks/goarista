@@ -90,7 +90,7 @@ func (m *Map) Visit(p Path, fn pathmap.VisitorFunc) error {
 	return fn(m.val)
 }
 
-// VisitPrefix calls a function fn for every value in the
+// VisitPrefixes calls a function fn for every value in the
 // Map that is registered with a prefix of a path p.
 //
 // Example:
@@ -109,10 +109,10 @@ func (m *Map) Visit(p Path, fn pathmap.VisitorFunc) error {
 //
 // p := path.New("foo", "bar", "baz")
 //
-// m.VisitPrefix(p, fn)
+// m.VisitPrefixes(p, fn)
 //
 // Result: fn(1), fn(2), fn(3), fn(5)
-func (m *Map) VisitPrefix(p Path, fn pathmap.VisitorFunc) error {
+func (m *Map) VisitPrefixes(p Path, fn pathmap.VisitorFunc) error {
 	for i, element := range p {
 		if m.val != nil {
 			if err := fn(m.val); err != nil {
@@ -120,7 +120,7 @@ func (m *Map) VisitPrefix(p Path, fn pathmap.VisitorFunc) error {
 			}
 		}
 		if m.wildcard != nil {
-			if err := m.wildcard.VisitPrefix(p[i+1:], fn); err != nil {
+			if err := m.wildcard.VisitPrefixes(p[i+1:], fn); err != nil {
 				return err
 			}
 		}
