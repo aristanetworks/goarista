@@ -8,10 +8,10 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
-	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -34,18 +34,18 @@ type Config struct {
 }
 
 // Dial connects to a gnmi service and returns a client
-func Dial(cfg *Config) pb.GNMIClient {
+func Dial(cfg *Config) (pb.GNMIClient, error) {
 	var opts []grpc.DialOption
 	if cfg.TLS || cfg.CAFile != "" || cfg.CertFile != "" {
 		tlsConfig := &tls.Config{}
 		if cfg.CAFile != "" {
 			b, err := ioutil.ReadFile(cfg.CAFile)
 			if err != nil {
-				glog.Fatal(err)
+				return nil, err
 			}
 			cp := x509.NewCertPool()
 			if !cp.AppendCertsFromPEM(b) {
-				glog.Fatalf("credentials: failed to append certificates")
+				return nil, fmt.Errorf("credentials: failed to append certificates")
 			}
 			tlsConfig.RootCAs = cp
 		} else {
@@ -53,11 +53,11 @@ func Dial(cfg *Config) pb.GNMIClient {
 		}
 		if cfg.CertFile != "" {
 			if cfg.KeyFile == "" {
-				glog.Fatalf("Please provide both -certfile and -keyfile")
+				return nil, fmt.Errorf("please provide both -certfile and -keyfile")
 			}
 			cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 			if err != nil {
-				glog.Fatal(err)
+				return nil, err
 			}
 			tlsConfig.Certificates = []tls.Certificate{cert}
 		}
@@ -71,10 +71,10 @@ func Dial(cfg *Config) pb.GNMIClient {
 	}
 	conn, err := grpc.Dial(cfg.Addr, opts...)
 	if err != nil {
-		glog.Fatalf("Failed to dial: %s", err)
+		return nil, fmt.Errorf("failed to dial: %s", err)
 	}
 
-	return pb.NewGNMIClient(conn)
+	return pb.NewGNMIClient(conn), nil
 }
 
 // NewContext returns a new context with username and password

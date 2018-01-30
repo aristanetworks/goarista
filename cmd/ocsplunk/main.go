@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/splunk-hec-go"
 
@@ -49,7 +50,10 @@ func main() {
 	ctx := gnmi.NewContext(context.Background(), cfg)
 	// Store the address without the port so it can be used as the host in the Splunk event.
 	addr := cfg.Addr
-	client := gnmi.Dial(cfg)
+	client, err := gnmi.Dial(cfg)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	// Splunk connection
 	urls := strings.Split(*splunkURLs, ",")

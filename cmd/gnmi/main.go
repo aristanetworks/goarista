@@ -55,7 +55,10 @@ func main() {
 	args := flag.Args()
 
 	ctx := gnmi.NewContext(context.Background(), cfg)
-	client := gnmi.Dial(cfg)
+	client, err := gnmi.Dial(cfg)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	var setOps []*gnmi.Operation
 	for i := 0; i < len(args); i++ {
@@ -121,7 +124,7 @@ func main() {
 	if len(setOps) == 0 {
 		usageAndExit("")
 	}
-	err := gnmi.Set(ctx, client, setOps)
+	err = gnmi.Set(ctx, client, setOps)
 	if err != nil {
 		glog.Fatal(err)
 	}
