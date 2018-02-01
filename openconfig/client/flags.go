@@ -23,7 +23,7 @@ func ParseFlags() (username string, password string, subscriptions, addrs []stri
 	opts []grpc.DialOption) {
 
 	var (
-		addrsFlag = flag.String("addrs", "localhost:6042",
+		addrsFlag = flag.String("addrs", "localhost:6030",
 			"Comma-separated list of addresses of OpenConfig gRPC servers")
 
 		caFileFlag = flag.String("cafile", "",

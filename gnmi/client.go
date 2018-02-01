@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	defaultPort = "6042"
+	defaultPort = "6030"
 )
 
 // Config is the gnmi.Client config

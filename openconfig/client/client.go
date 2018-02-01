@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const defaultPort = "6042"
+const defaultPort = "6030"
 
 // PublishFunc is the method to publish responses
 type PublishFunc func(addr string, message proto.Message)
