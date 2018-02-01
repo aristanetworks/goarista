@@ -136,35 +136,45 @@ func TestGet(t *testing.T) {
 	m.Set(Path{key.New("foo"), Wildcard}, 2)
 	m.Set(Path{Wildcard, key.New("bar")}, 3)
 	m.Set(Path{key.New("zap"), key.New("zip")}, 4)
+	m.Set(Path{key.New("baz"), key.New("qux")}, nil)
 
 	testCases := []struct {
-		path     Path
-		expected interface{}
+		path Path
+		v    interface{}
+		ok   bool
 	}{{
-		path:     Path{},
-		expected: 0,
+		path: Path{},
+		v:    0,
+		ok:   true,
 	}, {
-		path:     Path{key.New("foo"), key.New("bar")},
-		expected: 1,
+		path: Path{key.New("foo"), key.New("bar")},
+		v:    1,
+		ok:   true,
 	}, {
-		path:     Path{key.New("foo"), Wildcard},
-		expected: 2,
+		path: Path{key.New("foo"), Wildcard},
+		v:    2,
+		ok:   true,
 	}, {
-		path:     Path{Wildcard, key.New("bar")},
-		expected: 3,
+		path: Path{Wildcard, key.New("bar")},
+		v:    3,
+		ok:   true,
 	}, {
-		path:     Path{key.New("bar"), key.New("foo")},
-		expected: nil,
+		path: Path{key.New("baz"), key.New("qux")},
+		v:    nil,
+		ok:   true,
 	}, {
-		path:     Path{key.New("zap"), Wildcard},
-		expected: nil,
+		path: Path{key.New("bar"), key.New("foo")},
+		v:    nil,
+	}, {
+		path: Path{key.New("zap"), Wildcard},
+		v:    nil,
 	}}
 
 	for _, tc := range testCases {
-		got := m.Get(tc.path)
-		if got != tc.expected {
-			t.Errorf("Test case %v: Expected %v, Got %v",
-				tc.path, tc.expected, got)
+		v, ok := m.Get(tc.path)
+		if v != tc.v || ok != tc.ok {
+			t.Errorf("Test case %v: Expected (v: %v, ok: %t), Got (v: %v, ok: %t)",
+				tc.path, tc.v, tc.ok, v, ok)
 		}
 	}
 }

@@ -35,6 +35,7 @@ func (w wildcard) Equal(other interface{}) bool {
 // be easily looked up each time a path is updated.
 type Map struct {
 	val      interface{}
+	ok       bool
 	wildcard *Map
 	children map[key.Key]*Map
 }
@@ -89,7 +90,7 @@ func (m *Map) Visit(p Path, fn VisitorFunc) error {
 		}
 		m = next
 	}
-	if m.val == nil {
+	if !m.ok {
 		return nil
 	}
 	return fn(m.val)
@@ -119,7 +120,7 @@ func (m *Map) Visit(p Path, fn VisitorFunc) error {
 // Result: fn(1), fn(2), fn(3), fn(5)
 func (m *Map) VisitPrefixes(p Path, fn VisitorFunc) error {
 	for i, element := range p {
-		if m.val != nil {
+		if m.ok {
 			if err := fn(m.val); err != nil {
 				return err
 			}
@@ -135,39 +136,43 @@ func (m *Map) VisitPrefixes(p Path, fn VisitorFunc) error {
 		}
 		m = next
 	}
-	if m.val == nil {
+	if !m.ok {
 		return nil
 	}
 	return fn(m.val)
 }
 
 // Get returns the value registered with an exact match of a
-// path p. If there is no exact match for p, Get returns nil.
+// path p. If there is no exact match for p, Get returns nil
+// and false. If p has an exact match and it is set to true,
+// Get returns nil and true.
 //
 // Example:
 //
 // m.Set(path.New("foo", "bar"), 1)
+// m.Set(path.New("baz", "qux"), nil)
 //
 // a := m.Get(path.New("foo", "bar"))
 // b := m.Get(path.New("foo", path.Wildcard))
+// c, ok := m.Get(path.New("baz", "qux"))
 //
-// Result: a == 1 and b == nil
-func (m *Map) Get(p Path) interface{} {
+// Result: a == 1, b == nil, c == nil and ok == true
+func (m *Map) Get(p Path) (interface{}, bool) {
 	for _, element := range p {
 		if element.Equal(Wildcard) {
 			if m.wildcard == nil {
-				return nil
+				return nil, false
 			}
 			m = m.wildcard
 			continue
 		}
 		next, ok := m.children[element]
 		if !ok {
-			return nil
+			return nil, false
 		}
 		m = next
 	}
-	return m.val
+	return m.val, m.ok
 }
 
 // Set registers a path p with a value. Any previous value that
@@ -202,7 +207,7 @@ func (m *Map) Set(p Path, v interface{}) {
 		}
 		m = next
 	}
-	m.val = v
+	m.val, m.ok = v, true
 }
 
 // Delete unregisters the value registered with a path. It
@@ -235,13 +240,13 @@ func (m *Map) Delete(p Path) bool {
 		}
 		m = next
 	}
-	m.val = nil
+	m.val, m.ok = nil, false
 	maps[len(p)] = m
 
 	// Remove any empty maps.
 	for i := len(p); i > 0; i-- {
 		m = maps[i]
-		if m.val != nil || m.wildcard != nil || len(m.children) > 0 {
+		if m.ok || m.wildcard != nil || len(m.children) > 0 {
 			break
 		}
 		parent := maps[i-1]
@@ -262,7 +267,7 @@ func (m *Map) String() string {
 }
 
 func (m *Map) write(b *bytes.Buffer, indent string) {
-	if m.val != nil {
+	if m.ok {
 		b.WriteString(indent)
 		fmt.Fprintf(b, "Val: %v", m.val)
 		b.WriteString("\n")
