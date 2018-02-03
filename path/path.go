@@ -56,59 +56,14 @@ func Clone(path Path) Path {
 	return p
 }
 
-func copyElements(path Path, elements ...interface{}) {
-	for i, element := range elements {
-		switch val := element.(type) {
-		case key.Key:
-			path[i] = val
-		default:
-			path[i] = key.New(val)
-		}
-	}
+// Equal returns whether the Path a is the same Path b.
+func Equal(a, b Path) bool {
+	return len(a) == len(b) && hasPrefix(a, b)
 }
 
-// String returns the Path as a string.
-func (p Path) String() string {
-	if len(p) == 0 {
-		return "/"
-	}
-	var buf bytes.Buffer
-	for _, element := range p {
-		buf.WriteByte('/')
-		buf.WriteString(element.String())
-	}
-	return buf.String()
-}
-
-// Equal returns whether the Path contains the same elements
-// as the other Path. This method implements key.Comparable.
-func (p Path) Equal(other interface{}) bool {
-	o, ok := other.(Path)
-	if !ok {
-		return false
-	}
-	if len(o) != len(p) {
-		return false
-	}
-	return o.hasPrefix(p)
-}
-
-// HasPrefix returns whether the Path is prefixed by the
-// other Path.
-func (p Path) HasPrefix(prefix Path) bool {
-	if len(prefix) > len(p) {
-		return false
-	}
-	return p.hasPrefix(prefix)
-}
-
-func (p Path) hasPrefix(prefix Path) bool {
-	for i := range prefix {
-		if !prefix[i].Equal(p[i]) {
-			return false
-		}
-	}
-	return true
+// HasPrefix returns whether the Path b is a prefix of Path a.
+func HasPrefix(a, b Path) bool {
+	return len(a) >= len(b) && hasPrefix(a, b)
 }
 
 // FromString constructs a Path from the elements resulting
@@ -126,4 +81,37 @@ func FromString(str string) Path {
 		path[i] = key.New(element)
 	}
 	return path
+}
+
+// String returns the Path as a string.
+func (p Path) String() string {
+	if len(p) == 0 {
+		return "/"
+	}
+	var buf bytes.Buffer
+	for _, element := range p {
+		buf.WriteByte('/')
+		buf.WriteString(element.String())
+	}
+	return buf.String()
+}
+
+func copyElements(path Path, elements ...interface{}) {
+	for i, element := range elements {
+		switch val := element.(type) {
+		case key.Key:
+			path[i] = val
+		default:
+			path[i] = key.New(val)
+		}
+	}
+}
+
+func hasPrefix(a, b Path) bool {
+	for i := range b {
+		if !b[i].Equal(a[i]) {
+			return false
+		}
+	}
+	return true
 }

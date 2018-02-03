@@ -19,7 +19,7 @@ func TestNewPath(t *testing.T) {
 	}{
 		{
 			in:  nil,
-			out: nil,
+			out: Path{},
 		}, {
 			in:  []interface{}{},
 			out: Path{},
@@ -42,20 +42,20 @@ func TestNewPath(t *testing.T) {
 		},
 	}
 	for i, tcase := range tcases {
-		if p := New(tcase.in...); !p.Equal(tcase.out) {
+		if p := New(tcase.in...); !Equal(p, tcase.out) {
 			t.Fatalf("Test %d failed: %#v != %#v", i, p, tcase.out)
 		}
 	}
 }
 
 func TestClone(t *testing.T) {
-	if !Clone(Path{}).Equal(Path{}) {
+	if !Equal(Clone(Path{}), Path{}) {
 		t.Error("Clone(Path{}) != Path{}")
 	}
 	a := Path{key.New("foo"), key.New("bar")}
 	b, c := Clone(a), Clone(a)
 	b[1] = key.New("baz")
-	if a.Equal(b) || !a.Equal(c) {
+	if Equal(a, b) || !Equal(a, c) {
 		t.Error("Clone is not making a copied path")
 	}
 }
@@ -85,7 +85,7 @@ func TestAppendPath(t *testing.T) {
 		},
 	}
 	for i, tcase := range tcases {
-		if p := Append(tcase.a, tcase.b...); !p.Equal(tcase.result) {
+		if p := Append(tcase.a, tcase.b...); !Equal(p, tcase.result) {
 			t.Fatalf("Test %d failed: %#v != %#v", i, p, tcase.result)
 		}
 	}
@@ -149,6 +149,18 @@ func TestPathEquality(t *testing.T) {
 		result bool
 	}{
 		{
+			a:      nil,
+			b:      nil,
+			result: true,
+		}, {
+			a:      nil,
+			b:      Path{},
+			result: true,
+		}, {
+			a:      Path{},
+			b:      nil,
+			result: true,
+		}, {
 			a:      Path{},
 			b:      Path{},
 			result: true,
@@ -193,7 +205,7 @@ func TestPathEquality(t *testing.T) {
 		},
 	}
 	for i, tcase := range tcases {
-		if result := tcase.a.Equal(tcase.b); result != tcase.result {
+		if result := Equal(tcase.a, tcase.b); result != tcase.result {
 			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
 				i, tcase.a, tcase.b, tcase.result)
 		}
@@ -207,6 +219,18 @@ func TestPathHasPrefix(t *testing.T) {
 		result bool
 	}{
 		{
+			a:      nil,
+			b:      nil,
+			result: true,
+		}, {
+			a:      nil,
+			b:      Path{},
+			result: true,
+		}, {
+			a:      Path{},
+			b:      nil,
+			result: true,
+		}, {
 			a:      Path{},
 			b:      Path{},
 			result: true,
@@ -241,7 +265,7 @@ func TestPathHasPrefix(t *testing.T) {
 		},
 	}
 	for i, tcase := range tcases {
-		if result := tcase.a.HasPrefix(tcase.b); result != tcase.result {
+		if result := HasPrefix(tcase.a, tcase.b); result != tcase.result {
 			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
 				i, tcase.a, tcase.b, tcase.result)
 		}
@@ -295,7 +319,7 @@ func TestPathFromString(t *testing.T) {
 		},
 	}
 	for i, tcase := range tcases {
-		if p := FromString(tcase.in); !p.Equal(tcase.out) {
+		if p := FromString(tcase.in); !Equal(p, tcase.out) {
 			t.Fatalf("Test %d failed: %#v != %#v", i, p, tcase.out)
 		}
 	}
