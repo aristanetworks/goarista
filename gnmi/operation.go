@@ -125,9 +125,9 @@ func strJSON(inJSON []byte) string {
 }
 
 func strDecimal64(d *pb.Decimal64) string {
-	var i, frac uint64
+	var i, frac int64
 	if d.Precision > 0 {
-		div := uint64(10)
+		div := int64(10)
 		it := d.Precision - 1
 		for it > 0 {
 			div *= 10
@@ -137,6 +137,9 @@ func strDecimal64(d *pb.Decimal64) string {
 		frac = d.Digits % div
 	} else {
 		i = d.Digits
+	}
+	if frac < 0 {
+		frac = -frac
 	}
 	return fmt.Sprintf("%d.%d", i, frac)
 }
