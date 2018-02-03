@@ -47,7 +47,7 @@ func TestWildcardUniqueness(t *testing.T) {
 	}
 }
 
-func TestVisit(t *testing.T) {
+func TestMapVisit(t *testing.T) {
 	m := Map{}
 	m.Set(Path{key.New("foo"), key.New("bar"), key.New("baz")}, 1)
 	m.Set(Path{Wildcard, key.New("bar"), key.New("baz")}, 2)
@@ -110,7 +110,7 @@ func TestVisit(t *testing.T) {
 	}
 }
 
-func TestVisitError(t *testing.T) {
+func TestMapVisitError(t *testing.T) {
 	m := Map{}
 	m.Set(Path{key.New("foo"), key.New("bar")}, 1)
 	m.Set(Path{Wildcard, key.New("bar")}, 2)
@@ -129,7 +129,7 @@ func TestVisitError(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestMapGet(t *testing.T) {
 	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{key.New("foo"), key.New("bar")}, 1)
@@ -191,7 +191,7 @@ func countNodes(m *Map) int {
 	return count
 }
 
-func TestDelete(t *testing.T) {
+func TestMapDelete(t *testing.T) {
 	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{Wildcard}, 1)
@@ -274,7 +274,7 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestVisitPrefixes(t *testing.T) {
+func TestMapVisitPrefixes(t *testing.T) {
 	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{key.New("foo")}, 1)
@@ -315,7 +315,7 @@ func TestVisitPrefixes(t *testing.T) {
 	}
 }
 
-func TestString(t *testing.T) {
+func TestMapString(t *testing.T) {
 	m := Map{}
 	m.Set(Path{}, 0)
 	m.Set(Path{key.New("foo"), key.New("bar")}, 1)

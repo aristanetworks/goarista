@@ -12,7 +12,7 @@ import (
 	"github.com/aristanetworks/goarista/value"
 )
 
-func TestNewPath(t *testing.T) {
+func TestNew(t *testing.T) {
 	tcases := []struct {
 		in  []interface{}
 		out Path
@@ -60,7 +60,7 @@ func TestClone(t *testing.T) {
 	}
 }
 
-func TestAppendPath(t *testing.T) {
+func TestAppend(t *testing.T) {
 	tcases := []struct {
 		a      Path
 		b      []interface{}
@@ -91,7 +91,7 @@ func TestAppendPath(t *testing.T) {
 	}
 }
 
-func TestPathBase(t *testing.T) {
+func TestBase(t *testing.T) {
 	if Base(Path{}) != nil {
 		t.Fatal("Base of empty Path should be nil")
 	}
@@ -142,7 +142,7 @@ var (
 	b                = 1
 )
 
-func TestPathEquality(t *testing.T) {
+func TestEqual(t *testing.T) {
 	tcases := []struct {
 		a      Path
 		b      Path
@@ -212,7 +212,7 @@ func TestPathEquality(t *testing.T) {
 	}
 }
 
-func TestPathHasPrefix(t *testing.T) {
+func TestHasPrefix(t *testing.T) {
 	tcases := []struct {
 		a      Path
 		b      Path
@@ -272,7 +272,7 @@ func TestPathHasPrefix(t *testing.T) {
 	}
 }
 
-func TestPathFromString(t *testing.T) {
+func TestFromString(t *testing.T) {
 	tcases := []struct {
 		in  string
 		out Path
@@ -325,7 +325,7 @@ func TestPathFromString(t *testing.T) {
 	}
 }
 
-func TestPathToString(t *testing.T) {
+func TestString(t *testing.T) {
 	tcases := []struct {
 		in  Path
 		out string
