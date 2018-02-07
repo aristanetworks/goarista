@@ -55,10 +55,6 @@ A library to help expose monitoring metrics on top of the
 `netns.Do(namespace, cb)` provides a handy mechanism to execute the given
 callback `cb` in the given [network namespace](https://lwn.net/Articles/580893/).
 
-## pathmap
-
-DEPRECATED; use`path.Map` instead.
-
 ## test
 
 This is a [Go](http://golang.org/) library to help in writing unit tests.
