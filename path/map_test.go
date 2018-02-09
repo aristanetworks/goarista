@@ -315,6 +315,55 @@ func TestMapVisitPrefixes(t *testing.T) {
 	}
 }
 
+func TestMapVisitPrefixed(t *testing.T) {
+	m := Map{}
+	m.Set(Path{}, 0)
+	m.Set(Path{key.New("qux")}, 1)
+	m.Set(Path{key.New("foo")}, 2)
+	m.Set(Path{key.New("foo"), key.New("qux")}, 3)
+	m.Set(Path{key.New("foo"), key.New("bar")}, 4)
+	m.Set(Path{Wildcard, key.New("bar")}, 5)
+	m.Set(Path{key.New("foo"), Wildcard}, 6)
+	m.Set(Path{key.New("qux"), key.New("foo"), key.New("bar")}, 7)
+
+	testCases := []struct {
+		in  Path
+		out map[int]int
+	}{{
+		in:  Path{},
+		out: map[int]int{0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1},
+	}, {
+		in:  Path{key.New("qux")},
+		out: map[int]int{1: 1, 5: 1, 7: 1},
+	}, {
+		in:  Path{key.New("foo")},
+		out: map[int]int{2: 1, 3: 1, 4: 1, 5: 1, 6: 1},
+	}, {
+		in:  Path{key.New("foo"), key.New("qux")},
+		out: map[int]int{3: 1, 6: 1},
+	}, {
+		in:  Path{key.New("foo"), key.New("bar")},
+		out: map[int]int{4: 1, 5: 1, 6: 1},
+	}, {
+		in:  Path{key.New(int64(0))},
+		out: map[int]int{5: 1},
+	}, {
+		in:  Path{Wildcard},
+		out: map[int]int{5: 1},
+	}, {
+		in:  Path{Wildcard, Wildcard},
+		out: map[int]int{},
+	}}
+
+	for _, tc := range testCases {
+		out := make(map[int]int, len(tc.out))
+		m.VisitPrefixed(tc.in, accumulator(out))
+		if diff := test.Diff(tc.out, out); diff != "" {
+			t.Errorf("Test case %v: %s", tc.out, diff)
+		}
+	}
+}
+
 func TestMapString(t *testing.T) {
 	m := Map{}
 	m.Set(Path{}, 0)

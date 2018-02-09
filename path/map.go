@@ -142,6 +142,63 @@ func (m *Map) VisitPrefixes(p Path, fn VisitorFunc) error {
 	return fn(m.val)
 }
 
+// VisitPrefixed calls fn for every value in the map that is
+// registerd with a path that is prefixed by p. This method
+// can be used to visit every registered path if p is the
+// empty path (or root path) which prefixes all paths.
+//
+// Example:
+//
+// a := path.New("foo")
+// b := path.New("foo", "bar")
+// c := path.New("foo", "bar", "baz")
+// d := path.New("foo", path.Wildcard)
+//
+// m.Set(a, 1)
+// m.Set(b, 2)
+// m.Set(c, 3)
+// m.Set(d, 4)
+//
+// p := path.New("foo", "bar")
+//
+// m.VisitPrefixed(p, fn)
+//
+// Result: fn(2), fn(3), fn(4)
+func (m *Map) VisitPrefixed(p Path, fn VisitorFunc) error {
+	for i, element := range p {
+		if m.wildcard != nil {
+			if err := m.wildcard.VisitPrefixed(p[i+1:], fn); err != nil {
+				return err
+			}
+		}
+		next, ok := m.children[element]
+		if !ok {
+			return nil
+		}
+		m = next
+	}
+	return m.visitSubtree(fn)
+}
+
+func (m *Map) visitSubtree(fn VisitorFunc) error {
+	if m.ok {
+		if err := fn(m.val); err != nil {
+			return err
+		}
+	}
+	if m.wildcard != nil {
+		if err := m.wildcard.visitSubtree(fn); err != nil {
+			return err
+		}
+	}
+	for _, next := range m.children {
+		if err := next.visitSubtree(fn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Get returns the value registered with an exact match of a
 // path p. If there is no exact match for p, Get returns nil
 // and false. If p has an exact match and it is set to true,
