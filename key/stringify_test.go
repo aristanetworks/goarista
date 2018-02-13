@@ -27,9 +27,21 @@ func TestStringify(t *testing.T) {
 		input:  "foobar",
 		output: "foobar",
 	}, {
-		name:   "non-ASCII string",
+		name:   "valid non-ASCII UTF-8 string",
 		input:  "日本語",
-		output: `\u65e5\u672c\u8a9e`,
+		output: "日本語",
+	}, {
+		name:   "invalid UTF-8 string 1",
+		input:  string([]byte{0xef, 0xbf, 0xbe, 0xbe, 0xbe, 0xbe, 0xbe}),
+		output: "77++vr6+vg==",
+	}, {
+		name:   "invalid UTF-8 string 2",
+		input:  string([]byte{0xef, 0xbf, 0xbe, 0xbe, 0xbe, 0xbe, 0xbe, 0x23}),
+		output: "77++vr6+viM=",
+	}, {
+		name:   "invalid UTF-8 string 3",
+		input:  string([]byte{0xef, 0xbf, 0xbe, 0xbe, 0xbe, 0xbe, 0xbe, 0x23, 0x24}),
+		output: "77++vr6+viMk",
 	}, {
 		name:   "uint8",
 		input:  uint8(43),

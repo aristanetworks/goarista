@@ -5,11 +5,13 @@
 package key
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/aristanetworks/goarista/value"
 )
@@ -78,15 +80,14 @@ func StringifyInterface(key interface{}) (string, error) {
 	return str, nil
 }
 
+// escape checks if the string is a valid utf-8 string.
+// If it is, it will return the string as is.
+// If it is not, it will return the base64 representation of the byte array string
 func escape(str string) string {
-	for i := 0; i < len(str); i++ {
-		if chr := str[i]; chr < 0x20 || chr > 0x7E {
-			str = strconv.QuoteToASCII(str)
-			str = str[1 : len(str)-1] // Drop the leading and trailing quotes.
-			break
-		}
+	if utf8.ValidString(str) {
+		return str
 	}
-	return str
+	return base64.StdEncoding.EncodeToString([]byte(str))
 }
 
 func stringify(key interface{}) string {

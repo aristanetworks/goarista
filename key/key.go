@@ -149,7 +149,7 @@ func (k strKey) Key() interface{} {
 }
 
 func (k strKey) String() string {
-	return escape(string(k))
+	return string(k)
 }
 
 func (k strKey) GoString() string {
@@ -157,7 +157,7 @@ func (k strKey) GoString() string {
 }
 
 func (k strKey) MarshalJSON() ([]byte, error) {
-	return json.Marshal(string(k))
+	return json.Marshal(escape(string(k)))
 }
 
 func (k strKey) Equal(other interface{}) bool {
