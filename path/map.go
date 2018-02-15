@@ -13,21 +13,31 @@ import (
 )
 
 // Wildcard is a special key representing any possible path.
-var Wildcard = wildcard{}
+var Wildcard = key.New(WildcardType{})
 
-type wildcard struct{}
+// WildcardType type represents a wildcard element to represent any possible element
+// in a path.
+// This type must implement value.Value interface so it can be used as a key.
+type WildcardType struct{}
 
-func (w wildcard) Key() interface{} {
-	return struct{}{}
-}
-
-func (w wildcard) String() string {
+func (w WildcardType) String() string {
 	return "*"
 }
 
-func (w wildcard) Equal(other interface{}) bool {
-	_, ok := other.(wildcard)
+// Equal implements the value.Value interface
+func (w WildcardType) Equal(other interface{}) bool {
+	_, ok := other.(WildcardType)
 	return ok
+}
+
+// ToBuiltin implements the value.Value interface
+func (w WildcardType) ToBuiltin() interface{} {
+	return WildcardType{}
+}
+
+// MarshalJSON implements the value.Value interface
+func (w WildcardType) MarshalJSON() ([]byte, error) {
+	return []byte(`{"_wildcard":{}}`), nil
 }
 
 // Map associates paths to values. It allows wildcards. A Map
