@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"path"
 	"strconv"
+	"strings"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
@@ -58,11 +59,39 @@ func Capabilities(ctx context.Context, client pb.GNMIClient) error {
 // val may be a path to a file or it may be json. First see if it is a
 // file, if so return its contents, otherwise return val
 func extractJSON(val string) []byte {
-	jsonBytes, err := ioutil.ReadFile(val)
-	if err != nil {
-		jsonBytes = []byte(val)
+	if jsonBytes, err := ioutil.ReadFile(val); err == nil {
+		return jsonBytes
 	}
-	return jsonBytes
+	// Best effort check if the value might a string literal, in which
+	// case wrap it in quotes. This is to allow a user to do:
+	//   gnmi update ../hostname host1234
+	//   gnmi update ../description 'This is a description'
+	// instead of forcing them to quote the string:
+	//   gnmi update ../hostname '"host1234"'
+	//   gnmi update ../description '"This is a description"'
+	maybeUnquotedStringLiteral := func(s string) bool {
+		if s == "true" || s == "false" || s == "null" || // JSON reserved words
+			strings.ContainsAny(s, `"'{}[]`) { // Already quoted or is a JSON object or array
+			return false
+		} else if _, err := strconv.ParseInt(s, 0, 32); err == nil {
+			// Integer. Using byte size of 32 because larger integer
+			// types are supposed to be sent as strings in JSON.
+			return false
+		} else if _, err := strconv.ParseFloat(s, 64); err == nil {
+			// Float
+			return false
+		}
+
+		return true
+	}
+	if maybeUnquotedStringLiteral(val) {
+		out := make([]byte, len(val)+2)
+		out[0] = '"'
+		copy(out[1:], val)
+		out[len(out)-1] = '"'
+		return out
+	}
+	return []byte(val)
 }
 
 // StrUpdateVal will return a string representing the value within the supplied update

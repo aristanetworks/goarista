@@ -5,6 +5,9 @@
 package gnmi
 
 import (
+	"bytes"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
@@ -211,6 +214,47 @@ func TestStrUpdateVal(t *testing.T) {
 			got := StrUpdateVal(tc.update)
 			if got != tc.exp {
 				t.Errorf("Expected: %q Got: %q", tc.exp, got)
+			}
+		})
+	}
+}
+
+func TestExtractJSON(t *testing.T) {
+	jsonFile, err := ioutil.TempFile("", "extractJSON")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(jsonFile.Name())
+	if _, err := jsonFile.Write([]byte(`"jsonFile"`)); err != nil {
+		jsonFile.Close()
+		t.Fatal(err)
+	}
+	if err := jsonFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	for val, exp := range map[string][]byte{
+		jsonFile.Name(): []byte(`"jsonFile"`),
+		"foobar":        []byte(`"foobar"`),
+		`"foobar"`:      []byte(`"foobar"`),
+		"Val: true":     []byte(`"Val: true"`),
+		"host42":        []byte(`"host42"`),
+		"42":            []byte("42"),
+		"-123.43":       []byte("-123.43"),
+		"0xFFFF":        []byte("0xFFFF"),
+		// Int larger than can fit in 32 bits should be quoted
+		"0x8000000000":  []byte(`"0x8000000000"`),
+		"-0x8000000000": []byte(`"-0x8000000000"`),
+		"true":          []byte("true"),
+		"false":         []byte("false"),
+		"null":          []byte("null"),
+		"{true: 42}":    []byte("{true: 42}"),
+		"[]":            []byte("[]"),
+	} {
+		t.Run(val, func(t *testing.T) {
+			got := extractJSON(val)
+			if !bytes.Equal(exp, got) {
+				t.Errorf("Unexpected diff. Expected: %q Got: %q", exp, got)
 			}
 		})
 	}

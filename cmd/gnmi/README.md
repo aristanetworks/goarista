@@ -108,9 +108,9 @@ Replace the BGP global configuration:
 gnmi [OPTIONS] replace '/network-instances/network-instance[name=default]/protocols/protocol[name=BGP][identifier=BGP]/bgp/global' '{"config":{"as": 1234, "router-id": "1.2.3.4"}}'
 ```
 
-Note: String values must be quoted. For example, setting the hostname to `"tor13"`:
+Note: String values need to be quoted if they look like JSON. For example, setting the login banner to `tor[13]`:
 ```
-gnmi [OPTIONS] update '/system/config/hostname' '"tor13"'
+gnmi [OPTIONS] update '/system/config/login-banner '"tor[13]"'
 ```
 
 ### CLI requests
