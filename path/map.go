@@ -12,34 +12,6 @@ import (
 	"github.com/aristanetworks/goarista/key"
 )
 
-// Wildcard is a special key representing any possible path.
-var Wildcard = key.New(WildcardType{})
-
-// WildcardType type represents a wildcard element to represent any possible element
-// in a path.
-// This type must implement value.Value interface so it can be used as a key.
-type WildcardType struct{}
-
-func (w WildcardType) String() string {
-	return "*"
-}
-
-// Equal implements the value.Value interface
-func (w WildcardType) Equal(other interface{}) bool {
-	_, ok := other.(WildcardType)
-	return ok
-}
-
-// ToBuiltin implements the value.Value interface
-func (w WildcardType) ToBuiltin() interface{} {
-	return WildcardType{}
-}
-
-// MarshalJSON implements the value.Value interface
-func (w WildcardType) MarshalJSON() ([]byte, error) {
-	return []byte(`{"_wildcard":{}}`), nil
-}
-
 // Map associates paths to values. It allows wildcards. A Map
 // is primarily used to register handlers with paths that can
 // be easily looked up each time a path is updated.
