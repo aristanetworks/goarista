@@ -12,7 +12,9 @@ import (
 
 // ShouldPanic will test is a function is panicking
 func ShouldPanic(t *testing.T, fn func()) {
+	t.Helper()
 	defer func() {
+		t.Helper()
 		if r := recover(); r == nil {
 			t.Errorf("%sThe function %p should have panicked",
 				getCallerInfo(), fn)
@@ -24,7 +26,9 @@ func ShouldPanic(t *testing.T, fn func()) {
 
 // ShouldPanicWith will test is a function is panicking with a specific message
 func ShouldPanicWith(t *testing.T, msg interface{}, fn func()) {
+	t.Helper()
 	defer func() {
+		t.Helper()
 		if r := recover(); r == nil {
 			t.Errorf("%sThe function %p should have panicked",
 				getCallerInfo(), fn)
