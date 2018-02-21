@@ -66,6 +66,20 @@ func HasPrefix(a, b Path) bool {
 	return len(a) >= len(b) && hasPrefix(a, b)
 }
 
+// Match returns whether the Path a and Path b are the same
+// length and whether each element in b corresponds to the
+// same element or a wildcard in a.
+func Match(a, b Path) bool {
+	return len(a) == len(b) && matchPrefix(a, b)
+}
+
+// MatchPrefix returns whether the Path a is longer than
+// Path b and whether each element in b corresponds to the
+// same element or a wildcard in a.
+func MatchPrefix(a, b Path) bool {
+	return len(a) >= len(b) && matchPrefix(a, b)
+}
+
 // FromString constructs a Path from the elements resulting
 // from a split of the input string by "/". Strings that do
 // not lead with a '/' are accepted but not reconstructable.
@@ -110,6 +124,15 @@ func copyElements(path Path, elements ...interface{}) {
 func hasPrefix(a, b Path) bool {
 	for i := range b {
 		if !b[i].Equal(a[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func matchPrefix(a, b Path) bool {
+	for i := range b {
+		if !a[i].Equal(Wildcard) && !b[i].Equal(a[i]) {
 			return false
 		}
 	}

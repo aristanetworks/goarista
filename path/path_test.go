@@ -169,6 +169,14 @@ func TestEqual(t *testing.T) {
 			b:      Path{key.New("")},
 			result: false,
 		}, {
+			a:      Path{Wildcard},
+			b:      Path{key.New("foo")},
+			result: false,
+		}, {
+			a:      Path{Wildcard},
+			b:      Path{Wildcard},
+			result: true,
+		}, {
 			a:      Path{key.New("foo")},
 			b:      Path{key.New("foo")},
 			result: true,
@@ -206,6 +214,66 @@ func TestEqual(t *testing.T) {
 	}
 	for i, tcase := range tcases {
 		if result := Equal(tcase.a, tcase.b); result != tcase.result {
+			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
+				i, tcase.a, tcase.b, tcase.result)
+		}
+	}
+}
+
+func TestMatch(t *testing.T) {
+	tcases := []struct {
+		a      Path
+		b      Path
+		result bool
+	}{
+		{
+			a:      nil,
+			b:      nil,
+			result: true,
+		}, {
+			a:      nil,
+			b:      Path{},
+			result: true,
+		}, {
+			a:      Path{},
+			b:      nil,
+			result: true,
+		}, {
+			a:      Path{},
+			b:      Path{},
+			result: true,
+		}, {
+			a:      Path{},
+			b:      Path{key.New("foo")},
+			result: false,
+		}, {
+			a:      Path{Wildcard},
+			b:      Path{key.New("foo")},
+			result: true,
+		}, {
+			a:      Path{key.New("foo")},
+			b:      Path{Wildcard},
+			result: false,
+		}, {
+			a:      Path{Wildcard},
+			b:      Path{key.New("foo"), key.New("bar")},
+			result: false,
+		}, {
+			a:      Path{Wildcard, Wildcard},
+			b:      Path{key.New(int64(0))},
+			result: false,
+		}, {
+			a:      Path{Wildcard, Wildcard},
+			b:      Path{key.New(int64(0)), key.New(int32(0))},
+			result: true,
+		}, {
+			a:      Path{Wildcard, key.New(false)},
+			b:      Path{key.New(true), Wildcard},
+			result: false,
+		},
+	}
+	for i, tcase := range tcases {
+		if result := Match(tcase.a, tcase.b); result != tcase.result {
 			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
 				i, tcase.a, tcase.b, tcase.result)
 		}
@@ -262,10 +330,74 @@ func TestHasPrefix(t *testing.T) {
 			a:      Path{key.New(true), key.New(true), key.New(true)},
 			b:      Path{key.New(true), key.New(true)},
 			result: true,
+		}, {
+			a:      Path{Wildcard, key.New(int32(0)), Wildcard},
+			b:      Path{key.New(int64(0)), Wildcard},
+			result: false,
 		},
 	}
 	for i, tcase := range tcases {
 		if result := HasPrefix(tcase.a, tcase.b); result != tcase.result {
+			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
+				i, tcase.a, tcase.b, tcase.result)
+		}
+	}
+}
+
+func TestMatchPrefix(t *testing.T) {
+	tcases := []struct {
+		a      Path
+		b      Path
+		result bool
+	}{
+		{
+			a:      nil,
+			b:      nil,
+			result: true,
+		}, {
+			a:      nil,
+			b:      Path{},
+			result: true,
+		}, {
+			a:      Path{},
+			b:      nil,
+			result: true,
+		}, {
+			a:      Path{},
+			b:      Path{},
+			result: true,
+		}, {
+			a:      Path{},
+			b:      Path{key.New("foo")},
+			result: false,
+		}, {
+			a:      Path{key.New("foo")},
+			b:      Path{},
+			result: true,
+		}, {
+			a:      Path{key.New("foo")},
+			b:      Path{Wildcard},
+			result: false,
+		}, {
+			a:      Path{Wildcard},
+			b:      Path{key.New("foo")},
+			result: true,
+		}, {
+			a:      Path{Wildcard},
+			b:      Path{key.New("foo"), key.New("bar")},
+			result: false,
+		}, {
+			a:      Path{Wildcard, key.New(true)},
+			b:      Path{key.New(false), Wildcard},
+			result: false,
+		}, {
+			a:      Path{Wildcard, key.New(int32(0)), key.New(int16(0))},
+			b:      Path{key.New(int64(0)), key.New(int32(0))},
+			result: true,
+		},
+	}
+	for i, tcase := range tcases {
+		if result := MatchPrefix(tcase.a, tcase.b); result != tcase.result {
 			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
 				i, tcase.a, tcase.b, tcase.result)
 		}
