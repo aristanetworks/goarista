@@ -8,7 +8,6 @@ package dscp
 import (
 	"fmt"
 	"net"
-	"reflect"
 	"time"
 )
 
@@ -20,8 +19,7 @@ func DialTCPWithTOS(laddr, raddr *net.TCPAddr, tos byte) (*net.TCPConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	value := reflect.ValueOf(conn)
-	if err = setTOS(raddr.IP, value, tos); err != nil {
+	if err = setTOS(raddr.IP, conn, tos); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -54,7 +52,7 @@ func DialTimeoutWithTOS(network, address string, timeout time.Duration, tos byte
 		conn.Close()
 		return nil, fmt.Errorf("DialTimeoutWithTOS: cannot set TOS on a %s socket", network)
 	}
-	if err = setTOS(ip, reflect.ValueOf(conn), tos); err != nil {
+	if err = setTOS(ip, conn, tos); err != nil {
 		conn.Close()
 		return nil, err
 	}

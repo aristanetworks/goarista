@@ -7,7 +7,6 @@ package dscp
 
 import (
 	"net"
-	"reflect"
 )
 
 // ListenTCPWithTOS is similar to net.ListenTCP but with the socket configured
@@ -18,8 +17,7 @@ func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) 
 	if err != nil {
 		return nil, err
 	}
-	value := reflect.ValueOf(lsnr)
-	if err = setTOS(address.IP, value, tos); err != nil {
+	if err = setTOS(address.IP, lsnr, tos); err != nil {
 		lsnr.Close()
 		return nil, err
 	}
