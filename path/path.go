@@ -49,33 +49,38 @@ func Base(path Path) key.Key {
 	return nil
 }
 
-// Clone constructs a copy of a Path.
+// Clone returns a new Path with the same elements as in the
+// provided Path.
 func Clone(path Path) Path {
 	p := make(Path, len(path))
 	copy(p, path)
 	return p
 }
 
-// Equal returns whether the Path a is the same as Path b.
+// Equal returns whether Path a and Path b are the same
+// length and whether each element in b corresponds to the
+// same element in a.
 func Equal(a, b Path) bool {
 	return len(a) == len(b) && hasPrefix(a, b)
 }
 
-// HasPrefix returns whether the Path b is a prefix of Path a.
+// HasPrefix returns whether Path b is at most the length
+// of Path a and whether each element in b corresponds to
+// the same element in a.
 func HasPrefix(a, b Path) bool {
 	return len(a) >= len(b) && hasPrefix(a, b)
 }
 
-// Match returns whether the Path a and Path b are the same
+// Match returns whether Path a and Path b are the same
 // length and whether each element in b corresponds to the
 // same element or a wildcard in a.
 func Match(a, b Path) bool {
 	return len(a) == len(b) && matchPrefix(a, b)
 }
 
-// MatchPrefix returns whether the Path a is longer than
-// Path b and whether each element in b corresponds to the
-// same element or a wildcard in a.
+// MatchPrefix returns whether Path b is at most the length
+// of Path a and whether each element in b corresponds to
+// the same element or a wildcard in a.
 func MatchPrefix(a, b Path) bool {
 	return len(a) >= len(b) && matchPrefix(a, b)
 }
