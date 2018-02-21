@@ -56,7 +56,7 @@ func Clone(path Path) Path {
 	return p
 }
 
-// Equal returns whether the Path a is the same Path b.
+// Equal returns whether the Path a is the same as Path b.
 func Equal(a, b Path) bool {
 	return len(a) == len(b) && hasPrefix(a, b)
 }
