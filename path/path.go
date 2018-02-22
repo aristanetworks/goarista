@@ -2,8 +2,7 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-// Package path contains methods for dealing with absolute
-// paths elementally.
+// Package path contains methods for dealing with elemental paths.
 package path
 
 import (
@@ -13,8 +12,9 @@ import (
 	"github.com/aristanetworks/goarista/key"
 )
 
-// Path represents an absolute path decomposed into elements
-// where each element is a key.Key.
+// Path represents a path decomposed into elements where each
+// element is a key.Key. A Path can be interpreted as either
+// absolute or relative depending on how it is used.
 type Path []key.Key
 
 // New constructs a Path from a variable number of elements.
@@ -28,7 +28,9 @@ func New(elements ...interface{}) Path {
 
 // Append appends a variable number of elements to a Path.
 // Each element may either be a key.Key or a value that can
-// be wrapped by a key.Key.
+// be wrapped by a key.Key. Note that calling Append on a
+// single Path returns that same Path, whereas in all other
+// cases a new Path is returned.
 func Append(path Path, elements ...interface{}) Path {
 	if len(elements) == 0 {
 		return path
@@ -42,6 +44,7 @@ func Append(path Path, elements ...interface{}) Path {
 
 // Join joins a variable number of Paths together. Each path
 // in the joining is treated as a subpath of its predecessor.
+// Calling Join with no arguments returns nil.
 func Join(paths ...Path) Path {
 	if len(paths) == 0 {
 		return nil
@@ -85,7 +88,7 @@ func Equal(a, b Path) bool {
 
 // HasPrefix returns whether Path b is at most the length
 // of Path a and whether each element in b corresponds to
-// the same element in a.
+// the same element in a from the first element.
 func HasPrefix(a, b Path) bool {
 	return len(a) >= len(b) && hasPrefix(a, b)
 }
@@ -99,14 +102,16 @@ func Match(a, b Path) bool {
 
 // MatchPrefix returns whether Path b is at most the length
 // of Path a and whether each element in b corresponds to
-// the same element or a wildcard in a.
+// the same element or a wildcard in a from the first
+// element.
 func MatchPrefix(a, b Path) bool {
 	return len(a) >= len(b) && matchPrefix(a, b)
 }
 
 // FromString constructs a Path from the elements resulting
 // from a split of the input string by "/". Strings that do
-// not lead with a '/' are accepted but not reconstructable.
+// not lead with a '/' are accepted but not reconstructable
+// with Path.String.
 func FromString(str string) Path {
 	if str == "" {
 		return Path{}
@@ -121,7 +126,7 @@ func FromString(str string) Path {
 	return path
 }
 
-// String returns the Path as a string.
+// String returns the Path as an absolute path string.
 func (p Path) String() string {
 	if len(p) == 0 {
 		return "/"
