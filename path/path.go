@@ -40,6 +40,25 @@ func Append(path Path, elements ...interface{}) Path {
 	return p
 }
 
+// Join joins a variable number of Paths together. Each path
+// in the joining is treated as a subpath of its predecessor.
+func Join(paths ...Path) Path {
+	if len(paths) == 0 {
+		return nil
+	}
+	n := 0
+	for _, path := range paths {
+		n += len(path)
+	}
+	joined := make(Path, 0, n)
+	for _, path := range paths {
+		if len(path) != 0 {
+			joined = append(joined, path...)
+		}
+	}
+	return joined
+}
+
 // Base returns the last element of the Path. If the Path is
 // empty, Base returns nil.
 func Base(path Path) key.Key {

@@ -91,6 +91,54 @@ func TestAppend(t *testing.T) {
 	}
 }
 
+func TestJoin(t *testing.T) {
+	tcases := []struct {
+		paths  []Path
+		result Path
+	}{
+		{
+			paths:  nil,
+			result: nil,
+		}, {
+			paths:  []Path{Path{}},
+			result: Path{},
+		}, {
+			paths:  []Path{Path{}, Path{}},
+			result: Path{},
+		}, {
+			paths:  []Path{Path{key.New(true)}, Path{}},
+			result: Path{key.New(true)},
+		}, {
+			paths:  []Path{Path{}, Path{key.New(true)}},
+			result: Path{key.New(true)},
+		}, {
+			paths:  []Path{Path{key.New("foo")}, Path{key.New("bar")}},
+			result: Path{key.New("foo"), key.New("bar")},
+		}, {
+			paths:  []Path{Path{key.New("bar")}, Path{key.New("foo")}},
+			result: Path{key.New("bar"), key.New("foo")},
+		}, {
+			paths: []Path{
+				Path{key.New(uint32(0)), key.New(uint64(0))},
+				Path{key.New(int8(0))},
+				Path{key.New(int16(0)), key.New(int32(0))},
+				Path{key.New(int64(0)), key.New(uint8(0)), key.New(uint16(0))},
+			},
+			result: Path{
+				key.New(uint32(0)), key.New(uint64(0)),
+				key.New(int8(0)), key.New(int16(0)),
+				key.New(int32(0)), key.New(int64(0)),
+				key.New(uint8(0)), key.New(uint16(0)),
+			},
+		},
+	}
+	for i, tcase := range tcases {
+		if p := Join(tcase.paths...); !Equal(p, tcase.result) {
+			t.Fatalf("Test %d failed: %#v != %#v", i, p, tcase.result)
+		}
+	}
+}
+
 func TestBase(t *testing.T) {
 	if Base(Path{}) != nil {
 		t.Fatal("Base of empty Path should be nil")
