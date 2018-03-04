@@ -21,9 +21,9 @@ type Path []key.Key
 // Each element may either be a key.Key or a value that can
 // be wrapped by a key.Key.
 func New(elements ...interface{}) Path {
-	path := make(Path, len(elements))
-	copyElements(path, elements...)
-	return path
+	result := make(Path, len(elements))
+	copyElements(result, elements...)
+	return result
 }
 
 // Append appends a variable number of elements to a Path.
@@ -36,10 +36,10 @@ func Append(path Path, elements ...interface{}) Path {
 		return path
 	}
 	n := len(path)
-	p := make(Path, n+len(elements))
-	copy(p, path)
-	copyElements(p[n:], elements...)
-	return p
+	result := make(Path, n+len(elements))
+	copy(result, path)
+	copyElements(result[n:], elements...)
+	return result
 }
 
 // Join joins a variable number of Paths together. Each path
@@ -53,14 +53,14 @@ func Join(paths ...Path) Path {
 	for _, path := range paths {
 		n += len(path)
 	}
-	joined, i := make(Path, n), 0
+	result, i := make(Path, n), 0
 	for _, path := range paths {
 		if n = len(path); n > 0 {
-			copy(joined[i:i+n], path)
+			copy(result[i:i+n], path)
 			i += n
 		}
 	}
-	return joined
+	return result
 }
 
 // Base returns the last element of the Path. If the Path is
@@ -75,9 +75,9 @@ func Base(path Path) key.Key {
 // Clone returns a new Path with the same elements as in the
 // provided Path.
 func Clone(path Path) Path {
-	p := make(Path, len(path))
-	copy(p, path)
-	return p
+	result := make(Path, len(path))
+	copy(result, path)
+	return result
 }
 
 // Equal returns whether Path a and Path b are the same
@@ -120,11 +120,11 @@ func FromString(str string) Path {
 		str = str[1:]
 	}
 	elements := strings.Split(str, "/")
-	path := make(Path, len(elements))
+	result := make(Path, len(elements))
 	for i, element := range elements {
-		path[i] = key.New(element)
+		result[i] = key.New(element)
 	}
-	return path
+	return result
 }
 
 // String returns the Path as an absolute path string.
@@ -140,13 +140,13 @@ func (p Path) String() string {
 	return buf.String()
 }
 
-func copyElements(path Path, elements ...interface{}) {
+func copyElements(dest Path, elements ...interface{}) {
 	for i, element := range elements {
 		switch val := element.(type) {
 		case key.Key:
-			path[i] = val
+			dest[i] = val
 		default:
-			path[i] = key.New(val)
+			dest[i] = key.New(val)
 		}
 	}
 }
