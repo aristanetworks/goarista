@@ -548,3 +548,26 @@ func TestString(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkJoin(b *testing.B) {
+	generate := func(n int) []Path {
+		paths := make([]Path, 0, n)
+		for i := 0; i < n; i++ {
+			paths = append(paths, Path{})
+		}
+		return paths
+	}
+	benchmarks := map[string][]Path{
+		"10 Paths":    generate(10),
+		"100 Paths":   generate(100),
+		"1000 Paths":  generate(1000),
+		"10000 Paths": generate(10000),
+	}
+	for name, benchmark := range benchmarks {
+		b.Run(name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				Join(benchmark...)
+			}
+		})
+	}
+}
