@@ -553,7 +553,7 @@ func BenchmarkJoin(b *testing.B) {
 	generate := func(n int) []Path {
 		paths := make([]Path, 0, n)
 		for i := 0; i < n; i++ {
-			paths = append(paths, Path{})
+			paths = append(paths, Path{key.New("foo")})
 		}
 		return paths
 	}

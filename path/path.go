@@ -55,10 +55,7 @@ func Join(paths ...Path) Path {
 	}
 	result, i := make(Path, n), 0
 	for _, path := range paths {
-		if n = len(path); n > 0 {
-			copy(result[i:i+n], path)
-			i += n
-		}
+		i += copy(result[i:], path)
 	}
 	return result
 }
