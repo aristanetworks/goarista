@@ -100,11 +100,11 @@ func TestJoin(t *testing.T) {
 			paths:  nil,
 			result: nil,
 		}, {
-			paths:  []Path{Path{}},
-			result: Path{},
+			paths:  []Path{},
+			result: nil,
 		}, {
-			paths:  []Path{Path{}, Path{}},
-			result: Path{},
+			paths:  []Path{Path{}},
+			result: nil,
 		}, {
 			paths:  []Path{Path{key.New(true)}, Path{}},
 			result: Path{key.New(true)},
