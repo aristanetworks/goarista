@@ -58,3 +58,20 @@ func DialTimeoutWithTOS(network, address string, timeout time.Duration, tos byte
 	}
 	return conn, err
 }
+
+// DialTCPTimeoutWithTOS is same as DialTimeoutWithTOS except for enforcing "tcp" and
+// providing an option to specify local address (source)
+func DialTCPTimeoutWithTOS(laddr, raddr *net.TCPAddr, tos byte, timeout time.Duration) (net.Conn,
+	error) {
+	d := net.Dialer{Timeout: timeout, LocalAddr: laddr}
+	conn, err := d.Dial("tcp", raddr.String())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = setTOS(raddr.IP, conn, tos); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return conn, err
+}

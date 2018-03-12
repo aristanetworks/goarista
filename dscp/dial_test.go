@@ -5,8 +5,11 @@
 package dscp_test
 
 import (
+	"fmt"
 	"net"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/aristanetworks/goarista/dscp"
 )
@@ -50,4 +53,51 @@ func TestDialTCPWithTOS(t *testing.T) {
 	}
 	conn.Write(buf)
 	<-done
+}
+
+func TestDialTCPTimeoutWithTOS(t *testing.T) {
+	raddr := &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0}
+	for name, td := range map[string]*net.TCPAddr{
+		"ipNoPort": &net.TCPAddr{
+			IP: net.ParseIP("127.0.0.42"), Port: 0,
+		},
+		"ipWithPort": &net.TCPAddr{
+			IP: net.ParseIP("127.0.0.42"), Port: 10001,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			l, err := net.ListenTCP("tcp", raddr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer l.Close()
+
+			var srcAddr net.Addr
+			done := make(chan struct{})
+			go func() {
+				conn, err := l.Accept()
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer conn.Close()
+				srcAddr = conn.RemoteAddr()
+				close(done)
+			}()
+
+			conn, err := dscp.DialTCPTimeoutWithTOS(td, l.Addr().(*net.TCPAddr), 40, 5*time.Second)
+			if err != nil {
+				t.Fatal("Connection failed:", err)
+			}
+			defer conn.Close()
+
+			pfx := td.IP.String() + ":"
+			if td.Port > 0 {
+				pfx = fmt.Sprintf("%s%d", pfx, td.Port)
+			}
+			<-done
+			if !strings.HasPrefix(srcAddr.String(), pfx) {
+				t.Fatalf("DialTCPTimeoutWithTOS wrong address: %q instead of %q", srcAddr, pfx)
+			}
+		})
+	}
 }
