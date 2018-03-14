@@ -6,23 +6,46 @@ dropped.
 
 This tool requires a config file to specify how to map the path of the
 notificatons coming out of the OpenConfig gRPC interface onto OpenTSDB
-metric names, and how to extract tags from the path.  For example, the
-following rule, excerpt from `sampleconfig.json`:
+metric names, and how to extract tags from the path.
+
+## Getting Started
+To begin, a list of subscriptions is required (excerpt from `sampleconfig.json`):
 
 ```json
-   "metrics": {
-      "tempSensor": {
-         "path": "/Sysdb/(environment)/temperature/status/tempSensor/(?P<sensor>.+)/((?:maxT|t)emperature)/value"
-      },
-	  ...
+	"subscriptions": [
+		"/Sysdb/interface/counter/eth/lag",
+		"/Sysdb/interface/counter/eth/slice/phy",
+
+		"/Sysdb/environment/temperature/status",
+		"/Sysdb/environment/cooling/status",
+		"/Sysdb/environment/power/status",
+
+		"/Sysdb/hardware/xcvr/status/all/xcvrStatus"
+	],
+	...
 ```
 
-Applied to an update for the path
-`/Sysdb/environment/temperature/status/tempSensor/TempSensor1/temperature/value`
-will lead to the metric name `environment.temperature` and tags `sensor=TempSensor1`.
+Note that subscriptions should not end with a trailing `/` as that will cause
+the subscription to fail.
 
-Basically, un-named groups are used to make up the metric name, and named
-groups are used to extract (optional) tags.
+Afterwards, the metrics are defined (excerpt from `sampleconfig.json`):
+
+```json
+	"metrics": {
+		"tempSensor": {
+			"path": "/Sysdb/(environment)/temperature/status/tempSensor/(?P<sensor>.+)/((?:maxT|t)emperature)"
+		},
+		...
+	}
+```
+
+In the metrics path, unnamed matched groups are used to make up the metric name, and named matched groups
+are used to extract optional tags. Note that unnamed groups are required, otherwise the metric
+name will be empty and the update will be silently dropped.
+
+For example, using the above metrics path applied to an update for the path
+`/Sysdb/environment/temperature/status/tempSensor/TempSensor1/temperature`
+will lead to the metric name `environment.temperature` and tags `sensor=TempSensor1`.
 
 ## Usage
 
