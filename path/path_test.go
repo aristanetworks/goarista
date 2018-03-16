@@ -139,6 +139,32 @@ func TestJoin(t *testing.T) {
 	}
 }
 
+func TestParent(t *testing.T) {
+	if Parent(Path{}) != nil {
+		t.Fatal("Parent of empty Path should be nil")
+	}
+	tcases := []struct {
+		in  Path
+		out Path
+	}{
+		{
+			in:  Path{key.New("foo")},
+			out: Path{},
+		}, {
+			in:  Path{key.New("foo"), key.New("bar")},
+			out: Path{key.New("foo")},
+		}, {
+			in:  Path{key.New("foo"), key.New("bar"), key.New("baz")},
+			out: Path{key.New("foo"), key.New("bar")},
+		},
+	}
+	for _, tcase := range tcases {
+		if !Equal(Parent(tcase.in), tcase.out) {
+			t.Fatalf("Parent of %#v != %#v", tcase.in, tcase.out)
+		}
+	}
+}
+
 func TestBase(t *testing.T) {
 	if Base(Path{}) != nil {
 		t.Fatal("Base of empty Path should be nil")

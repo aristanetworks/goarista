@@ -60,6 +60,15 @@ func Join(paths ...Path) Path {
 	return result
 }
 
+// Parent returns all but the last element of the Path. If
+// the Path is empty, Parent returns nil.
+func Parent(path Path) Path {
+	if len(path) > 0 {
+		return path[:len(path)-1]
+	}
+	return nil
+}
+
 // Base returns the last element of the Path. If the Path is
 // empty, Base returns nil.
 func Base(path Path) key.Key {
