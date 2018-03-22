@@ -55,10 +55,10 @@ type int16Key int16
 type int32Key int32
 type int64Key int64
 
-type uint8Key int8
-type uint16Key int16
-type uint32Key int32
-type uint64Key int64
+type uint8Key uint8
+type uint16Key uint16
+type uint32Key uint32
+type uint64Key uint64
 
 type float32Key float32
 type float64Key float64
