@@ -41,29 +41,40 @@ func TestParseTestOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	makeTags := func(pkg, resultType string) map[string]string {
+		return map[string]string{"package": pkg, "type": resultType, "tag": "foo"}
+	}
+	makeFields := func(pass, elapsed float64, test string) map[string]interface{} {
+		m := map[string]interface{}{"pass": pass, "elapsed": elapsed, "field": true}
+		if test != "" {
+			m["test"] = test
+		}
+		return m
+	}
+
 	expected := []*client.Point{
 		newPoint(t,
 			"result",
-			map[string]string{"package": "pkg/passed", "test": "TestPass", "tag": "foo"},
-			map[string]interface{}{"pass": float64(1), "elapsed": float64(0), "field": true},
+			makeTags("pkg/passed", "test"),
+			makeFields(1, 0, "TestPass"),
 			"2018-03-08T10:33:12.344165231-08:00",
 		),
 		newPoint(t,
 			"result",
-			map[string]string{"package": "pkg/passed", "test": "NONE", "tag": "foo"},
-			map[string]interface{}{"pass": float64(1), "elapsed": float64(0.013), "field": true},
+			makeTags("pkg/passed", "package"),
+			makeFields(1, 0.013, ""),
 			"2018-03-08T10:33:12.34533033-08:00",
 		),
 		newPoint(t,
 			"result",
-			map[string]string{"package": "pkg/failed", "test": "TestFail", "tag": "foo"},
-			map[string]interface{}{"pass": float64(0), "elapsed": float64(0.18), "field": true},
+			makeTags("pkg/failed", "test"),
+			makeFields(0, 0.18, "TestFail"),
 			"2018-03-08T10:33:27.158860934-08:00",
 		),
 		newPoint(t,
 			"result",
-			map[string]string{"package": "pkg/failed", "test": "NONE", "tag": "foo"},
-			map[string]interface{}{"pass": float64(0), "elapsed": float64(0.204), "field": true},
+			makeTags("pkg/failed", "package"),
+			makeFields(0, 0.204, ""),
 			"2018-03-08T10:33:27.161302093-08:00",
 		),
 	}

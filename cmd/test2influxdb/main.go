@@ -12,15 +12,17 @@
 // Points are written to influxdb with tags:
 //
 //  package
-//  test    // "NONE" for whole package results
+//  type    "package" for a package result; "test" for a test result
 //  Additional tags set by -tags flag
 //
 // And fields:
 //
+//  test    string  // "NONE" for whole package results
 //  elapsed float64 // in seconds
 //  pass    float64 // 1 for PASS, 0 for FAIL
 //  Additional fields set by -fields flag
 //
+// "test" is a field instead of a tag to reduce cardinality of data.
 //
 package main
 
@@ -181,55 +183,60 @@ type testEvent struct {
 	Output  string
 }
 
+func createTags(e *testEvent) map[string]string {
+	tags := make(map[string]string, len(flagTags)+2)
+	for _, t := range flagTags {
+		tags[t.key] = t.value
+	}
+	resultType := "test"
+	if e.Test == "" {
+		resultType = "package"
+	}
+	tags["package"] = e.Package
+	tags["type"] = resultType
+	return tags
+}
+
+func createFields(e *testEvent) map[string]interface{} {
+	fields := make(map[string]interface{}, len(flagFields)+3)
+	for _, f := range flagFields {
+		fields[f.key] = f.value
+	}
+	// Use a float64 instead of a bool to be able to SUM test
+	// successes in influxdb.
+	var pass float64
+	if e.Action == "pass" {
+		pass = 1
+	}
+	fields["pass"] = pass
+	fields["elapsed"] = e.Elapsed
+	if e.Test != "" {
+		fields["test"] = e.Test
+	}
+	return fields
+}
+
 func parseTestOutput(r io.Reader, batch client.BatchPoints) error {
 	d := json.NewDecoder(r)
 	for {
-		var e testEvent
-		if err := d.Decode(&e); err != nil {
+		e := &testEvent{}
+		if err := d.Decode(e); err != nil {
 			if err != io.EOF {
 				return err
 			}
 			break
 		}
 
-		// Use an float64 instead of a bool to be able to SUM test
-		// successes in influxdb. TODO verify: Using float64 instead
-		// of int64 to get division to work.
-		var pass float64
 		switch e.Action {
+		case "pass", "fail":
 		default:
 			continue
-		case "pass":
-			pass = 1
-		case "fail":
 		}
-
-		test := e.Test
-		if test == "" {
-			// When test is "" testEvent describes a whole
-			// package. influxdb allows not setting a tag, but grafana
-			// makes it difficult to query tags that are unset, so
-			// "NONE" is used instead.
-			test = "NONE"
-		}
-		tags := make(map[string]string, len(flagTags)+2)
-		for _, t := range flagTags {
-			tags[t.key] = t.value
-		}
-		tags["package"] = e.Package
-		tags["test"] = test
-
-		fields := make(map[string]interface{}, len(flagFields)+2)
-		for _, f := range flagFields {
-			fields[f.key] = f.value
-		}
-		fields["pass"] = pass
-		fields["elapsed"] = e.Elapsed
 
 		point, err := client.NewPoint(
 			*flagMeasurement,
-			tags,
-			fields,
+			createTags(e),
+			createFields(e),
 			e.Time,
 		)
 		if err != nil {
