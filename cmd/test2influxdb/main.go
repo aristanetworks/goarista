@@ -217,6 +217,15 @@ func createFields(e *testEvent) map[string]interface{} {
 }
 
 func parseTestOutput(r io.Reader, batch client.BatchPoints) error {
+	// pkgs holds packages seen in r. Unfortunately, if a test panics,
+	// then there is no "fail" result from a package. To detect these
+	// kind of failures, keep track of all the packages that never had
+	// a "pass" or "fail".
+	//
+	// The last seen timestamp is stored with the package, so that
+	// package result measurement written to influxdb can be later
+	// than any test result for that package.
+	pkgs := make(map[string]time.Time)
 	d := json.NewDecoder(r)
 	for {
 		e := &testEvent{}
@@ -233,11 +242,38 @@ func parseTestOutput(r io.Reader, batch client.BatchPoints) error {
 			continue
 		}
 
+		if e.Test == "" {
+			// A package has completed.
+			delete(pkgs, e.Package)
+		} else {
+			pkgs[e.Package] = e.Time
+		}
+
 		point, err := client.NewPoint(
 			*flagMeasurement,
 			createTags(e),
 			createFields(e),
 			e.Time,
+		)
+		if err != nil {
+			return err
+		}
+
+		batch.AddPoint(point)
+	}
+
+	for pkg, t := range pkgs {
+		pkgFail := &testEvent{
+			Action:  "fail",
+			Package: pkg,
+		}
+		point, err := client.NewPoint(
+			*flagMeasurement,
+			createTags(pkgFail),
+			createFields(pkgFail),
+			// Fake a timestamp that is later than anything that
+			// occurred for this package
+			t.Add(time.Millisecond),
 		)
 		if err != nil {
 			return err
