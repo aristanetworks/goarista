@@ -14,6 +14,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"io"
 	"os"
@@ -35,6 +36,9 @@ func main() {
 
 func writeTestOutput(in io.Reader, out io.Writer) error {
 	d := json.NewDecoder(in)
+
+	buf := bufio.NewWriter(out)
+	defer buf.Flush()
 	for {
 		var e testEvent
 		if err := d.Decode(&e); err != nil {
@@ -46,7 +50,7 @@ func writeTestOutput(in io.Reader, out io.Writer) error {
 		case "output":
 		}
 
-		if _, err := io.WriteString(out, e.Output); err != nil {
+		if _, err := buf.WriteString(e.Output); err != nil {
 			return err
 		}
 	}
