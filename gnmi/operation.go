@@ -32,8 +32,9 @@ func Get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
 		return err
 	}
 	for _, notif := range resp.Notification {
+		prefix := StrPath(notif.Prefix)
 		for _, update := range notif.Update {
-			fmt.Printf("%s:\n", StrPath(update.Path))
+			fmt.Printf("%s:\n", path.Join(prefix, StrPath(update.Path)))
 			fmt.Println(StrUpdateVal(update))
 		}
 	}
