@@ -93,6 +93,16 @@ func Equal(a, b Path) bool {
 	return len(a) == len(b) && hasPrefix(a, b)
 }
 
+// HasElement returns whether element b exists in Path a.
+func HasElement(a Path, b key.Key) bool {
+	for _, element := range a {
+		if element.Equal(b) {
+			return true
+		}
+	}
+	return false
+}
+
 // HasPrefix returns whether Path b is at most the length
 // of Path a and whether each element in b corresponds to
 // the same element in a from the first element.

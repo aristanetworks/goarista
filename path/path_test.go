@@ -354,6 +354,58 @@ func TestMatch(t *testing.T) {
 	}
 }
 
+func TestHasElement(t *testing.T) {
+	tcases := []struct {
+		a      Path
+		b      key.Key
+		result bool
+	}{
+		{
+			a:      nil,
+			b:      nil,
+			result: false,
+		}, {
+			a:      nil,
+			b:      key.New("foo"),
+			result: false,
+		}, {
+			a:      Path{},
+			b:      nil,
+			result: false,
+		}, {
+			a:      Path{key.New("foo")},
+			b:      nil,
+			result: false,
+		}, {
+			a:      Path{key.New("foo")},
+			b:      key.New("foo"),
+			result: true,
+		}, {
+			a:      Path{key.New(true)},
+			b:      key.New("true"),
+			result: false,
+		}, {
+			a:      Path{key.New("foo"), key.New("bar")},
+			b:      key.New("bar"),
+			result: true,
+		}, {
+			a:      Path{key.New(map[string]interface{}{})},
+			b:      key.New(map[string]interface{}{}),
+			result: true,
+		}, {
+			a:      Path{key.New(map[string]interface{}{"foo": "a"})},
+			b:      key.New(map[string]interface{}{"bar": "a"}),
+			result: false,
+		},
+	}
+	for i, tcase := range tcases {
+		if result := HasElement(tcase.a, tcase.b); result != tcase.result {
+			t.Errorf("Test %d failed: a: %#v; b: %#v, result: %t, expected: %t",
+				i, tcase.a, tcase.b, result, tcase.result)
+		}
+	}
+}
+
 func TestHasPrefix(t *testing.T) {
 	tcases := []struct {
 		a      Path
@@ -593,6 +645,39 @@ func BenchmarkJoin(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				Join(benchmark...)
+			}
+		})
+	}
+}
+
+func BenchmarkHasElement(b *testing.B) {
+	element := key.New("waldo")
+	generate := func(n, loc int) Path {
+		path := make(Path, n)
+		for i := 0; i < n; i++ {
+			if i == loc {
+				path[i] = element
+			} else {
+				path[i] = key.New(int8(0))
+			}
+		}
+		return path
+	}
+	benchmarks := map[string]Path{
+		"10 Elements Index 0":     generate(10, 0),
+		"10 Elements Index 4":     generate(10, 4),
+		"10 Elements Index 9":     generate(10, 9),
+		"100 Elements Index 0":    generate(100, 0),
+		"100 Elements Index 49":   generate(100, 49),
+		"100 Elements Index 99":   generate(100, 99),
+		"1000 Elements Index 0":   generate(1000, 0),
+		"1000 Elements Index 499": generate(1000, 499),
+		"1000 Elements Index 999": generate(1000, 999),
+	}
+	for name, benchmark := range benchmarks {
+		b.Run(name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				HasElement(benchmark, element)
 			}
 		})
 	}
