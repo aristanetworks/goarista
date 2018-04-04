@@ -299,6 +299,9 @@ func LogSubscribeResponse(response *pb.SubscribeResponse) error {
 			fmt.Printf("%s = %s\n", path.Join(prefix, StrPath(update.Path)),
 				StrUpdateVal(update))
 		}
+		for _, del := range resp.Update.Delete {
+			fmt.Printf("Deleted %s\n", path.Join(prefix, StrPath(del)))
+		}
 	}
 	return nil
 }
