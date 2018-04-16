@@ -128,9 +128,9 @@ func MatchPrefix(a, b Path) bool {
 // FromString constructs a Path from the elements resulting
 // from a split of the input string by "/". Strings that do
 // not lead with a '/' are accepted but not reconstructable
-// with Path.String.
+// with Path.String. Both "" and "/" are treated as Path{}.
 func FromString(str string) Path {
-	if str == "" {
+	if str == "" || str == "/" {
 		return Path{}
 	} else if str[0] == '/' {
 		str = str[1:]

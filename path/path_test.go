@@ -540,7 +540,7 @@ func TestFromString(t *testing.T) {
 			out: Path{},
 		}, {
 			in:  "/",
-			out: Path{key.New("")},
+			out: Path{},
 		}, {
 			in:  "//",
 			out: Path{key.New(""), key.New("")},
