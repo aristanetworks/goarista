@@ -3,7 +3,7 @@
 # that can be found in the COPYING file.
 
 # TODO: move this to cmd/ockafka (https://github.com/docker/hub-feedback/issues/292)
-FROM golang:1.7.3
+FROM golang:1.10.1
 
 RUN mkdir -p /go/src/github.com/aristanetworks/goarista/cmd
 WORKDIR /go/src/github.com/aristanetworks/goarista
