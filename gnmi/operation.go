@@ -16,6 +16,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
@@ -294,13 +295,16 @@ func LogSubscribeResponse(response *pb.SubscribeResponse) error {
 			return errors.New("initial sync failed")
 		}
 	case *pb.SubscribeResponse_Update:
+		t := time.Unix(0, resp.Update.Timestamp).UTC()
 		prefix := StrPath(resp.Update.Prefix)
 		for _, update := range resp.Update.Update {
-			fmt.Printf("%s = %s\n", path.Join(prefix, StrPath(update.Path)),
+			fmt.Printf("[%s] %s = %s\n", t.Format(time.RFC3339Nano),
+				path.Join(prefix, StrPath(update.Path)),
 				StrUpdateVal(update))
 		}
 		for _, del := range resp.Update.Delete {
-			fmt.Printf("Deleted %s\n", path.Join(prefix, StrPath(del)))
+			fmt.Printf("[%s] Deleted %s\n", t.Format(time.RFC3339Nano),
+				path.Join(prefix, StrPath(del)))
 		}
 	}
 	return nil
