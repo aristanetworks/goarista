@@ -56,6 +56,34 @@ func TestKeyEqual(t *testing.T) {
 		b:      New("bar"),
 		result: false,
 	}, {
+		a:      New([]interface{}{}),
+		b:      New("bar"),
+		result: false,
+	}, {
+		a:      New([]interface{}{}),
+		b:      New([]interface{}{}),
+		result: true,
+	}, {
+		a:      New([]interface{}{"a", "b"}),
+		b:      New([]interface{}{"a"}),
+		result: false,
+	}, {
+		a:      New([]interface{}{"a", "b"}),
+		b:      New([]interface{}{"b", "a"}),
+		result: false,
+	}, {
+		a:      New([]interface{}{"a", "b"}),
+		b:      New([]interface{}{"a", "b"}),
+		result: true,
+	}, {
+		a:      New([]interface{}{"a", map[string]interface{}{"b": "c"}}),
+		b:      New([]interface{}{"a", map[string]interface{}{"c": "b"}}),
+		result: false,
+	}, {
+		a:      New([]interface{}{"a", map[string]interface{}{"b": "c"}}),
+		b:      New([]interface{}{"a", map[string]interface{}{"b": "c"}}),
+		result: true,
+	}, {
 		a:      New(map[string]interface{}{}),
 		b:      New("bar"),
 		result: false,
@@ -150,6 +178,32 @@ func TestGetFromMap(t *testing.T) {
 	}, {
 		k:     New(uint32(37)),
 		m:     map[Key]interface{}{},
+		found: false,
+	}, {
+		k: New([]interface{}{"a", "b"}),
+		m: map[Key]interface{}{
+			New([]interface{}{"a", "b"}): "foo",
+		},
+		v:     "foo",
+		found: true,
+	}, {
+		k: New([]interface{}{"a", "b"}),
+		m: map[Key]interface{}{
+			New([]interface{}{"a", "b", "c"}): "foo",
+		},
+		found: false,
+	}, {
+		k: New([]interface{}{"a", map[string]interface{}{"b": "c"}}),
+		m: map[Key]interface{}{
+			New([]interface{}{"a", map[string]interface{}{"b": "c"}}): "foo",
+		},
+		v:     "foo",
+		found: true,
+	}, {
+		k: New([]interface{}{"a", map[string]interface{}{"b": "c"}}),
+		m: map[Key]interface{}{
+			New([]interface{}{"a", map[string]interface{}{"c": "b"}}): "foo",
+		},
 		found: false,
 	}, {
 		k: New(map[string]interface{}{"a": "b", "c": uint64(4)}),

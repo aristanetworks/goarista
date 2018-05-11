@@ -29,10 +29,14 @@ type composite struct {
 	// This value must always be set to the sentinel constant above.
 	sentinel uintptr
 	m        map[string]interface{}
+	s        []interface{}
 }
 
 func (k composite) Key() interface{} {
-	return k.m
+	if k.m != nil {
+		return k.m
+	}
+	return k.s
 }
 
 func (k composite) String() string {
@@ -49,7 +53,10 @@ func (k composite) MarshalJSON() ([]byte, error) {
 
 func (k composite) Equal(other interface{}) bool {
 	o, ok := other.(composite)
-	return ok && mapStringEqual(k.m, o.m)
+	if k.m != nil {
+		return ok && mapStringEqual(k.m, o.m)
+	}
+	return ok && sliceEqual(k.s, o.s)
 }
 
 func hashInterface(v interface{}) uintptr {
@@ -58,6 +65,8 @@ func hashInterface(v interface{}) uintptr {
 		return hashMapString(v)
 	case map[Key]interface{}:
 		return hashMapKey(v)
+	case []interface{}:
+		return hashSlice(v)
 	default:
 		return _nilinterhash(v)
 	}
@@ -88,12 +97,23 @@ func hashMapKey(m map[Key]interface{}) uintptr {
 	return h
 }
 
+func hashSlice(s []interface{}) uintptr {
+	h := uintptr(31 * (len(s) + 1))
+	for _, v := range s {
+		h += hashInterface(v)
+	}
+	return h
+}
+
 func hash(p unsafe.Pointer, seed uintptr) uintptr {
 	ck := *(*composite)(p)
 	if ck.sentinel != sentinel {
 		panic("use of unhashable type in a map")
 	}
-	return seed ^ hashMapString(ck.m)
+	if ck.m != nil {
+		return seed ^ hashMapString(ck.m)
+	}
+	return seed ^ hashSlice(ck.s)
 }
 
 func equal(a unsafe.Pointer, b unsafe.Pointer) bool {
@@ -105,7 +125,10 @@ func equal(a unsafe.Pointer, b unsafe.Pointer) bool {
 	if cb.sentinel != sentinel {
 		panic("use of uncomparable type on the rhs of ==")
 	}
-	return mapStringEqual(ca.m, cb.m)
+	if ca.m != nil {
+		return mapStringEqual(ca.m, cb.m)
+	}
+	return sliceEqual(ca.s, cb.s)
 }
 
 func init() {
