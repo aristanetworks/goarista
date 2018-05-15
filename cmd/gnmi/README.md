@@ -16,6 +16,16 @@ under [GOPATH](https://golang.org/doc/code.html#GOPATH).
 
 # Usage
 
+```
+$ gnmi [OPTIONS] [OPERATION]
+```
+
+When running on the switch in a non-default VRF:
+
+```
+$ ip netns exec ns-<VRF> gnmi [OPTIONS] [OPERATION]
+```
+
 ## Options
 
 * `-addr ADDR:PORT`  
