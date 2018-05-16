@@ -13,16 +13,17 @@ import (
 	"github.com/aristanetworks/goarista/areflect"
 )
 
-// composite allows storing a map[string]interface{} as a key in a Go map.
-// This is useful when the key isn't a fixed data structure known at compile
-// time but rather something generic, like a bag of key-value pairs.
-// Go does not allow storing a map inside the key of a map, because maps are
-// not comparable or hashable, and keys in maps must be both.  This file is
-// a hack specific to the 'gc' implementation of Go (which is the one most
-// people use when they use Go), to bypass this check, by abusing reflection
-// to override how Go compares composite for equality or how it's hashed.
-// The values allowed in this map are only the types whitelisted in New() as
-// well as map[Key]interface{}.
+// composite allows storing a map[string]interface{} or []interface{} as a key
+// in a Go map. This is useful when the key isn't a fixed data structure known
+// at compile time but rather something generic, like a bag of key-value pairs
+// or a list of elements. Go does not allow storing a map or slice inside the
+// key of a map, because maps and slices are not comparable or hashable, and
+// keys in maps and slice elements must be both.  This file is a hack specific
+// to the 'gc' implementation of Go (which is the one most people use when they
+// use Go), to bypass this check, by abusing reflection to override how Go
+// compares composite for equality or how it's hashed. The values allowed in
+// this map are only the types whitelisted in New() as well as map[Key]interface{}
+// and []interface{}.
 //
 // See also https://github.com/golang/go/issues/283
 type composite struct {

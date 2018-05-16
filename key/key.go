@@ -16,7 +16,8 @@ import (
 // Key represents the Key in the updates and deletes of the Notification
 // objects.  The only reason this exists is that Go won't let us define
 // our own hash function for non-hashable types, and unfortunately we
-// need to be able to index maps by map[string]interface{} objects.
+// need to be able to index maps by map[string]interface{} objects
+// and slices by []interface{} objects.
 type Key interface {
 	Key() interface{}
 	String() string
