@@ -119,6 +119,18 @@ func TestStringify(t *testing.T) {
 			"n": nil,
 		},
 		output: "Unable to stringify nil",
+	}, {
+		name: "[]interface{}",
+		input: []interface{}{
+			uint32(42),
+			true,
+			"foo",
+			map[Key]interface{}{
+				New("a"): "b",
+				New("b"): "c",
+			},
+		},
+		output: "42,true,foo,a=b_b=c",
 	}}
 
 	for _, tcase := range testcases {
