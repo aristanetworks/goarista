@@ -92,7 +92,7 @@ $ gnmi [OPTIONS] delete '/network-instances/network-instance[name=default]/proto
 ```
 
 `update` and `replace` both take a path and a value in JSON
-format. See
+format. The JSON data may be provided in a file. See
 [here](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#344-modes-of-update-replace-versus-update)
 for documentation on the differences between `update` and `replace`.
 
@@ -111,6 +111,37 @@ gnmi [OPTIONS] replace '/network-instances/network-instance[name=default]/protoc
 Note: String values need to be quoted if they look like JSON. For example, setting the login banner to `tor[13]`:
 ```
 gnmi [OPTIONS] update '/system/config/login-banner '"tor[13]"'
+```
+
+#### JSON in a file
+
+The value argument to `update` and `replace` may be a file. The
+content of the file is used to make the request.
+
+Example:
+
+File `path/to/subintf100.json` contains the following:
+
+```
+{
+  "subinterface": [
+    {
+      "config": {
+        "enabled": true,
+        "index": 100
+      },
+      "index": 100
+    }
+  ]
+}
+```
+
+Add subinterface 100 to interfaces Ethernet4/1/1 and Ethernet4/2/1 in
+one transaction:
+
+```
+gnmi [OPTIONS] update '/interfaces/interface[name=Ethernet4/1/1]/subinterfaces' path/to/subintf100.json \
+               update '/interfaces/interface[name=Ethernet4/2/1]/subinterfaces' path/to/subintf100.json
 ```
 
 ### CLI requests
