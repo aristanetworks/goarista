@@ -33,7 +33,7 @@ type MetricDef struct {
 	Path string
 
 	// Path compiled as a regexp.
-	re *regexp.Regexp
+	re *regexp.Regexp `deepequal:"ignore"`
 
 	// Metric name.
 	Name string
