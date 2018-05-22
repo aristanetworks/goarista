@@ -65,6 +65,25 @@ type float64Key float64
 
 type boolKey bool
 
+type pointerKey compositeKey
+
+func pointerToSlice(ptr Pointer) []interface{} {
+	path := ptr.Pointer()
+	s := make([]interface{}, len(path))
+	for i, element := range path {
+		s[i] = element.Key()
+	}
+	return s
+}
+
+func sliceToPointer(s []interface{}) pointer {
+	path := make(Path, len(s))
+	for i, intf := range s {
+		path[i] = New(intf)
+	}
+	return pointer(path)
+}
+
 // New wraps the given value in a Key.
 // This function panics if the value passed in isn't allowed in a Key or
 // doesn't implement value.Value.
@@ -98,6 +117,8 @@ func New(intf interface{}) Key {
 		return float64Key(t)
 	case bool:
 		return boolKey(t)
+	case Pointer:
+		return pointerKey{sentinel: sentinel, s: pointerToSlice(t)}
 	case value.Value:
 		return interfaceKey{key: intf}
 	default:
@@ -177,6 +198,21 @@ func keyEqual(a, b interface{}) bool {
 		return ok && sliceEqual(a, b)
 	case Comparable:
 		return a.Equal(b)
+	case Pointer:
+		b, ok := b.(Pointer)
+		if !ok {
+			return false
+		}
+		x, y := a.Pointer(), b.Pointer()
+		if len(x) != len(y) {
+			return false
+		}
+		for i := range x {
+			if !x[i].Equal(y[i]) {
+				return false
+			}
+		}
+		return true
 	}
 
 	return a == b
@@ -471,4 +507,26 @@ func (k boolKey) MarshalJSON() ([]byte, error) {
 func (k boolKey) Equal(other interface{}) bool {
 	o, ok := other.(boolKey)
 	return ok && k == o
+}
+
+// Key interface implementation for Pointer
+func (k pointerKey) Key() interface{} {
+	return sliceToPointer(k.s)
+}
+
+func (k pointerKey) String() string {
+	return sliceToPointer(k.s).String()
+}
+
+func (k pointerKey) GoString() string {
+	return fmt.Sprintf("key.New(%#v)", k.s)
+}
+
+func (k pointerKey) MarshalJSON() ([]byte, error) {
+	return sliceToPointer(k.s).MarshalJSON()
+}
+
+func (k pointerKey) Equal(other interface{}) bool {
+	o, ok := other.(pointerKey)
+	return ok && sliceEqual(k.s, o.s)
 }

@@ -32,6 +32,7 @@ as a key to a `map`, and we sometimes need to use a `map[string]interface{}`
 `map[key.Key]interface{}` instead of just `map[interface{}]interface{}` when we
 need a generic key-value collection. The type `key.Path` is the representation
 of a path broken down into individual elements, where each element is a `key.Key`.
+The type `key.Pointer` represents a pointer to a `key.Path`.
 
 ## path
 
