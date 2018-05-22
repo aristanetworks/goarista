@@ -19,7 +19,7 @@ func (w WildcardType) String() string {
 	return "*"
 }
 
-// Equal implements the value.Value interface.
+// Equal implements the key.Comparable interface.
 func (w WildcardType) Equal(other interface{}) bool {
 	_, ok := other.(WildcardType)
 	return ok
