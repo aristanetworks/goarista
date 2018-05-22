@@ -5,7 +5,6 @@
 package test
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/aristanetworks/goarista/key"
@@ -465,8 +464,5 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a: embedder{builtinCompare: builtinCompare{}},
 		b: embedder{builtinCompare: builtinCompare{}},
-	}, {
-		a: regexp.MustCompile("foo.*bar"),
-		b: regexp.MustCompile("foo.*bar"),
 	}}
 }
