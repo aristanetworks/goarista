@@ -6,7 +6,7 @@ package path
 
 import "github.com/aristanetworks/goarista/key"
 
-// Wildcard is a special element in a Path that is used by Map
+// Wildcard is a special element in a path that is used by Map
 // and the Match* functions to match any other element.
 var Wildcard = key.New(WildcardType{})
 

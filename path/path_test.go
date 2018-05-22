@@ -15,30 +15,31 @@ import (
 func TestNew(t *testing.T) {
 	tcases := []struct {
 		in  []interface{}
-		out Path
+		out key.Path
 	}{
 		{
 			in:  nil,
-			out: Path{},
+			out: key.Path{},
 		}, {
 			in:  []interface{}{},
-			out: Path{},
+			out: key.Path{},
 		}, {
 			in:  []interface{}{"foo", key.New("bar"), true},
-			out: Path{key.New("foo"), key.New("bar"), key.New(true)},
+			out: key.Path{key.New("foo"), key.New("bar"), key.New(true)},
 		}, {
-			in:  []interface{}{int8(5), int16(5), int32(5), int64(5)},
-			out: Path{key.New(int8(5)), key.New(int16(5)), key.New(int32(5)), key.New(int64(5))},
+			in: []interface{}{int8(5), int16(5), int32(5), int64(5)},
+			out: key.Path{key.New(int8(5)), key.New(int16(5)), key.New(int32(5)),
+				key.New(int64(5))},
 		}, {
 			in: []interface{}{uint8(5), uint16(5), uint32(5), uint64(5)},
-			out: Path{key.New(uint8(5)), key.New(uint16(5)), key.New(uint32(5)),
+			out: key.Path{key.New(uint8(5)), key.New(uint16(5)), key.New(uint32(5)),
 				key.New(uint64(5))},
 		}, {
 			in:  []interface{}{float32(5), float64(5)},
-			out: Path{key.New(float32(5)), key.New(float64(5))},
+			out: key.Path{key.New(float32(5)), key.New(float64(5))},
 		}, {
 			in:  []interface{}{customKey{i: &a}, map[string]interface{}{}},
-			out: Path{key.New(customKey{i: &a}), key.New(map[string]interface{}{})},
+			out: key.Path{key.New(customKey{i: &a}), key.New(map[string]interface{}{})},
 		},
 	}
 	for i, tcase := range tcases {
@@ -49,10 +50,10 @@ func TestNew(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	if !Equal(Clone(Path{}), Path{}) {
-		t.Error("Clone(Path{}) != Path{}")
+	if !Equal(Clone(key.Path{}), key.Path{}) {
+		t.Error("Clone(key.Path{}) != key.Path{}")
 	}
-	a := Path{key.New("foo"), key.New("bar")}
+	a := key.Path{key.New("foo"), key.New("bar")}
 	b, c := Clone(a), Clone(a)
 	b[1] = key.New("baz")
 	if Equal(a, b) || !Equal(a, c) {
@@ -62,26 +63,26 @@ func TestClone(t *testing.T) {
 
 func TestAppend(t *testing.T) {
 	tcases := []struct {
-		a      Path
+		a      key.Path
 		b      []interface{}
-		result Path
+		result key.Path
 	}{
 		{
-			a:      Path{},
+			a:      key.Path{},
 			b:      []interface{}{},
-			result: Path{},
+			result: key.Path{},
 		}, {
-			a:      Path{key.New("foo")},
+			a:      key.Path{key.New("foo")},
 			b:      []interface{}{},
-			result: Path{key.New("foo")},
+			result: key.Path{key.New("foo")},
 		}, {
-			a:      Path{},
+			a:      key.Path{},
 			b:      []interface{}{"foo", key.New("bar")},
-			result: Path{key.New("foo"), key.New("bar")},
+			result: key.Path{key.New("foo"), key.New("bar")},
 		}, {
-			a:      Path{key.New("foo")},
+			a:      key.Path{key.New("foo")},
 			b:      []interface{}{int64(0), key.New("bar")},
-			result: Path{key.New("foo"), key.New(int64(0)), key.New("bar")},
+			result: key.Path{key.New("foo"), key.New(int64(0)), key.New("bar")},
 		},
 	}
 	for i, tcase := range tcases {
@@ -93,38 +94,38 @@ func TestAppend(t *testing.T) {
 
 func TestJoin(t *testing.T) {
 	tcases := []struct {
-		paths  []Path
-		result Path
+		paths  []key.Path
+		result key.Path
 	}{
 		{
 			paths:  nil,
 			result: nil,
 		}, {
-			paths:  []Path{},
+			paths:  []key.Path{},
 			result: nil,
 		}, {
-			paths:  []Path{Path{}},
+			paths:  []key.Path{key.Path{}},
 			result: nil,
 		}, {
-			paths:  []Path{Path{key.New(true)}, Path{}},
-			result: Path{key.New(true)},
+			paths:  []key.Path{key.Path{key.New(true)}, key.Path{}},
+			result: key.Path{key.New(true)},
 		}, {
-			paths:  []Path{Path{}, Path{key.New(true)}},
-			result: Path{key.New(true)},
+			paths:  []key.Path{key.Path{}, key.Path{key.New(true)}},
+			result: key.Path{key.New(true)},
 		}, {
-			paths:  []Path{Path{key.New("foo")}, Path{key.New("bar")}},
-			result: Path{key.New("foo"), key.New("bar")},
+			paths:  []key.Path{key.Path{key.New("foo")}, key.Path{key.New("bar")}},
+			result: key.Path{key.New("foo"), key.New("bar")},
 		}, {
-			paths:  []Path{Path{key.New("bar")}, Path{key.New("foo")}},
-			result: Path{key.New("bar"), key.New("foo")},
+			paths:  []key.Path{key.Path{key.New("bar")}, key.Path{key.New("foo")}},
+			result: key.Path{key.New("bar"), key.New("foo")},
 		}, {
-			paths: []Path{
-				Path{key.New(uint32(0)), key.New(uint64(0))},
-				Path{key.New(int8(0))},
-				Path{key.New(int16(0)), key.New(int32(0))},
-				Path{key.New(int64(0)), key.New(uint8(0)), key.New(uint16(0))},
+			paths: []key.Path{
+				key.Path{key.New(uint32(0)), key.New(uint64(0))},
+				key.Path{key.New(int8(0))},
+				key.Path{key.New(int16(0)), key.New(int32(0))},
+				key.Path{key.New(int64(0)), key.New(uint8(0)), key.New(uint16(0))},
 			},
-			result: Path{
+			result: key.Path{
 				key.New(uint32(0)), key.New(uint64(0)),
 				key.New(int8(0)), key.New(int16(0)),
 				key.New(int32(0)), key.New(int64(0)),
@@ -140,22 +141,22 @@ func TestJoin(t *testing.T) {
 }
 
 func TestParent(t *testing.T) {
-	if Parent(Path{}) != nil {
-		t.Fatal("Parent of empty Path should be nil")
+	if Parent(key.Path{}) != nil {
+		t.Fatal("Parent of empty key.Path should be nil")
 	}
 	tcases := []struct {
-		in  Path
-		out Path
+		in  key.Path
+		out key.Path
 	}{
 		{
-			in:  Path{key.New("foo")},
-			out: Path{},
+			in:  key.Path{key.New("foo")},
+			out: key.Path{},
 		}, {
-			in:  Path{key.New("foo"), key.New("bar")},
-			out: Path{key.New("foo")},
+			in:  key.Path{key.New("foo"), key.New("bar")},
+			out: key.Path{key.New("foo")},
 		}, {
-			in:  Path{key.New("foo"), key.New("bar"), key.New("baz")},
-			out: Path{key.New("foo"), key.New("bar")},
+			in:  key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
+			out: key.Path{key.New("foo"), key.New("bar")},
 		},
 	}
 	for _, tcase := range tcases {
@@ -166,18 +167,18 @@ func TestParent(t *testing.T) {
 }
 
 func TestBase(t *testing.T) {
-	if Base(Path{}) != nil {
-		t.Fatal("Base of empty Path should be nil")
+	if Base(key.Path{}) != nil {
+		t.Fatal("Base of empty key.Path should be nil")
 	}
 	tcases := []struct {
-		in  Path
+		in  key.Path
 		out key.Key
 	}{
 		{
-			in:  Path{key.New("foo")},
+			in:  key.Path{key.New("foo")},
 			out: key.New("foo"),
 		}, {
-			in:  Path{key.New("foo"), key.New("bar")},
+			in:  key.Path{key.New("foo"), key.New("bar")},
 			out: key.New("bar"),
 		},
 	}
@@ -218,8 +219,8 @@ var (
 
 func TestEqual(t *testing.T) {
 	tcases := []struct {
-		a      Path
-		b      Path
+		a      key.Path
+		b      key.Path
 		result bool
 	}{
 		{
@@ -228,61 +229,61 @@ func TestEqual(t *testing.T) {
 			result: true,
 		}, {
 			a:      nil,
-			b:      Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
+			a:      key.Path{},
 			b:      nil,
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{},
+			a:      key.Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{key.New("")},
+			a:      key.Path{},
+			b:      key.Path{key.New("")},
 			result: false,
 		}, {
-			a:      Path{Wildcard},
-			b:      Path{key.New("foo")},
+			a:      key.Path{Wildcard},
+			b:      key.Path{key.New("foo")},
 			result: false,
 		}, {
-			a:      Path{Wildcard},
-			b:      Path{Wildcard},
+			a:      key.Path{Wildcard},
+			b:      key.Path{Wildcard},
 			result: true,
 		}, {
-			a:      Path{key.New("foo")},
-			b:      Path{key.New("foo")},
+			a:      key.Path{key.New("foo")},
+			b:      key.Path{key.New("foo")},
 			result: true,
 		}, {
-			a:      Path{key.New(true)},
-			b:      Path{key.New(false)},
+			a:      key.Path{key.New(true)},
+			b:      key.Path{key.New(false)},
 			result: false,
 		}, {
-			a:      Path{key.New(int32(5))},
-			b:      Path{key.New(int64(5))},
+			a:      key.Path{key.New(int32(5))},
+			b:      key.Path{key.New(int64(5))},
 			result: false,
 		}, {
-			a:      Path{key.New("foo")},
-			b:      Path{key.New("foo"), key.New("bar")},
+			a:      key.Path{key.New("foo")},
+			b:      key.Path{key.New("foo"), key.New("bar")},
 			result: false,
 		}, {
-			a:      Path{key.New("foo"), key.New("bar")},
-			b:      Path{key.New("foo")},
+			a:      key.Path{key.New("foo"), key.New("bar")},
+			b:      key.Path{key.New("foo")},
 			result: false,
 		}, {
-			a:      Path{key.New(uint8(0)), key.New(int8(0))},
-			b:      Path{key.New(int8(0)), key.New(uint8(0))},
+			a:      key.Path{key.New(uint8(0)), key.New(int8(0))},
+			b:      key.Path{key.New(int8(0)), key.New(uint8(0))},
 			result: false,
 		},
 		// Ensure that we check deep equality.
 		{
-			a:      Path{key.New(map[string]interface{}{})},
-			b:      Path{key.New(map[string]interface{}{})},
+			a:      key.Path{key.New(map[string]interface{}{})},
+			b:      key.Path{key.New(map[string]interface{}{})},
 			result: true,
 		}, {
-			a:      Path{key.New(customKey{i: &a})},
-			b:      Path{key.New(customKey{i: &b})},
+			a:      key.Path{key.New(customKey{i: &a})},
+			b:      key.Path{key.New(customKey{i: &b})},
 			result: true,
 		},
 	}
@@ -296,8 +297,8 @@ func TestEqual(t *testing.T) {
 
 func TestMatch(t *testing.T) {
 	tcases := []struct {
-		a      Path
-		b      Path
+		a      key.Path
+		b      key.Path
 		result bool
 	}{
 		{
@@ -306,43 +307,43 @@ func TestMatch(t *testing.T) {
 			result: true,
 		}, {
 			a:      nil,
-			b:      Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
+			a:      key.Path{},
 			b:      nil,
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{},
+			a:      key.Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{key.New("foo")},
+			a:      key.Path{},
+			b:      key.Path{key.New("foo")},
 			result: false,
 		}, {
-			a:      Path{Wildcard},
-			b:      Path{key.New("foo")},
+			a:      key.Path{Wildcard},
+			b:      key.Path{key.New("foo")},
 			result: true,
 		}, {
-			a:      Path{key.New("foo")},
-			b:      Path{Wildcard},
+			a:      key.Path{key.New("foo")},
+			b:      key.Path{Wildcard},
 			result: false,
 		}, {
-			a:      Path{Wildcard},
-			b:      Path{key.New("foo"), key.New("bar")},
+			a:      key.Path{Wildcard},
+			b:      key.Path{key.New("foo"), key.New("bar")},
 			result: false,
 		}, {
-			a:      Path{Wildcard, Wildcard},
-			b:      Path{key.New(int64(0))},
+			a:      key.Path{Wildcard, Wildcard},
+			b:      key.Path{key.New(int64(0))},
 			result: false,
 		}, {
-			a:      Path{Wildcard, Wildcard},
-			b:      Path{key.New(int64(0)), key.New(int32(0))},
+			a:      key.Path{Wildcard, Wildcard},
+			b:      key.Path{key.New(int64(0)), key.New(int32(0))},
 			result: true,
 		}, {
-			a:      Path{Wildcard, key.New(false)},
-			b:      Path{key.New(true), Wildcard},
+			a:      key.Path{Wildcard, key.New(false)},
+			b:      key.Path{key.New(true), Wildcard},
 			result: false,
 		},
 	}
@@ -356,7 +357,7 @@ func TestMatch(t *testing.T) {
 
 func TestHasElement(t *testing.T) {
 	tcases := []struct {
-		a      Path
+		a      key.Path
 		b      key.Key
 		result bool
 	}{
@@ -369,31 +370,31 @@ func TestHasElement(t *testing.T) {
 			b:      key.New("foo"),
 			result: false,
 		}, {
-			a:      Path{},
+			a:      key.Path{},
 			b:      nil,
 			result: false,
 		}, {
-			a:      Path{key.New("foo")},
+			a:      key.Path{key.New("foo")},
 			b:      nil,
 			result: false,
 		}, {
-			a:      Path{key.New("foo")},
+			a:      key.Path{key.New("foo")},
 			b:      key.New("foo"),
 			result: true,
 		}, {
-			a:      Path{key.New(true)},
+			a:      key.Path{key.New(true)},
 			b:      key.New("true"),
 			result: false,
 		}, {
-			a:      Path{key.New("foo"), key.New("bar")},
+			a:      key.Path{key.New("foo"), key.New("bar")},
 			b:      key.New("bar"),
 			result: true,
 		}, {
-			a:      Path{key.New(map[string]interface{}{})},
+			a:      key.Path{key.New(map[string]interface{}{})},
 			b:      key.New(map[string]interface{}{}),
 			result: true,
 		}, {
-			a:      Path{key.New(map[string]interface{}{"foo": "a"})},
+			a:      key.Path{key.New(map[string]interface{}{"foo": "a"})},
 			b:      key.New(map[string]interface{}{"bar": "a"}),
 			result: false,
 		},
@@ -408,8 +409,8 @@ func TestHasElement(t *testing.T) {
 
 func TestHasPrefix(t *testing.T) {
 	tcases := []struct {
-		a      Path
-		b      Path
+		a      key.Path
+		b      key.Path
 		result bool
 	}{
 		{
@@ -418,47 +419,47 @@ func TestHasPrefix(t *testing.T) {
 			result: true,
 		}, {
 			a:      nil,
-			b:      Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
+			a:      key.Path{},
 			b:      nil,
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{},
+			a:      key.Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{key.New("foo")},
+			a:      key.Path{},
+			b:      key.Path{key.New("foo")},
 			result: false,
 		}, {
-			a:      Path{key.New("foo")},
-			b:      Path{},
+			a:      key.Path{key.New("foo")},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{key.New(true)},
-			b:      Path{key.New(false)},
+			a:      key.Path{key.New(true)},
+			b:      key.Path{key.New(false)},
 			result: false,
 		}, {
-			a:      Path{key.New("foo"), key.New("bar")},
-			b:      Path{key.New("bar"), key.New("foo")},
+			a:      key.Path{key.New("foo"), key.New("bar")},
+			b:      key.Path{key.New("bar"), key.New("foo")},
 			result: false,
 		}, {
-			a:      Path{key.New(int8(0)), key.New(uint8(0))},
-			b:      Path{key.New(uint8(0)), key.New(uint8(0))},
+			a:      key.Path{key.New(int8(0)), key.New(uint8(0))},
+			b:      key.Path{key.New(uint8(0)), key.New(uint8(0))},
 			result: false,
 		}, {
-			a:      Path{key.New(true), key.New(true)},
-			b:      Path{key.New(true), key.New(true), key.New(true)},
+			a:      key.Path{key.New(true), key.New(true)},
+			b:      key.Path{key.New(true), key.New(true), key.New(true)},
 			result: false,
 		}, {
-			a:      Path{key.New(true), key.New(true), key.New(true)},
-			b:      Path{key.New(true), key.New(true)},
+			a:      key.Path{key.New(true), key.New(true), key.New(true)},
+			b:      key.Path{key.New(true), key.New(true)},
 			result: true,
 		}, {
-			a:      Path{Wildcard, key.New(int32(0)), Wildcard},
-			b:      Path{key.New(int64(0)), Wildcard},
+			a:      key.Path{Wildcard, key.New(int32(0)), Wildcard},
+			b:      key.Path{key.New(int64(0)), Wildcard},
 			result: false,
 		},
 	}
@@ -472,8 +473,8 @@ func TestHasPrefix(t *testing.T) {
 
 func TestMatchPrefix(t *testing.T) {
 	tcases := []struct {
-		a      Path
-		b      Path
+		a      key.Path
+		b      key.Path
 		result bool
 	}{
 		{
@@ -482,43 +483,43 @@ func TestMatchPrefix(t *testing.T) {
 			result: true,
 		}, {
 			a:      nil,
-			b:      Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
+			a:      key.Path{},
 			b:      nil,
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{},
+			a:      key.Path{},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{},
-			b:      Path{key.New("foo")},
+			a:      key.Path{},
+			b:      key.Path{key.New("foo")},
 			result: false,
 		}, {
-			a:      Path{key.New("foo")},
-			b:      Path{},
+			a:      key.Path{key.New("foo")},
+			b:      key.Path{},
 			result: true,
 		}, {
-			a:      Path{key.New("foo")},
-			b:      Path{Wildcard},
+			a:      key.Path{key.New("foo")},
+			b:      key.Path{Wildcard},
 			result: false,
 		}, {
-			a:      Path{Wildcard},
-			b:      Path{key.New("foo")},
+			a:      key.Path{Wildcard},
+			b:      key.Path{key.New("foo")},
 			result: true,
 		}, {
-			a:      Path{Wildcard},
-			b:      Path{key.New("foo"), key.New("bar")},
+			a:      key.Path{Wildcard},
+			b:      key.Path{key.New("foo"), key.New("bar")},
 			result: false,
 		}, {
-			a:      Path{Wildcard, key.New(true)},
-			b:      Path{key.New(false), Wildcard},
+			a:      key.Path{Wildcard, key.New(true)},
+			b:      key.Path{key.New(false), Wildcard},
 			result: false,
 		}, {
-			a:      Path{Wildcard, key.New(int32(0)), key.New(int16(0))},
-			b:      Path{key.New(int64(0)), key.New(int32(0))},
+			a:      key.Path{Wildcard, key.New(int32(0)), key.New(int16(0))},
+			b:      key.Path{key.New(int64(0)), key.New(int32(0))},
 			result: true,
 		},
 	}
@@ -533,47 +534,47 @@ func TestMatchPrefix(t *testing.T) {
 func TestFromString(t *testing.T) {
 	tcases := []struct {
 		in  string
-		out Path
+		out key.Path
 	}{
 		{
 			in:  "",
-			out: Path{},
+			out: key.Path{},
 		}, {
 			in:  "/",
-			out: Path{},
+			out: key.Path{},
 		}, {
 			in:  "//",
-			out: Path{key.New(""), key.New("")},
+			out: key.Path{key.New(""), key.New("")},
 		}, {
 			in:  "foo",
-			out: Path{key.New("foo")},
+			out: key.Path{key.New("foo")},
 		}, {
 			in:  "/foo",
-			out: Path{key.New("foo")},
+			out: key.Path{key.New("foo")},
 		}, {
 			in:  "foo/bar",
-			out: Path{key.New("foo"), key.New("bar")},
+			out: key.Path{key.New("foo"), key.New("bar")},
 		}, {
 			in:  "/foo/bar",
-			out: Path{key.New("foo"), key.New("bar")},
+			out: key.Path{key.New("foo"), key.New("bar")},
 		}, {
 			in:  "foo/bar/baz",
-			out: Path{key.New("foo"), key.New("bar"), key.New("baz")},
+			out: key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
 		}, {
 			in:  "/foo/bar/baz",
-			out: Path{key.New("foo"), key.New("bar"), key.New("baz")},
+			out: key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
 		}, {
 			in:  "0/123/456/789",
-			out: Path{key.New("0"), key.New("123"), key.New("456"), key.New("789")},
+			out: key.Path{key.New("0"), key.New("123"), key.New("456"), key.New("789")},
 		}, {
 			in:  "/0/123/456/789",
-			out: Path{key.New("0"), key.New("123"), key.New("456"), key.New("789")},
+			out: key.Path{key.New("0"), key.New("123"), key.New("456"), key.New("789")},
 		}, {
 			in:  "`~!@#$%^&*()_+{}\\/|[];':\"<>?,./",
-			out: Path{key.New("`~!@#$%^&*()_+{}\\"), key.New("|[];':\"<>?,."), key.New("")},
+			out: key.Path{key.New("`~!@#$%^&*()_+{}\\"), key.New("|[];':\"<>?,."), key.New("")},
 		}, {
 			in:  "/`~!@#$%^&*()_+{}\\/|[];':\"<>?,./",
-			out: Path{key.New("`~!@#$%^&*()_+{}\\"), key.New("|[];':\"<>?,."), key.New("")},
+			out: key.Path{key.New("`~!@#$%^&*()_+{}\\"), key.New("|[];':\"<>?,."), key.New("")},
 		},
 	}
 	for i, tcase := range tcases {
@@ -585,38 +586,38 @@ func TestFromString(t *testing.T) {
 
 func TestString(t *testing.T) {
 	tcases := []struct {
-		in  Path
+		in  key.Path
 		out string
 	}{
 		{
-			in:  Path{},
+			in:  key.Path{},
 			out: "/",
 		}, {
-			in:  Path{key.New("")},
+			in:  key.Path{key.New("")},
 			out: "/",
 		}, {
-			in:  Path{key.New("foo")},
+			in:  key.Path{key.New("foo")},
 			out: "/foo",
 		}, {
-			in:  Path{key.New("foo"), key.New("bar")},
+			in:  key.Path{key.New("foo"), key.New("bar")},
 			out: "/foo/bar",
 		}, {
-			in:  Path{key.New("/foo"), key.New("bar")},
+			in:  key.Path{key.New("/foo"), key.New("bar")},
 			out: "//foo/bar",
 		}, {
-			in:  Path{key.New("foo"), key.New("bar/")},
+			in:  key.Path{key.New("foo"), key.New("bar/")},
 			out: "/foo/bar/",
 		}, {
-			in:  Path{key.New(""), key.New("foo"), key.New("bar")},
+			in:  key.Path{key.New(""), key.New("foo"), key.New("bar")},
 			out: "//foo/bar",
 		}, {
-			in:  Path{key.New("foo"), key.New("bar"), key.New("")},
+			in:  key.Path{key.New("foo"), key.New("bar"), key.New("")},
 			out: "/foo/bar/",
 		}, {
-			in:  Path{key.New("/"), key.New("foo"), key.New("bar")},
+			in:  key.Path{key.New("/"), key.New("foo"), key.New("bar")},
 			out: "///foo/bar",
 		}, {
-			in:  Path{key.New("foo"), key.New("bar"), key.New("/")},
+			in:  key.Path{key.New("foo"), key.New("bar"), key.New("/")},
 			out: "/foo/bar//",
 		},
 	}
@@ -628,18 +629,18 @@ func TestString(t *testing.T) {
 }
 
 func BenchmarkJoin(b *testing.B) {
-	generate := func(n int) []Path {
-		paths := make([]Path, 0, n)
+	generate := func(n int) []key.Path {
+		paths := make([]key.Path, 0, n)
 		for i := 0; i < n; i++ {
-			paths = append(paths, Path{key.New("foo")})
+			paths = append(paths, key.Path{key.New("foo")})
 		}
 		return paths
 	}
-	benchmarks := map[string][]Path{
-		"10 Paths":    generate(10),
-		"100 Paths":   generate(100),
-		"1000 Paths":  generate(1000),
-		"10000 Paths": generate(10000),
+	benchmarks := map[string][]key.Path{
+		"10 key.Paths":    generate(10),
+		"100 key.Paths":   generate(100),
+		"1000 key.Paths":  generate(1000),
+		"10000 key.Paths": generate(10000),
 	}
 	for name, benchmark := range benchmarks {
 		b.Run(name, func(b *testing.B) {
@@ -652,8 +653,8 @@ func BenchmarkJoin(b *testing.B) {
 
 func BenchmarkHasElement(b *testing.B) {
 	element := key.New("waldo")
-	generate := func(n, loc int) Path {
-		path := make(Path, n)
+	generate := func(n, loc int) key.Path {
+		path := make(key.Path, n)
 		for i := 0; i < n; i++ {
 			if i == loc {
 				path[i] = element
@@ -663,7 +664,7 @@ func BenchmarkHasElement(b *testing.B) {
 		}
 		return path
 	}
-	benchmarks := map[string]Path{
+	benchmarks := map[string]key.Path{
 		"10 Elements Index 0":     generate(10, 0),
 		"10 Elements Index 4":     generate(10, 4),
 		"10 Elements Index 9":     generate(10, 9),

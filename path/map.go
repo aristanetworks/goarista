@@ -59,7 +59,7 @@ type VisitorFunc func(v interface{}) error
 // m.Visit(p, fn)
 //
 // Result: fn(1), fn(2), fn(3), fn(4), fn(5), fn(6), fn(7) and fn(8)
-func (m *Map) Visit(p Path, fn VisitorFunc) error {
+func (m *Map) Visit(p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.wildcard != nil {
 			if err := m.wildcard.Visit(p[i+1:], fn); err != nil {
@@ -100,7 +100,7 @@ func (m *Map) Visit(p Path, fn VisitorFunc) error {
 // m.VisitPrefixes(p, fn)
 //
 // Result: fn(1), fn(2), fn(3), fn(5)
-func (m *Map) VisitPrefixes(p Path, fn VisitorFunc) error {
+func (m *Map) VisitPrefixes(p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.ok {
 			if err := fn(m.val); err != nil {
@@ -146,7 +146,7 @@ func (m *Map) VisitPrefixes(p Path, fn VisitorFunc) error {
 // m.VisitPrefixed(p, fn)
 //
 // Result: fn(2), fn(3), fn(4)
-func (m *Map) VisitPrefixed(p Path, fn VisitorFunc) error {
+func (m *Map) VisitPrefixed(p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.wildcard != nil {
 			if err := m.wildcard.VisitPrefixed(p[i+1:], fn); err != nil {
@@ -196,7 +196,7 @@ func (m *Map) visitSubtree(fn VisitorFunc) error {
 // c, ok := m.Get(path.New("baz", "qux"))
 //
 // Result: a == 1, b == nil, c == nil and ok == true
-func (m *Map) Get(p Path) (interface{}, bool) {
+func (m *Map) Get(p key.Path) (interface{}, bool) {
 	for _, element := range p {
 		if element.Equal(Wildcard) {
 			if m.wildcard == nil {
@@ -227,7 +227,7 @@ func (m *Map) Get(p Path) (interface{}, bool) {
 // v := m.Get(p)
 //
 // Result: v == 1
-func (m *Map) Set(p Path, v interface{}) {
+func (m *Map) Set(p key.Path, v interface{}) {
 	for _, element := range p {
 		if element.Equal(Wildcard) {
 			if m.wildcard == nil {
@@ -262,7 +262,7 @@ func (m *Map) Set(p Path, v interface{}) {
 // b := m.Delete(p)
 //
 // Result: a == true and b == false
-func (m *Map) Delete(p Path) bool {
+func (m *Map) Delete(p key.Path) bool {
 	maps := make([]*Map, len(p)+1)
 	for i, element := range p {
 		maps[i] = m
