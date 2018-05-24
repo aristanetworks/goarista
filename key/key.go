@@ -51,9 +51,9 @@ type boolKey bool
 func New(intf interface{}) Key {
 	switch t := intf.(type) {
 	case map[string]interface{}:
-		return composite{sentinel: sentinel, m: t}
+		return compositeKey{sentinel: sentinel, m: t}
 	case []interface{}:
-		return composite{sentinel: sentinel, s: t}
+		return compositeKey{sentinel: sentinel, s: t}
 	case string:
 		return strKey(t)
 	case int8:
