@@ -88,7 +88,7 @@ func hashMapKey(m map[Key]interface{}) uintptr {
 	for k, v := range m {
 		// Use addition so that the order of iteration doesn't matter.
 		switch k := k.(type) {
-		case keyImpl:
+		case interfaceKey:
 			h += _nilinterhash(k.key)
 		case compositeKey:
 			h += hashMapString(k.m)

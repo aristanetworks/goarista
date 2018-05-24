@@ -24,7 +24,7 @@ type Key interface {
 	Equal(other interface{}) bool
 }
 
-type keyImpl struct {
+type interfaceKey struct {
 	key interface{}
 }
 
@@ -79,30 +79,30 @@ func New(intf interface{}) Key {
 	case bool:
 		return boolKey(t)
 	case value.Value:
-		return keyImpl{key: intf}
+		return interfaceKey{key: intf}
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}
 }
 
-func (k keyImpl) Key() interface{} {
+func (k interfaceKey) Key() interface{} {
 	return k.key
 }
 
-func (k keyImpl) String() string {
+func (k interfaceKey) String() string {
 	return stringify(k.key)
 }
 
-func (k keyImpl) GoString() string {
+func (k interfaceKey) GoString() string {
 	return fmt.Sprintf("key.New(%#v)", k.Key())
 }
 
-func (k keyImpl) MarshalJSON() ([]byte, error) {
+func (k interfaceKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(k.Key())
 }
 
-func (k keyImpl) Equal(other interface{}) bool {
-	o, ok := other.(keyImpl)
+func (k interfaceKey) Equal(other interface{}) bool {
+	o, ok := other.(interfaceKey)
 	return ok && keyEqual(k.key, o.key)
 }
 
