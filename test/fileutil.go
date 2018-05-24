@@ -12,6 +12,7 @@ import (
 
 // CopyFile copies a file
 func CopyFile(t *testing.T, srcPath, dstPath string) {
+	t.Helper()
 	src, err := os.Open(srcPath)
 	if err != nil {
 		t.Fatal(err)
