@@ -24,6 +24,26 @@ type Key interface {
 	Equal(other interface{}) bool
 }
 
+// compositeKey allows storing a map[string]interface{} or []interface{} as a key
+// in a Go map. This is useful when the key isn't a fixed data structure known
+// at compile time but rather something generic, like a bag of key-value pairs
+// or a list of elements. Go does not allow storing a map or slice inside the
+// key of a map, because maps and slices are not comparable or hashable, and
+// keys in maps and slice elements must be both.  This file is a hack specific
+// to the 'gc' implementation of Go (which is the one most people use when they
+// use Go), to bypass this check, by abusing reflection to override how Go
+// compares compositeKey for equality or how it's hashed. The values allowed in
+// this map are only the types whitelisted in New() as well as map[Key]interface{}
+// and []interface{}.
+//
+// See also https://github.com/golang/go/issues/283
+type compositeKey struct {
+	// This value must always be set to the sentinel constant above.
+	sentinel uintptr
+	m        map[string]interface{}
+	s        []interface{}
+}
+
 type interfaceKey struct {
 	key interface{}
 }
@@ -160,6 +180,34 @@ func keyEqual(a, b interface{}) bool {
 	}
 
 	return a == b
+}
+
+// Key interface implementation for map[string]interface{} and []interface{}
+func (k compositeKey) Key() interface{} {
+	if k.m != nil {
+		return k.m
+	}
+	return k.s
+}
+
+func (k compositeKey) String() string {
+	return stringify(k.Key())
+}
+
+func (k compositeKey) GoString() string {
+	return fmt.Sprintf("key.New(%#v)", k.Key())
+}
+
+func (k compositeKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(k.Key())
+}
+
+func (k compositeKey) Equal(other interface{}) bool {
+	o, ok := other.(compositeKey)
+	if k.m != nil {
+		return ok && mapStringEqual(k.m, o.m)
+	}
+	return ok && sliceEqual(k.s, o.s)
 }
 
 func (k strKey) Key() interface{} {
