@@ -35,3 +35,16 @@ func (ptr pointer) String() string {
 func (ptr pointer) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`{"_ptr":%q}`, ptr.Pointer().String())), nil
 }
+
+func pointerEqual(a, b Pointer) bool {
+	x, y := a.Pointer(), b.Pointer()
+	if len(x) != len(y) {
+		return false
+	}
+	for i := range x {
+		if !x[i].Equal(y[i]) {
+			return false
+		}
+	}
+	return true
+}

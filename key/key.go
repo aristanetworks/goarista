@@ -117,10 +117,10 @@ func New(intf interface{}) Key {
 		return float64Key(t)
 	case bool:
 		return boolKey(t)
-	case Pointer:
-		return pointerKey{sentinel: sentinel, s: pointerToSlice(t)}
 	case value.Value:
 		return interfaceKey{key: intf}
+	case Pointer:
+		return pointerKey{sentinel: sentinel, s: pointerToSlice(t)}
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}
@@ -143,8 +143,8 @@ func (k interfaceKey) MarshalJSON() ([]byte, error) {
 }
 
 func (k interfaceKey) Equal(other interface{}) bool {
-	o, ok := other.(interfaceKey)
-	return ok && keyEqual(k.key, o.key)
+	o, ok := other.(Key)
+	return ok && keyEqual(k.key, o.Key())
 }
 
 // Comparable types have an equality-testing method.
@@ -200,19 +200,7 @@ func keyEqual(a, b interface{}) bool {
 		return a.Equal(b)
 	case Pointer:
 		b, ok := b.(Pointer)
-		if !ok {
-			return false
-		}
-		x, y := a.Pointer(), b.Pointer()
-		if len(x) != len(y) {
-			return false
-		}
-		for i := range x {
-			if !x[i].Equal(y[i]) {
-				return false
-			}
-		}
-		return true
+		return ok && pointerEqual(a, b)
 	}
 
 	return a == b
@@ -527,6 +515,13 @@ func (k pointerKey) MarshalJSON() ([]byte, error) {
 }
 
 func (k pointerKey) Equal(other interface{}) bool {
-	o, ok := other.(pointerKey)
-	return ok && sliceEqual(k.s, o.s)
+	if o, ok := other.(pointerKey); ok {
+		return sliceEqual(k.s, o.s)
+	}
+	key, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	ptr, ok := key.Key().(Pointer)
+	return ok && pointerEqual(sliceToPointer(k.s), ptr)
 }

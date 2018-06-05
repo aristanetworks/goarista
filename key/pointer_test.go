@@ -28,6 +28,24 @@ func TestPointer(t *testing.T) {
 	}
 }
 
+type pointer string
+
+func (ptr pointer) Pointer() key.Path {
+	return path.FromString(string(ptr))
+}
+
+func (ptr pointer) ToBuiltin() interface{} {
+	panic("NOT IMPLEMENTED")
+}
+
+func (ptr pointer) String() string {
+	panic("NOT IMPLEMENTED")
+}
+
+func (ptr pointer) MarshalJSON() ([]byte, error) {
+	panic("NOT IMPLEMENTED")
+}
+
 func TestPointerAsKey(t *testing.T) {
 	a := key.NewPointer(path.New("foo", path.Wildcard, map[string]interface{}{
 		"bar": map[key.Key]interface{}{
@@ -44,6 +62,18 @@ func TestPointerAsKey(t *testing.T) {
 		t.Error("pointer to path not keyed in map")
 	} else if s != "a" {
 		t.Errorf("pointer to path not mapped to correct value in map: %s", s)
+	}
+
+	// Ensure that we preserve custom pointer implementations.
+	b := key.New(pointer("/foo/bar"))
+	if _, ok := b.Key().(pointer); !ok {
+		t.Errorf("pointer implementation not preserved: %T", b.Key())
+	}
+
+	// Ensure that we compare two pointers of different implementations inside keys.
+	c := key.New(key.NewPointer(path.New("foo", "bar")))
+	if !b.Equal(c) || !c.Equal(b) {
+		t.Error("pointer implementations not correctly compared")
 	}
 }
 
