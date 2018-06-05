@@ -131,6 +131,10 @@ func TestStringify(t *testing.T) {
 			},
 		},
 		output: "42,true,foo,a=b_b=c",
+	}, {
+		name:   "pointer",
+		input:  NewPointer(Path{New("foo"), New("bar")}),
+		output: "{/foo/bar}",
 	}}
 
 	for _, tcase := range testcases {
