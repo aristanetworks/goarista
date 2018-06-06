@@ -522,6 +522,5 @@ func (k pointerKey) Equal(other interface{}) bool {
 	if !ok {
 		return false
 	}
-	ptr, ok := key.Key().(Pointer)
-	return ok && pointerEqual(sliceToPointer(k.s), ptr)
+	return ok && sliceToPointer(k.s).Equal(key.Key())
 }

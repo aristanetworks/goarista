@@ -36,6 +36,11 @@ func (ptr pointer) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`{"_ptr":%q}`, ptr.Pointer().String())), nil
 }
 
+func (ptr pointer) Equal(other interface{}) bool {
+	o, ok := other.(Pointer)
+	return ok && pointerEqual(ptr, o)
+}
+
 func pointerEqual(a, b Pointer) bool {
 	x, y := a.Pointer(), b.Pointer()
 	if len(x) != len(y) {
