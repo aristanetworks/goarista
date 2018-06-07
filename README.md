@@ -56,6 +56,11 @@ A library to help expose monitoring metrics on top of the
 `netns.Do(namespace, cb)` provides a handy mechanism to execute the given
 callback `cb` in the given [network namespace](https://lwn.net/Articles/580893/).
 
+## influxlib
+
+This is a influxdb library that provides easy methods of connecting to, writing to,
+and reading from the service.
+
 ## test
 
 This is a [Go](http://golang.org/) library to help in writing unit tests.
