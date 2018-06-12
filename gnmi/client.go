@@ -9,9 +9,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
+	"time"
+
 	"io/ioutil"
 	"strings"
 
+	"github.com/aristanetworks/goarista/netns"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -69,12 +73,28 @@ func Dial(cfg *Config) (pb.GNMIClient, error) {
 	if !strings.ContainsRune(cfg.Addr, ':') {
 		cfg.Addr += ":" + defaultPort
 	}
-	conn, err := grpc.Dial(cfg.Addr, opts...)
+
+	dial := func(addrIn string, time time.Duration) (net.Conn, error) {
+		var conn net.Conn
+		nsName, addr, err := netns.ParseAddress(addrIn)
+		if err != nil {
+			return nil, err
+		}
+
+		err = netns.Do(nsName, func() error {
+			var err error
+			conn, err = net.Dial("tcp", addr)
+			return err
+		})
+		return conn, err
+	}
+
+	opts = append(opts, grpc.WithDialer(dial))
+	grpcconn, err := grpc.Dial(cfg.Addr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %s", err)
 	}
-
-	return pb.NewGNMIClient(conn), nil
+	return pb.NewGNMIClient(grpcconn), nil
 }
 
 // NewContext returns a new context with username and password

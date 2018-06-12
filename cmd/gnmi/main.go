@@ -18,7 +18,7 @@ import (
 
 // TODO: Make this more clear
 var help = `Usage of gnmi:
-gnmi -addr ADDRESS:PORT [options...]
+gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
   get PATH+
   subscribe PATH+
@@ -35,7 +35,7 @@ func usageAndExit(s string) {
 
 func main() {
 	cfg := &gnmi.Config{}
-	flag.StringVar(&cfg.Addr, "addr", "", "Address of gNMI gRPC server")
+	flag.StringVar(&cfg.Addr, "addr", "", "Address of gNMI gRPC server with optional VRF name")
 	flag.StringVar(&cfg.CAFile, "cafile", "", "Path to server TLS certificate file")
 	flag.StringVar(&cfg.CertFile, "certfile", "", "Path to client TLS certificate file")
 	flag.StringVar(&cfg.KeyFile, "keyfile", "", "Path to client TLS private key file")

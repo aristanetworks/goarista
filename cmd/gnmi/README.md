@@ -28,8 +28,8 @@ $ ip netns exec ns-<VRF> gnmi [OPTIONS] [OPERATION]
 
 ## Options
 
-* `-addr ADDR:PORT`  
-Address of the gNMI endpoint (REQUIRED)
+* `-addr [<VRF-NAME>/]ADDR:PORT`  
+Address of the gNMI endpoint (REQUIRED) with VRF name (OPTIONAL)
 * `-username USERNAME`  
 Username to authenticate with
 * `-password PASSWORD`  
