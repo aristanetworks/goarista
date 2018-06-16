@@ -157,7 +157,7 @@ gnmi [OPTIONS] update '/interfaces/interface[name=Ethernet4/1/1]/subinterfaces' 
 ### CLI requests
 `gnmi` offers the ability to send CLI text inside an `update` or
 `replace` operation. This is achieved by doing an `update` or
-`replace` and using `"cli"` as the path and a set of configure-mode
+`replace` and specifying `"origin=cli"` along with an empty path and a set of configure-mode
 CLI commands separated by `\n`.
 
 Example:

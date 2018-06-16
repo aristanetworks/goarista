@@ -126,11 +126,6 @@ func writeSafeString(buf *bytes.Buffer, s string, esc rune) {
 
 // ParseGNMIElements builds up a gnmi path, from user-supplied text
 func ParseGNMIElements(elms []string) (*pb.Path, error) {
-	if len(elms) == 1 && elms[0] == "cli" {
-		return &pb.Path{
-			Origin: "cli",
-		}, nil
-	}
 	var parsed []*pb.PathElem
 	for _, e := range elms {
 		n, keys, err := parseElement(e)

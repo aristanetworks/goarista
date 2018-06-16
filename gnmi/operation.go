@@ -197,7 +197,7 @@ func update(p *pb.Path, val string) *pb.Update {
 	case "":
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: extractJSON(val)}}
-	case "cli":
+	case "cli", "test-regen-cli":
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_AsciiVal{AsciiVal: val}}
 	default:
@@ -209,9 +209,10 @@ func update(p *pb.Path, val string) *pb.Update {
 
 // Operation describes an gNMI operation.
 type Operation struct {
-	Type string
-	Path []string
-	Val  string
+	Type   string
+	Origin string
+	Path   []string
+	Val    string
 }
 
 func newSetRequest(setOps []*Operation) (*pb.SetRequest, error) {
@@ -221,6 +222,7 @@ func newSetRequest(setOps []*Operation) (*pb.SetRequest, error) {
 		if err != nil {
 			return nil, err
 		}
+		p.Origin = op.Origin
 
 		switch op.Type {
 		case "delete":

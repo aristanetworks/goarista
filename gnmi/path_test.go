@@ -85,19 +85,6 @@ func TestStrPath(t *testing.T) {
 	}
 }
 
-func TestOriginCLIPath(t *testing.T) {
-	path := "cli"
-	sElms := SplitPath(path)
-	pbPath, err := ParseGNMIElements(sElms)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := pb.Path{Origin: "cli"}
-	if !test.DeepEqual(expected, *pbPath) {
-		t.Errorf("want %v, got %v", expected, *pbPath)
-	}
-}
-
 func TestStrPathBackwardsCompat(t *testing.T) {
 	for i, tc := range []struct {
 		path *pb.Path

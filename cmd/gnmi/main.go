@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aristanetworks/goarista/gnmi"
 
@@ -22,7 +23,7 @@ gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
   get PATH+
   subscribe PATH+
-  ((update|replace PATH JSON)|(delete PATH))+
+  ((update|replace (origin=ORIGIN) PATH JSON|FILE)|(delete (origin=ORIGIN) PATH))+
 `
 
 func usageAndExit(s string) {
@@ -108,10 +109,14 @@ func main() {
 				Type: args[i],
 			}
 			i++
+			if strings.HasPrefix(args[i], "origin=") {
+				op.Origin = strings.TrimPrefix(args[i], "origin=")
+				i++
+			}
 			op.Path = gnmi.SplitPath(args[i])
 			if op.Type != "delete" {
 				if len(args) == i+1 {
-					usageAndExit("error: missing JSON")
+					usageAndExit("error: missing JSON or FILEPATH to data")
 				}
 				i++
 				op.Val = args[i]

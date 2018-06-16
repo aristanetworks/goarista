@@ -55,7 +55,7 @@ func TestNewSetRequest(t *testing.T) {
 			},
 		},
 		"cli-replace": {
-			setOps: []*Operation{{Type: "replace", Path: []string{"cli"},
+			setOps: []*Operation{{Type: "replace", Origin: "cli",
 				Val: "hostname foo\nip routing"}},
 			exp: pb.SetRequest{
 				Replace: []*pb.Update{{
