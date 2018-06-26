@@ -24,8 +24,10 @@ type source struct {
 // Since the labels are fixed per-path and per-device we can cache them here,
 // to avoid recomputing them.
 type labelledMetric struct {
-	metric prometheus.Metric
-	labels []string
+	metric       prometheus.Metric
+	labels       []string
+	defaultValue float64
+	stringMetric bool
 }
 
 type collector struct {
@@ -43,13 +45,14 @@ func newCollector(config *Config) *collector {
 	}
 }
 
-// Process a notfication and update or create the corresponding metrics.
+// Process a notification and update or create the corresponding metrics.
 func (c *collector) update(addr string, message proto.Message) {
 	resp, ok := message.(*openconfig.SubscribeResponse)
 	if !ok {
 		glog.Errorf("Unexpected type of message: %T", message)
 		return
 	}
+
 	notif := resp.GetUpdate()
 	if notif == nil {
 		return
@@ -57,7 +60,6 @@ func (c *collector) update(addr string, message proto.Message) {
 
 	device := strings.Split(addr, ":")[0]
 	prefix := "/" + strings.Join(notif.Prefix.Element, "/")
-
 	// Process deletes first
 	for _, del := range notif.Delete {
 		path := prefix + "/" + strings.Join(del.Element, "/")
@@ -80,40 +82,81 @@ func (c *collector) update(addr string, message proto.Message) {
 		if !ok {
 			continue
 		}
+
+		var strUpdate bool
+		var floatVal float64
+		var strVal string
+
+		switch v := value.(type) {
+		case float64:
+			strUpdate = false
+			floatVal = v
+		case string:
+			strUpdate = true
+			strVal = v
+		}
+
 		if suffix != "" {
 			path += "/" + suffix
 		}
+
 		src := source{addr: device, path: path}
 		c.m.Lock()
 		// Use the cached labels and descriptor if available
 		if m, ok := c.metrics[src]; ok {
-			m.metric = prometheus.MustNewConstMetric(m.metric.Desc(), prometheus.GaugeValue, value,
-				m.labels...)
+			if strUpdate {
+				// Skip string updates for non string metrics
+				if !m.stringMetric {
+					c.m.Unlock()
+					continue
+				}
+				// Display a default value and replace the value label with the string value
+				floatVal = m.defaultValue
+				m.labels[len(m.labels)-1] = strVal
+			}
+
+			m.metric = prometheus.MustNewConstMetric(m.metric.Desc(), prometheus.GaugeValue,
+				floatVal, m.labels...)
 			c.m.Unlock()
 			continue
 		}
-		c.m.Unlock()
 
+		c.m.Unlock()
 		// Get the descriptor and labels for this source
-		desc, labelValues := c.config.getDescAndLabels(src)
-		if desc == nil {
+		metric := c.config.getMetricValues(src)
+		if metric == nil || metric.desc == nil {
 			glog.V(8).Infof("Ignoring unmatched update at %s:%s: %+v", device, path, update.Value)
 			continue
 		}
 
-		c.m.Lock()
+		if strUpdate {
+			if !metric.stringMetric {
+				// Skip string updates for non string metrics
+				continue
+			}
+			// Display a default value and replace the value label with the string value
+			floatVal = metric.defaultValue
+			metric.labels[len(metric.labels)-1] = strVal
+		}
+
 		// Save the metric and labels in the cache
-		metric := prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, value, labelValues...)
+		c.m.Lock()
+		lm := prometheus.MustNewConstMetric(metric.desc, prometheus.GaugeValue,
+			floatVal, metric.labels...)
 		c.metrics[src] = &labelledMetric{
-			metric: metric,
-			labels: labelValues,
+			metric:       lm,
+			labels:       metric.labels,
+			defaultValue: metric.defaultValue,
+			stringMetric: metric.stringMetric,
 		}
 		c.m.Unlock()
 	}
 }
 
-func parseValue(update *openconfig.Update) (float64, string, bool) {
-	// All metrics in Prometheus are floats, so only try to unmarshal as float64.
+// ParseValue takes in an update and parses a value and suffix
+// Returns an interface that contains either a string or a float64 as well as a suffix
+// Unparseable updates return (0, empty string, false)
+func parseValue(update *openconfig.Update) (interface{}, string, bool) {
 	var intf interface{}
 	if err := json.Unmarshal(update.Value.Value, &intf); err != nil {
 		glog.Errorf("Can't parse value in update %v: %v", update, err)
@@ -129,13 +172,16 @@ func parseValue(update *openconfig.Update) (float64, string, bool) {
 				return val, "value", true
 			}
 		}
+	// float64 or string expected as the return value
 	case bool:
 		if value {
-			return 1, "", true
+			return float64(1), "", true
 		}
-		return 0, "", true
+		return float64(0), "", true
+	case string:
+		return value, "", true
 	default:
-		glog.V(9).Infof("Ignorig non-numeric update: %v", update)
+		glog.V(9).Infof("Ignoring update with unexpected type: %T", value)
 	}
 
 	return 0, "", false

@@ -19,11 +19,17 @@ subscriptions:
         - /Sysdb/environment/archer/power/status
         - /Sysdb/environment/archer/temperature/status
         - /Sysdb/hardware/archer/xcvr/status
+        - /Sysdb/interface/config/eth
 
 # Prometheus metrics configuration.
 # If you use named capture groups in the path, they will be extracted into labels with the same name.
 # All fields are mandatory.
 metrics:
+        - name: interfaceDescription
+          path: /Sysdb/interface/config/eth/phy/slice/1/intfConfig/(?P<interface>Ethernet.)/description
+          help: Description
+          valuelabel: description
+          defaultvalue: 15
         - name: intfCounter
           path: /Smash/counters/ethIntf/FocalPointV2/current/(counter)/(?P<intf>.+)/statistics/(?P<direction>(?:in|out))(Octets|Errors|Discards)
           help: Per-Interface Bytes/Errors/Discards Counters

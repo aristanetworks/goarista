@@ -5,28 +5,76 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/openconfig/reference/rpc/openconfig"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
-func makeMetrics(cfg *Config, expValues map[source]float64) map[source]*labelledMetric {
+func makeMetrics(cfg *Config, expValues map[source]float64, notification *openconfig.Notification,
+	prevMetrics map[source]*labelledMetric) map[source]*labelledMetric {
+
 	expMetrics := map[source]*labelledMetric{}
-	for k, v := range expValues {
-		desc, labels := cfg.getDescAndLabels(k)
-		if desc == nil || labels == nil {
-			panic("cfg.getDescAndLabels returned nil")
+	if prevMetrics != nil {
+		expMetrics = prevMetrics
+	}
+	for src, v := range expValues {
+		metric := cfg.getMetricValues(src)
+		if metric == nil || metric.desc == nil || metric.labels == nil {
+			panic("cfg.getMetricValues returned nil")
 		}
-		expMetrics[k] = &labelledMetric{
-			metric: prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, labels...),
-			labels: labels,
+		// Preserve current value of labels
+		labels := metric.labels
+		if _, ok := expMetrics[src]; ok && expMetrics[src] != nil {
+			labels = expMetrics[src].labels
+		}
+
+		// Handle string updates
+		if notification.Update != nil {
+			if update, err := findUpdate(notification, src.path); err == nil {
+				val, _, ok := parseValue(update)
+				if !ok {
+					continue
+				}
+				if strVal, ok := val.(string); ok {
+					if !metric.stringMetric {
+						continue
+					}
+					v = metric.defaultValue
+					labels[len(labels)-1] = strVal
+				}
+			}
+		}
+		expMetrics[src] = &labelledMetric{
+			metric: prometheus.MustNewConstMetric(metric.desc, prometheus.GaugeValue, v,
+				labels...),
+			labels:       labels,
+			defaultValue: metric.defaultValue,
+			stringMetric: metric.stringMetric,
 		}
 	}
-
+	// Handle deletion
+	for key := range expMetrics {
+		if _, ok := expValues[key]; !ok {
+			delete(expMetrics, key)
+		}
+	}
 	return expMetrics
+}
+
+func findUpdate(notif *openconfig.Notification, path string) (*openconfig.Update, error) {
+	prefix := notif.Prefix.Element
+	for _, v := range notif.Update {
+		fullPath := "/" + strings.Join(append(prefix, v.Path.Element...), "/")
+		if strings.Contains(path, fullPath) || path == fullPath {
+			return v, nil
+		}
+	}
+	return nil, fmt.Errorf("Failed to find matching update for path %v", path)
 }
 
 func makeResponse(notif *openconfig.Notification) *openconfig.SubscribeResponse {
@@ -49,6 +97,11 @@ subscriptions:
         - /Sysdb/environment/power/status
         - /Sysdb/bridging/igmpsnooping/forwarding/forwarding/status
 metrics:
+        - name: fanName
+          path: /Sysdb/environment/cooling/status/fan/name
+          help: Fan Name
+          valuelabel: name
+          defaultvalue: 2.5
         - name: intfCounter
           path: /Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter
           help: Per-Interface Bytes/Errors/Discards Counters
@@ -95,6 +148,15 @@ metrics:
 					Value: []byte("true"),
 				},
 			},
+			{
+				Path: &openconfig.Path{
+					Element: []string{"environment", "cooling", "status", "fan", "name"},
+				},
+				Value: &openconfig.Value{
+					Type:  openconfig.Type_JSON,
+					Value: []byte("\"Fan1.1\""),
+				},
+			},
 		},
 	}
 	expValues := map[source]float64{
@@ -110,15 +172,19 @@ metrics:
 			addr: "10.1.1.1",
 			path: "/Sysdb/igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:01/intf/Cpu",
 		}: 1,
+		{
+			addr: "10.1.1.1",
+			path: "/Sysdb/environment/cooling/status/fan/name",
+		}: 2.5,
 	}
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
-	expMetrics := makeMetrics(cfg, expValues)
+	expMetrics := makeMetrics(cfg, expValues, notif, nil)
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}
 
-	// Update one value, and one path which is not a metric
+	// Update two values, and one path which is not a metric
 	notif = &openconfig.Notification{
 		Prefix: &openconfig.Path{Element: []string{"Sysdb"}},
 		Update: []*openconfig.Update{
@@ -129,6 +195,15 @@ metrics:
 				Value: &openconfig.Value{
 					Type:  openconfig.Type_JSON,
 					Value: []byte("52"),
+				},
+			},
+			{
+				Path: &openconfig.Path{
+					Element: []string{"environment", "cooling", "status", "fan", "name"},
+				},
+				Value: &openconfig.Value{
+					Type:  openconfig.Type_JSON,
+					Value: []byte("\"Fan2.1\""),
 				},
 			},
 			{
@@ -149,7 +224,7 @@ metrics:
 	expValues[src] = 52
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
-	expMetrics = makeMetrics(cfg, expValues)
+	expMetrics = makeMetrics(cfg, expValues, notif, expMetrics)
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}
@@ -173,7 +248,7 @@ metrics:
 	expValues[src] = 42
 
 	coll.update("10.1.1.2:6042", makeResponse(notif))
-	expMetrics = makeMetrics(cfg, expValues)
+	expMetrics = makeMetrics(cfg, expValues, notif, expMetrics)
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}
@@ -191,12 +266,12 @@ metrics:
 	delete(expValues, src)
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
-	expMetrics = makeMetrics(cfg, expValues)
+	expMetrics = makeMetrics(cfg, expValues, notif, expMetrics)
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}
 
-	// Non-numeric update
+	// Non-numeric update to path without value label
 	notif = &openconfig.Notification{
 		Prefix: &openconfig.Path{Element: []string{"Sysdb"}},
 		Update: []*openconfig.Update{
@@ -213,6 +288,7 @@ metrics:
 	}
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
+	// Don't make new metrics as it should have no effect
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}

@@ -18,11 +18,18 @@ subscriptions:
         - /Sysdb/environment/temperature/status
         - /Sysdb/interface/counter/eth/lag
         - /Sysdb/interface/counter/eth/slice/phy
+        - /Sysdb/interface/config
+        - /Sysdb/interface/config/eth/phy/slice/1/intfConfig
 
 # Prometheus metrics configuration.
 # If you use named capture groups in the path, they will be extracted into labels with the same name.
 # All fields are mandatory.
 metrics:
+        - name: interfaceDescription
+          path: Sysdb/interface/config/eth/phy/slice/1/intfConfig/(?P<interface>Ethernet.)/description
+          help: Description
+          valuelabel: description
+          defaultvalue: 15
         - name: intfCounter
           path: /Sysdb/interface/counter/eth/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter/current/statistics/(?P<direction>(?:in|out))(?P<type>(Octets|Errors|Discards))
           help: Per-Interface Bytes/Errors/Discards Counters

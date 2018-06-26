@@ -31,6 +31,11 @@ subscriptions:
         - /Sysdb/environment/cooling/status
         - /Sysdb/environment/power/status
 metrics:
+        - name: fanName
+          path: /Sysdb/environment/cooling/status/fan/name
+          help: Fan Name
+          valuelabel: name
+          defaultvalue: 25
         - name: intfCounter
           path: /Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter
           help: Per-Interface Bytes/Errors/Discards Counters
@@ -53,6 +58,26 @@ metrics:
 					"/Sysdb/environment/power/status",
 				},
 				Metrics: []*MetricDef{
+					{
+						Path: "/Sysdb/environment/cooling/status/fan/name",
+						re: regexp.MustCompile(
+							"/Sysdb/environment/cooling/status/fan/name"),
+						Name:         "fanName",
+						Help:         "Fan Name",
+						ValueLabel:   "name",
+						DefaultValue: 25,
+						stringMetric: true,
+						devDesc: map[string]*prometheus.Desc{
+							"10.1.1.1": prometheus.NewDesc("fanName",
+								"Fan Name",
+								[]string{"name"},
+								prometheus.Labels{"lab1": "val1", "lab2": "val2"}),
+						},
+						desc: prometheus.NewDesc("fanName",
+							"Fan Name",
+							[]string{"name"},
+							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
+					},
 					{
 						Path: "/Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter",
 						re: regexp.MustCompile(
@@ -126,8 +151,9 @@ metrics:
 							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
 					},
 					{
-						Path:    "/Sysdb/environment/cooling/fan/speed/value",
-						re:      regexp.MustCompile("/Sysdb/environment/cooling/fan/speed/value"),
+						Path: "/Sysdb/environment/cooling/fan/speed/value",
+						re: regexp.MustCompile(
+							"/Sysdb/environment/cooling/fan/speed/value"),
 						Name:    "fanSpeed",
 						Help:    "Fan Speed",
 						devDesc: map[string]*prometheus.Desc{},
@@ -180,7 +206,8 @@ metrics:
 					},
 					{
 						Path: "/Sysdb/environment/cooling/fan/speed/value",
-						re:   regexp.MustCompile("/Sysdb/environment/cooling/fan/speed/value"),
+						re: regexp.MustCompile(
+							"/Sysdb/environment/cooling/fan/speed/value"),
 						Name: "fanSpeed",
 						Help: "Fan Speed",
 						devDesc: map[string]*prometheus.Desc{
@@ -222,8 +249,9 @@ metrics:
 							[]string{"intf"}, prometheus.Labels{}),
 					},
 					{
-						Path:    "/Sysdb/environment/cooling/fan/speed/value",
-						re:      regexp.MustCompile("/Sysdb/environment/cooling/fan/speed/value"),
+						Path: "/Sysdb/environment/cooling/fan/speed/value",
+						re: regexp.MustCompile(
+							"/Sysdb/environment/cooling/fan/speed/value"),
 						Name:    "fanSpeed",
 						Help:    "Fan Speed",
 						devDesc: map[string]*prometheus.Desc{},
@@ -247,7 +275,7 @@ metrics:
 	}
 }
 
-func TestGetDescAndLabels(t *testing.T) {
+func TestGetMetricValues(t *testing.T) {
 	config := []byte(`
 devicelabels:
         10.1.1.1:
@@ -317,12 +345,16 @@ metrics:
 	}
 
 	for i, c := range tCases {
-		desc, labels := cfg.getDescAndLabels(c.src)
-		if !test.DeepEqual(desc, c.desc) {
-			t.Errorf("Test case %d: desc mismatch %v", i+1, test.Diff(desc, c.desc))
+		metric := cfg.getMetricValues(c.src)
+		if metric == nil {
+			// Avoids error from trying to access metric.desc when metric is nil
+			metric = &metricValues{}
 		}
-		if !test.DeepEqual(labels, c.labels) {
-			t.Errorf("Test case %d: labels mismatch %v", i+1, test.Diff(labels, c.labels))
+		if !test.DeepEqual(metric.desc, c.desc) {
+			t.Errorf("Test case %d: desc mismatch %v", i+1, test.Diff(metric.desc, c.desc))
+		}
+		if !test.DeepEqual(metric.labels, c.labels) {
+			t.Errorf("Test case %d: labels mismatch %v", i+1, test.Diff(metric.labels, c.labels))
 		}
 	}
 }
