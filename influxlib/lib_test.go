@@ -7,6 +7,7 @@ package influxlib
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -104,4 +105,53 @@ func TestQuery(t *testing.T) {
 	_, err := con.Query(query)
 
 	assert.NoError(t, err)
+}
+
+func TestAddAndWriteBatchPoints(t *testing.T) {
+	testConn, _ := NewMockConnection()
+
+	measurement := "TestData"
+	points := []Point{
+		Point{
+			Measurement: measurement,
+			Tags: map[string]string{
+				"tag1": "Happy",
+				"tag2": "Valentines",
+				"tag3": "Day",
+			},
+			Fields: map[string]interface{}{
+				"Data1": 1234,
+				"Data2": "apples",
+				"Data3": 5.34,
+			},
+			Timestamp: time.Now(),
+		},
+		Point{
+			Measurement: measurement,
+			Tags: map[string]string{
+				"tag1": "Happy",
+				"tag2": "New",
+				"tag3": "Year",
+			},
+			Fields: map[string]interface{}{
+				"Data1": 5678,
+				"Data2": "bananas",
+				"Data3": 3.14,
+			},
+			Timestamp: time.Now(),
+		},
+	}
+
+	err := testConn.RecordBatchPoints(points)
+	assert.NoError(t, err)
+
+	line, err := GetTestBuffer(testConn)
+	assert.NoError(t, err)
+
+	assert.Contains(t, line, measurement,
+		fmt.Sprintf("%s does not appear in %s", measurement, line))
+	for _, p := range points {
+		testTags(line, p.Tags, t)
+		testFields(line, p.Fields, t)
+	}
 }

@@ -24,6 +24,20 @@ type InfluxDBConnection struct {
 	Config *InfluxConfig
 }
 
+// Point represents a datapoint to be written.
+// Measurement:
+//      The measurement to write to
+// Tags:
+//      A dictionary of tags in the form string=string
+// Fields:
+//      A dictionary of fields(keys) with their associated values
+type Point struct {
+	Measurement string
+	Tags        map[string]string
+	Fields      map[string]interface{}
+	Timestamp   time.Time
+}
+
 // Connect takes an InfluxConfig and establishes a connection
 // to InfluxDB. It returns an InfluxDBConnection structure.
 // InfluxConfig may be nil for a default connection.
@@ -54,16 +68,10 @@ func Connect(config *InfluxConfig) (*InfluxDBConnection, error) {
 	return &InfluxDBConnection{Client: con, Config: config}, nil
 }
 
-// WritePoint stores a datapoint to the database.
-// Measurement:
-//		The measurement to write to
-// Tags:
-//		A dictionary of tags in the form string=string
-// Fields:
-//		A dictionary of fields(keys) with their associated values
-func (conn *InfluxDBConnection) WritePoint(measurement string,
-	tags map[string]string, fields map[string]interface{}) error {
-
+// RecordBatchPoints takes in a slice of influxlib.Point and writes them to the
+// database.
+func (conn *InfluxDBConnection) RecordBatchPoints(points []Point) error {
+	var err error
 	bp, err := influxdb.NewBatchPoints(influxdb.BatchPointsConfig{
 		Database:        conn.Config.Database,
 		Precision:       "ns",
@@ -73,17 +81,51 @@ func (conn *InfluxDBConnection) WritePoint(measurement string,
 		return err
 	}
 
-	pt, err := influxdb.NewPoint(measurement, tags, fields, time.Now())
-	if err != nil {
-		return err
+	var influxPoints []*influxdb.Point
+
+	for _, p := range points {
+		if p.Timestamp.IsZero() {
+			p.Timestamp = time.Now()
+		}
+
+		point, err := influxdb.NewPoint(p.Measurement, p.Tags, p.Fields,
+			p.Timestamp)
+		if err != nil {
+			return err
+		}
+		influxPoints = append(influxPoints, point)
 	}
 
-	bp.AddPoint(pt)
+	bp.AddPoints(influxPoints)
+
 	if err = conn.Client.Write(bp); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// WritePoint stores a datapoint to the database.
+// Measurement:
+//		The measurement to write to
+// Tags:
+//		A dictionary of tags in the form string=string
+// Fields:
+//		A dictionary of fields(keys) with their associated values
+func (conn *InfluxDBConnection) WritePoint(measurement string,
+	tags map[string]string, fields map[string]interface{}) error {
+	return conn.RecordPoint(Point{
+		Measurement: measurement,
+		Tags:        tags,
+		Fields:      fields,
+		Timestamp:   time.Now(),
+	})
+}
+
+// RecordPoint implements the same as WritePoint but used a point struct
+// as the argument instead.
+func (conn *InfluxDBConnection) RecordPoint(p Point) error {
+	return conn.RecordBatchPoints([]Point{p})
 }
 
 // Query sends a query to the influxCli and returns a slice of
