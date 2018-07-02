@@ -7,22 +7,35 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/aristanetworks/goarista/openconfig/client"
+	"github.com/aristanetworks/goarista/gnmi"
 
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
-	"github.com/openconfig/reference/rpc/openconfig"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 func main() {
+
+	// gNMI options
+	cfg := &gnmi.Config{}
+	flag.StringVar(&cfg.Addr, "addr", "localhost", "gNMI gRPC server `address`")
+	flag.StringVar(&cfg.CAFile, "cafile", "", "Path to server TLS certificate file")
+	flag.StringVar(&cfg.CertFile, "certfile", "", "Path to client TLS certificate file")
+	flag.StringVar(&cfg.KeyFile, "keyfile", "", "Path to client TLS private key file")
+	flag.StringVar(&cfg.Username, "username", "", "Username to authenticate with")
+	flag.StringVar(&cfg.Password, "password", "", "Password to authenticate with")
+	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
+
+	// Program options
+	subscribePaths := flag.String("paths", "/", "Comma-separated list of paths to subscribe to")
+
 	tsdbFlag := flag.String("tsdb", "",
 		"Address of the OpenTSDB server where to push telemetry to")
 	textFlag := flag.Bool("text", false,
@@ -38,8 +51,8 @@ func main() {
 			" Clients and servers should have the same number.")
 	udpTimeoutFlag := flag.Duration("udptimeout", 2*time.Second,
 		"Timeout for each")
-	username, password, subscriptions, addrs, opts := client.ParseFlags()
 
+	flag.Parse()
 	if !(*tsdbFlag != "" || *textFlag || *udpAddrFlag != "") {
 		glog.Fatal("Specify the address of the OpenTSDB server to write to with -tsdb")
 	} else if *configFlag == "" {
@@ -52,6 +65,7 @@ func main() {
 	}
 	// Ignore the default "subscribe-to-everything" subscription of the
 	// -subscribe flag.
+	subscriptions := strings.Split(*subscribePaths, ",")
 	if subscriptions[0] == "" {
 		subscriptions = subscriptions[1:]
 	}
@@ -79,33 +93,32 @@ func main() {
 		// TODO: support HTTP(S).
 		c = newTelnetClient(*tsdbFlag)
 	}
-
-	wg := new(sync.WaitGroup)
-	for _, addr := range addrs {
-		wg.Add(1)
-		publish := func(addr string, message proto.Message) {
-			resp, ok := message.(*openconfig.SubscribeResponse)
-			if !ok {
-				glog.Errorf("Unexpected type of message: %T", message)
-				return
-			}
-			if notif := resp.GetUpdate(); notif != nil {
-				pushToOpenTSDB(addr, c, config, notif)
-			}
-		}
-		c := client.New(username, password, addr, opts)
-		go c.Subscribe(wg, subscriptions, publish)
+	ctx := gnmi.NewContext(context.Background(), cfg)
+	client, err := gnmi.Dial(cfg)
+	if err != nil {
+		glog.Fatal(err)
 	}
-	wg.Wait()
+	respChan := make(chan *pb.SubscribeResponse)
+	errChan := make(chan error)
+	go gnmi.Subscribe(ctx, client, gnmi.SplitPaths(subscriptions), respChan, errChan)
+	for {
+		select {
+		case resp := <-respChan:
+			pushToOpenTSDB(cfg.Addr, c, config, resp.GetUpdate())
+		case err := <-errChan:
+			glog.Fatal(err)
+		}
+	}
 }
 
-func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
-	notif *openconfig.Notification) {
-
+func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config, notif *pb.Notification) {
+	if notif == nil {
+		glog.Error("Nil notification ignored")
+		return
+	}
 	if notif.Timestamp <= 0 {
 		glog.Fatalf("Invalid timestamp %d in %s", notif.Timestamp, notif)
 	}
-
 	host := addr[:strings.IndexRune(addr, ':')]
 	if host == "localhost" {
 		// TODO: On Linux this reads /proc/sys/kernel/hostname each time,
@@ -118,18 +131,15 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 		}
 	}
 	prefix := "/" + strings.Join(notif.Prefix.Element, "/")
-
 	for _, update := range notif.Update {
-		if update.Value == nil || update.Value.Type != openconfig.Type_JSON {
+		if update.Value == nil || update.Value.Type != pb.Encoding_JSON {
 			glog.V(9).Infof("Ignoring incompatible update value in %s", update)
 			continue
 		}
-
 		value := parseValue(update)
 		if value == nil {
 			continue
 		}
-
 		path := prefix + "/" + strings.Join(update.Path.Element, "/")
 		metricName, tags := config.Match(path)
 		if metricName == "" {
@@ -137,7 +147,6 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 			continue
 		}
 		tags["host"] = host
-
 		for i, v := range value {
 			if len(value) > 1 {
 				tags["index"] = strconv.Itoa(i)
@@ -158,7 +167,7 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config,
 // parseValue returns either an integer/floating point value of the given update, or if
 // the value is a slice of integers/floating point values. If the value is neither of these
 // or if any element in the slice is non numerical, parseValue returns nil.
-func parseValue(update *openconfig.Update) []interface{} {
+func parseValue(update *pb.Update) []interface{} {
 	var value interface{}
 
 	decoder := json.NewDecoder(bytes.NewReader(update.Value.Value))
@@ -196,7 +205,7 @@ func parseValue(update *openconfig.Update) []interface{} {
 }
 
 // Convert our json.Number to either an int64, uint64, or float64.
-func parseNumber(num json.Number, update *openconfig.Update) interface{} {
+func parseNumber(num json.Number, update *pb.Update) interface{} {
 	var value interface{}
 	var err error
 	if value, err = num.Int64(); err != nil {

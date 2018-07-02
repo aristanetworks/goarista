@@ -52,5 +52,5 @@ will lead to the metric name `environment.temperature` and tags `sensor=TempSens
 See the `-help` output, but here's an example to push all the metrics defined
 in the sample config file:
 ```
-octsdb -addrs <switch-hostname>:6042 -config sampleconfig.json -text | nc <tsd-hostname> 4242
+octsdb -addr <switch-hostname>:6042 -config sampleconfig.json -text | nc <tsd-hostname> 4242
 ```
