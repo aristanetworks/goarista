@@ -8,16 +8,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"strings"
-	"sync"
 
-	occlient "github.com/aristanetworks/goarista/openconfig/client"
+	"github.com/aristanetworks/goarista/gnmi"
 
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
-	"github.com/openconfig/reference/rpc/openconfig"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 	redis "gopkg.in/redis.v4"
 )
 
@@ -42,11 +41,23 @@ type baseClient interface {
 var client baseClient
 
 func main() {
-	username, password, subscriptions, hostAddrs, opts := occlient.ParseFlags()
+
+	// gNMI options
+	cfg := &gnmi.Config{}
+	flag.StringVar(&cfg.Addr, "addr", "localhost", "gNMI gRPC server `address`")
+	flag.StringVar(&cfg.CAFile, "cafile", "", "Path to server TLS certificate file")
+	flag.StringVar(&cfg.CertFile, "certfile", "", "Path to client TLS certificate file")
+	flag.StringVar(&cfg.KeyFile, "keyfile", "", "Path to client TLS private key file")
+	flag.StringVar(&cfg.Username, "username", "", "Username to authenticate with")
+	flag.StringVar(&cfg.Password, "password", "", "Password to authenticate with")
+	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
+	subscribePaths := flag.String("subscribe", "/", "Comma-separated list of paths to subscribe to")
+	flag.Parse()
 	if *redisFlag == "" {
 		glog.Fatal("Specify the address of the Redis server to write to with -redis")
 	}
 
+	subscriptions := strings.Split(*subscribePaths, ",")
 	redisAddrs := strings.Split(*redisFlag, ",")
 	if !*clusterMode && len(redisAddrs) > 1 {
 		glog.Fatal("Please pass only 1 redis address in noncluster mode or enable cluster mode")
@@ -72,25 +83,27 @@ func main() {
 	if err != nil {
 		glog.Fatal("Failed to connect to client: ", err)
 	}
-
-	ocPublish := func(addr string, message proto.Message) {
-		resp, ok := message.(*openconfig.SubscribeResponse)
-		if !ok {
-			glog.Errorf("Unexpected type of message: %T", message)
-			return
-		}
-		if notif := resp.GetUpdate(); notif != nil {
-			bufferToRedis(addr, notif)
+	ctx := gnmi.NewContext(context.Background(), cfg)
+	client, err := gnmi.Dial(cfg)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	respChan := make(chan *pb.SubscribeResponse)
+	errChan := make(chan error)
+	subscribeOptions := &gnmi.SubscribeOptions{
+		Mode:       "stream",
+		StreamMode: "target_defined",
+		Paths:      gnmi.SplitPaths(subscriptions),
+	}
+	go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
+	for {
+		select {
+		case resp := <-respChan:
+			bufferToRedis(cfg.Addr, resp.GetUpdate())
+		case err := <-errChan:
+			glog.Fatal(err)
 		}
 	}
-
-	wg := new(sync.WaitGroup)
-	for _, hostAddr := range hostAddrs {
-		wg.Add(1)
-		c := occlient.New(username, password, hostAddr, opts)
-		go c.Subscribe(wg, subscriptions, ocPublish)
-	}
-	wg.Wait()
 }
 
 type redisData struct {
@@ -100,7 +113,12 @@ type redisData struct {
 	pub   map[string]interface{}
 }
 
-func bufferToRedis(addr string, notif *openconfig.Notification) {
+func bufferToRedis(addr string, notif *pb.Notification) {
+	if notif == nil {
+		// possible that this should be ignored silently
+		glog.Error("Nil notification ignored")
+		return
+	}
 	path := addr + "/" + joinPath(notif.Prefix)
 	data := &redisData{key: path}
 
@@ -167,20 +185,21 @@ func redisPublish(path, kind string, payload interface{}) {
 	}
 }
 
-func joinPath(path *openconfig.Path) string {
+func joinPath(path *pb.Path) string {
+	// path.Elem is empty for some reason so using path.Element instead
 	return strings.Join(path.Element, "/")
 }
 
-func convertUpdate(update *openconfig.Update) interface{} {
+func convertUpdate(update *pb.Update) interface{} {
 	switch update.Value.Type {
-	case openconfig.Type_JSON:
+	case pb.Encoding_JSON:
 		var value interface{}
 		err := json.Unmarshal(update.Value.Value, &value)
 		if err != nil {
 			glog.Fatalf("Malformed JSON update %q in %s", update.Value.Value, update)
 		}
 		return value
-	case openconfig.Type_BYTES:
+	case pb.Encoding_BYTES:
 		return update.Value.Value
 	default:
 		glog.Fatalf("Unhandled type of value %v in %s", update.Value.Type, update)

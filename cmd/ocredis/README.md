@@ -17,5 +17,5 @@ See the `-help` output, but here's an example to push all the temperature
 sensors into Redis.  You can also not pass any `-subscribe` flag to push
 _everything_ into Redis.
 ```
-ocredis -subscribe /Sysdb/environment/temperature -addrs <switch-hostname>:6042 -redis <redis-hostname>:6379
+ocredis -subscribe /Sysdb/environment/temperature -addr <switch-hostname>:6042 -redis <redis-hostname>:6379
 ```
