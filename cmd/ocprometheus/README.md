@@ -33,5 +33,5 @@ Prometheus 2.0 will probably support timestamps.
 See the `-help` output, but here's an example to push all the metrics defined
 in the sample config file:
 ```
-ocprometheus -addrs <switch-hostname>:6042 -config sampleconfig.json
+ocprometheus -addr <switch-hostname>:6042 -config sampleconfig.json
 ```

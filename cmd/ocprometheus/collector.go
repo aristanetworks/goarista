@@ -11,7 +11,7 @@ import (
 
 	"github.com/aristanetworks/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/openconfig/reference/rpc/openconfig"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -47,7 +47,7 @@ func newCollector(config *Config) *collector {
 
 // Process a notification and update or create the corresponding metrics.
 func (c *collector) update(addr string, message proto.Message) {
-	resp, ok := message.(*openconfig.SubscribeResponse)
+	resp, ok := message.(*pb.SubscribeResponse)
 	if !ok {
 		glog.Errorf("Unexpected type of message: %T", message)
 		return
@@ -72,7 +72,7 @@ func (c *collector) update(addr string, message proto.Message) {
 	// Process updates next
 	for _, update := range notif.Update {
 		// We only use JSON encoded values
-		if update.Value == nil || update.Value.Type != openconfig.Type_JSON {
+		if update.Value == nil || update.Value.Type != pb.Encoding_JSON {
 			glog.V(9).Infof("Ignoring incompatible update value in %s", update)
 			continue
 		}
@@ -156,7 +156,7 @@ func (c *collector) update(addr string, message proto.Message) {
 // ParseValue takes in an update and parses a value and suffix
 // Returns an interface that contains either a string or a float64 as well as a suffix
 // Unparseable updates return (0, empty string, false)
-func parseValue(update *openconfig.Update) (interface{}, string, bool) {
+func parseValue(update *pb.Update) (interface{}, string, bool) {
 	var intf interface{}
 	if err := json.Unmarshal(update.Value.Value, &intf); err != nil {
 		glog.Errorf("Can't parse value in update %v: %v", update, err)

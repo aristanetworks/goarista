@@ -10,12 +10,11 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/openconfig/reference/rpc/openconfig"
 )
 
-func makeMetrics(cfg *Config, expValues map[source]float64, notification *openconfig.Notification,
+func makeMetrics(cfg *Config, expValues map[source]float64, notification *pb.Notification,
 	prevMetrics map[source]*labelledMetric) map[source]*labelledMetric {
 
 	expMetrics := map[source]*labelledMetric{}
@@ -66,7 +65,7 @@ func makeMetrics(cfg *Config, expValues map[source]float64, notification *openco
 	return expMetrics
 }
 
-func findUpdate(notif *openconfig.Notification, path string) (*openconfig.Update, error) {
+func findUpdate(notif *pb.Notification, path string) (*pb.Update, error) {
 	prefix := notif.Prefix.Element
 	for _, v := range notif.Update {
 		fullPath := "/" + strings.Join(append(prefix, v.Path.Element...), "/")
@@ -77,9 +76,9 @@ func findUpdate(notif *openconfig.Notification, path string) (*openconfig.Update
 	return nil, fmt.Errorf("Failed to find matching update for path %v", path)
 }
 
-func makeResponse(notif *openconfig.Notification) *openconfig.SubscribeResponse {
-	return &openconfig.SubscribeResponse{
-		Response: &openconfig.SubscribeResponse_Update{Update: notif},
+func makeResponse(notif *pb.Notification) *pb.SubscribeResponse {
+	return &pb.SubscribeResponse{
+		Response: &pb.SubscribeResponse_Update{Update: notif},
 	}
 }
 
@@ -117,43 +116,43 @@ metrics:
 	}
 	coll := newCollector(cfg)
 
-	notif := &openconfig.Notification{
-		Prefix: &openconfig.Path{Element: []string{"Sysdb"}},
-		Update: []*openconfig.Update{
+	notif := &pb.Notification{
+		Prefix: &pb.Path{Element: []string{"Sysdb"}},
+		Update: []*pb.Update{
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"lag", "intfCounterDir", "Ethernet1", "intfCounter"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("42"),
 				},
 			},
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"environment", "cooling", "status", "fan", "speed"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("{\"value\": 45}"),
 				},
 			},
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"igmpsnooping", "vlanStatus", "2050", "ethGroup",
 						"01:00:5e:01:01:01", "intf", "Cpu"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("true"),
 				},
 			},
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"environment", "cooling", "status", "fan", "name"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("\"Fan1.1\""),
 				},
 			},
@@ -185,33 +184,33 @@ metrics:
 	}
 
 	// Update two values, and one path which is not a metric
-	notif = &openconfig.Notification{
-		Prefix: &openconfig.Path{Element: []string{"Sysdb"}},
-		Update: []*openconfig.Update{
+	notif = &pb.Notification{
+		Prefix: &pb.Path{Element: []string{"Sysdb"}},
+		Update: []*pb.Update{
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"lag", "intfCounterDir", "Ethernet1", "intfCounter"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("52"),
 				},
 			},
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"environment", "cooling", "status", "fan", "name"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("\"Fan2.1\""),
 				},
 			},
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"environment", "doesntexist", "status"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("{\"value\": 45}"),
 				},
 			},
@@ -230,15 +229,15 @@ metrics:
 	}
 
 	// Same path, different device
-	notif = &openconfig.Notification{
-		Prefix: &openconfig.Path{Element: []string{"Sysdb"}},
-		Update: []*openconfig.Update{
+	notif = &pb.Notification{
+		Prefix: &pb.Path{Element: []string{"Sysdb"}},
+		Update: []*pb.Update{
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"lag", "intfCounterDir", "Ethernet1", "intfCounter"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("42"),
 				},
 			},
@@ -254,9 +253,9 @@ metrics:
 	}
 
 	// Delete a path
-	notif = &openconfig.Notification{
-		Prefix: &openconfig.Path{Element: []string{"Sysdb"}},
-		Delete: []*openconfig.Path{
+	notif = &pb.Notification{
+		Prefix: &pb.Path{Element: []string{"Sysdb"}},
+		Delete: []*pb.Path{
 			{
 				Element: []string{"lag", "intfCounterDir", "Ethernet1", "intfCounter"},
 			},
@@ -272,15 +271,15 @@ metrics:
 	}
 
 	// Non-numeric update to path without value label
-	notif = &openconfig.Notification{
-		Prefix: &openconfig.Path{Element: []string{"Sysdb"}},
-		Update: []*openconfig.Update{
+	notif = &pb.Notification{
+		Prefix: &pb.Path{Element: []string{"Sysdb"}},
+		Update: []*pb.Update{
 			{
-				Path: &openconfig.Path{
+				Path: &pb.Path{
 					Element: []string{"lag", "intfCounterDir", "Ethernet1", "intfCounter"},
 				},
-				Value: &openconfig.Value{
-					Type:  openconfig.Type_JSON,
+				Value: &pb.Value{
+					Type:  pb.Encoding_JSON,
 					Value: []byte("\"test\""),
 				},
 			},
