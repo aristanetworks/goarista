@@ -265,7 +265,7 @@ func (k int8Key) String() string {
 }
 
 func (k int8Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", int8(k))
+	return fmt.Sprintf("key.New(int8(%d))", int8(k))
 }
 
 func (k int8Key) MarshalJSON() ([]byte, error) {
@@ -287,7 +287,7 @@ func (k int16Key) String() string {
 }
 
 func (k int16Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", int16(k))
+	return fmt.Sprintf("key.New(int16(%d))", int16(k))
 }
 
 func (k int16Key) MarshalJSON() ([]byte, error) {
@@ -309,7 +309,7 @@ func (k int32Key) String() string {
 }
 
 func (k int32Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", int32(k))
+	return fmt.Sprintf("key.New(int32(%d))", int32(k))
 }
 
 func (k int32Key) MarshalJSON() ([]byte, error) {
@@ -331,7 +331,7 @@ func (k int64Key) String() string {
 }
 
 func (k int64Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", int64(k))
+	return fmt.Sprintf("key.New(int64(%d))", int64(k))
 }
 
 func (k int64Key) MarshalJSON() ([]byte, error) {
@@ -353,7 +353,7 @@ func (k uint8Key) String() string {
 }
 
 func (k uint8Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", uint8(k))
+	return fmt.Sprintf("key.New(uint8(%d))", uint8(k))
 }
 
 func (k uint8Key) MarshalJSON() ([]byte, error) {
@@ -375,7 +375,7 @@ func (k uint16Key) String() string {
 }
 
 func (k uint16Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", uint16(k))
+	return fmt.Sprintf("key.New(uint16(%d))", uint16(k))
 }
 
 func (k uint16Key) MarshalJSON() ([]byte, error) {
@@ -397,7 +397,7 @@ func (k uint32Key) String() string {
 }
 
 func (k uint32Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", uint32(k))
+	return fmt.Sprintf("key.New(uint32(%d))", uint32(k))
 }
 
 func (k uint32Key) MarshalJSON() ([]byte, error) {
@@ -419,7 +419,7 @@ func (k uint64Key) String() string {
 }
 
 func (k uint64Key) GoString() string {
-	return fmt.Sprintf("key.New(%d)", uint64(k))
+	return fmt.Sprintf("key.New(uint64(%d))", uint64(k))
 }
 
 func (k uint64Key) MarshalJSON() ([]byte, error) {
@@ -441,7 +441,7 @@ func (k float32Key) String() string {
 }
 
 func (k float32Key) GoString() string {
-	return fmt.Sprintf("key.New(%v)", float32(k))
+	return fmt.Sprintf("key.New(float32(%v))", float32(k))
 }
 
 func (k float32Key) MarshalJSON() ([]byte, error) {
@@ -463,7 +463,7 @@ func (k float64Key) String() string {
 }
 
 func (k float64Key) GoString() string {
-	return fmt.Sprintf("key.New(%v)", float64(k))
+	return fmt.Sprintf("key.New(float64(%v))", float64(k))
 }
 
 func (k float64Key) MarshalJSON() ([]byte, error) {

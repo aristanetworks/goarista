@@ -446,6 +446,53 @@ func TestSetToMap(t *testing.T) {
 	}
 }
 
+func TestGoString(t *testing.T) {
+	tcases := []struct {
+		in  Key
+		out string
+	}{{
+		in:  New(uint8(1)),
+		out: "key.New(uint8(1))",
+	}, {
+		in:  New(uint16(1)),
+		out: "key.New(uint16(1))",
+	}, {
+		in:  New(uint32(1)),
+		out: "key.New(uint32(1))",
+	}, {
+		in:  New(uint64(1)),
+		out: "key.New(uint64(1))",
+	}, {
+		in:  New(int8(1)),
+		out: "key.New(int8(1))",
+	}, {
+		in:  New(int16(1)),
+		out: "key.New(int16(1))",
+	}, {
+		in:  New(int32(1)),
+		out: "key.New(int32(1))",
+	}, {
+		in:  New(int64(1)),
+		out: "key.New(int64(1))",
+	}, {
+		in:  New(float32(1)),
+		out: "key.New(float32(1))",
+	}, {
+		in:  New(float64(1)),
+		out: "key.New(float64(1))",
+	}, {
+		in:  New(map[string]interface{}{"foo": true}),
+		out: `key.New(map[string]interface {}{"foo":true})`,
+	}}
+	for i, tcase := range tcases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			if out := fmt.Sprintf("%#v", tcase.in); out != tcase.out {
+				t.Errorf("Wanted Go representation %q but got %q", tcase.out, out)
+			}
+		})
+	}
+}
+
 func TestMisc(t *testing.T) {
 	k := New(map[string]interface{}{"foo": true})
 	js, err := json.Marshal(k)
@@ -453,11 +500,6 @@ func TestMisc(t *testing.T) {
 		t.Error("JSON encoding failed:", err)
 	} else if expected := `{"foo":true}`; string(js) != expected {
 		t.Errorf("Wanted JSON %q but got %q", expected, js)
-	}
-	expected := `key.New(map[string]interface {}{"foo":true})`
-	gostr := fmt.Sprintf("%#v", k)
-	if expected != gostr {
-		t.Errorf("Wanted Go representation %q but got %q", expected, gostr)
 	}
 
 	test.ShouldPanic(t, func() { New(42) })
