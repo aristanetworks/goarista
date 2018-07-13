@@ -97,9 +97,10 @@ func HasElement(a key.Path, b key.Key) bool {
 	return false
 }
 
-// HasPrefix returns whether path b is at most the length
-// of path a and whether each element in b corresponds to
-// the same element in a from the first element.
+// HasPrefix returns whether path b is a prefix of path a.
+// It checks that b is at most the length of path a and
+// whether each element in b corresponds to the same element
+// in a from the first element.
 func HasPrefix(a, b key.Path) bool {
 	return len(a) >= len(b) && hasPrefix(a, b)
 }
@@ -111,10 +112,11 @@ func Match(a, b key.Path) bool {
 	return len(a) == len(b) && matchPrefix(a, b)
 }
 
-// MatchPrefix returns whether path b is at most the length
-// of path a and whether each element in b corresponds to
-// the same element or a wildcard in a from the first
-// element.
+// MatchPrefix returns whether path b is a prefix of path a
+// where path a may contain wildcards.
+// It checks that b is at most the length of path a and
+// whether each element in b corresponds to the same element
+// or a wildcard in a from the first element.
 func MatchPrefix(a, b key.Path) bool {
 	return len(a) >= len(b) && matchPrefix(a, b)
 }
