@@ -77,6 +77,8 @@ func StringifyInterface(key interface{}) (string, error) {
 		str = strings.Join(elements, ",")
 	case Pointer:
 		return "{" + key.Pointer().String() + "}", nil
+	case Path:
+		return "[" + key.String() + "]", nil
 	case value.Value:
 		return key.String(), nil
 

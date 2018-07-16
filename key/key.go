@@ -67,8 +67,9 @@ type boolKey bool
 
 type pointerKey compositeKey
 
-func pointerToSlice(ptr Pointer) []interface{} {
-	path := ptr.Pointer()
+type pathKey compositeKey
+
+func pathToSlice(path Path) []interface{} {
 	s := make([]interface{}, len(path))
 	for i, element := range path {
 		s[i] = element.Key()
@@ -76,12 +77,20 @@ func pointerToSlice(ptr Pointer) []interface{} {
 	return s
 }
 
-func sliceToPointer(s []interface{}) pointer {
+func sliceToPath(s []interface{}) Path {
 	path := make(Path, len(s))
 	for i, intf := range s {
 		path[i] = New(intf)
 	}
-	return pointer(path)
+	return path
+}
+
+func pointerToSlice(ptr Pointer) []interface{} {
+	return pathToSlice(ptr.Pointer())
+}
+
+func sliceToPointer(s []interface{}) pointer {
+	return pointer(sliceToPath(s))
 }
 
 // New wraps the given value in a Key.
@@ -121,6 +130,8 @@ func New(intf interface{}) Key {
 		return interfaceKey{key: intf}
 	case Pointer:
 		return pointerKey{sentinel: sentinel, s: pointerToSlice(t)}
+	case Path:
+		return pathKey{sentinel: sentinel, s: pathToSlice(t)}
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}
@@ -201,6 +212,9 @@ func keyEqual(a, b interface{}) bool {
 	case Pointer:
 		b, ok := b.(Pointer)
 		return ok && pointerEqual(a, b)
+	case Path:
+		b, ok := b.(Path)
+		return ok && pathEqual(a, b)
 	}
 
 	return a == b
@@ -523,4 +537,32 @@ func (k pointerKey) Equal(other interface{}) bool {
 		return false
 	}
 	return ok && sliceToPointer(k.s).Equal(key.Key())
+}
+
+// Key interface implementation for Path
+func (k pathKey) Key() interface{} {
+	return sliceToPath(k.s)
+}
+
+func (k pathKey) String() string {
+	return sliceToPath(k.s).String()
+}
+
+func (k pathKey) GoString() string {
+	return fmt.Sprintf("key.New(%#v)", k.s)
+}
+
+func (k pathKey) MarshalJSON() ([]byte, error) {
+	return sliceToPath(k.s).MarshalJSON()
+}
+
+func (k pathKey) Equal(other interface{}) bool {
+	if o, ok := other.(pathKey); ok {
+		return sliceEqual(k.s, o.s)
+	}
+	key, ok := other.(Key)
+	if !ok {
+		return false
+	}
+	return ok && sliceToPath(k.s).Equal(key.Key())
 }

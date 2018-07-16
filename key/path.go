@@ -4,7 +4,10 @@
 
 package key
 
-import "bytes"
+import (
+	"bytes"
+	"fmt"
+)
 
 // Path represents a path decomposed into elements where each
 // element is a Key. A Path can be interpreted as either
@@ -22,4 +25,27 @@ func (p Path) String() string {
 		buf.WriteString(element.String())
 	}
 	return buf.String()
+}
+
+// MarshalJSON marshals a Path to JSON.
+func (p Path) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`{"_path":%q}`, p)), nil
+}
+
+// Equal returns whether a Path is equal to @other.
+func (p Path) Equal(other interface{}) bool {
+	o, ok := other.(Path)
+	return ok && pathEqual(p, o)
+}
+
+func pathEqual(a, b Path) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(b[i]) {
+			return false
+		}
+	}
+	return true
 }

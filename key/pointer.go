@@ -42,14 +42,5 @@ func (ptr pointer) Equal(other interface{}) bool {
 }
 
 func pointerEqual(a, b Pointer) bool {
-	x, y := a.Pointer(), b.Pointer()
-	if len(x) != len(y) {
-		return false
-	}
-	for i := range x {
-		if !x[i].Equal(y[i]) {
-			return false
-		}
-	}
-	return true
+	return pathEqual(a.Pointer(), b.Pointer())
 }

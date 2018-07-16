@@ -24,6 +24,11 @@ func hashInterface(v interface{}) uintptr {
 		// as values in maps or slices (i.e.
 		// not wrapped in a key).
 		return hashSlice(pointerToSlice(v))
+	case Path:
+		// This case applies to paths used
+		// as values in maps or slices (i.e
+		// not wrapped in a kay).
+		return hashSlice(pathToSlice(v))
 	default:
 		return _nilinterhash(v)
 	}
