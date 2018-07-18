@@ -279,6 +279,7 @@ func (m *Map) Delete(p key.Path) bool {
 		}
 		m = next
 	}
+	deleted := m.ok
 	m.val, m.ok = nil, false
 	maps[len(p)] = m
 
@@ -296,7 +297,7 @@ func (m *Map) Delete(p key.Path) bool {
 			delete(parent.children, element)
 		}
 	}
-	return true
+	return deleted
 }
 
 func (m *Map) String() string {

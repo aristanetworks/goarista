@@ -170,6 +170,7 @@ func TestMapDelete(t *testing.T) {
 	m.Set(key.Path{Wildcard}, 1)
 	m.Set(key.Path{key.New("foo"), key.New("bar")}, 2)
 	m.Set(key.Path{key.New("foo"), Wildcard}, 3)
+	m.Set(key.Path{key.New("foo")}, 4)
 
 	n := countNodes(&m)
 	if n != 5 {
@@ -196,6 +197,20 @@ func TestMapDelete(t *testing.T) {
 		visit:    key.Path{key.New("foo"), key.New("bar")},
 		before:   map[int]int{2: 1, 3: 1},
 		after:    map[int]int{3: 1},
+		count:    4,
+	}, {
+		del:      key.Path{key.New("foo")},
+		expected: true,
+		visit:    key.Path{key.New("foo")},
+		before:   map[int]int{1: 1, 4: 1},
+		after:    map[int]int{1: 1},
+		count:    4,
+	}, {
+		del:      key.Path{key.New("foo")},
+		expected: false,
+		visit:    key.Path{key.New("foo")},
+		before:   map[int]int{1: 1},
+		after:    map[int]int{1: 1},
 		count:    4,
 	}, {
 		del:      key.Path{Wildcard},
