@@ -214,20 +214,20 @@ func (m *Map) Get(p key.Path) (interface{}, bool) {
 	return m.val, m.ok
 }
 
-// Set registers a path p with a value. Any previous value that
-// was registered with p is overwritten.
+// Set registers a path p with a value. If the path was already
+// registered with a value it returns true and false otherwise.
 //
 // Example:
 //
 // p := path.New("foo", "bar")
 //
-// m.Set(p, 0)
-// m.Set(p, 1)
+// a := m.Set(p, 0)
+// b := m.Set(p, 1)
 //
 // v := m.Get(p)
 //
-// Result: v == 1
-func (m *Map) Set(p key.Path, v interface{}) {
+// Result: a == false, b == true and v == 1
+func (m *Map) Set(p key.Path, v interface{}) bool {
 	for _, element := range p {
 		if element.Equal(Wildcard) {
 			if m.wildcard == nil {
@@ -246,7 +246,9 @@ func (m *Map) Set(p key.Path, v interface{}) {
 		}
 		m = next
 	}
+	set := !m.ok
 	m.val, m.ok = v, true
+	return set
 }
 
 // Delete unregisters the value registered with a path. It

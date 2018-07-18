@@ -20,6 +20,15 @@ func accumulator(counter map[int]int) VisitorFunc {
 	}
 }
 
+func TestMapSet(t *testing.T) {
+	m := Map{}
+	a := m.Set(key.Path{key.New("foo")}, 0)
+	b := m.Set(key.Path{key.New("foo")}, 1)
+	if !a || b {
+		t.Fatal("Map.Set not working properly")
+	}
+}
+
 func TestMapVisit(t *testing.T) {
 	m := Map{}
 	m.Set(key.Path{key.New("foo"), key.New("bar"), key.New("baz")}, 1)
