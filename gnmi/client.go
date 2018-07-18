@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"math"
 	"net"
 	"time"
 
@@ -89,7 +90,12 @@ func Dial(cfg *Config) (pb.GNMIClient, error) {
 		return conn, err
 	}
 
-	opts = append(opts, grpc.WithDialer(dial))
+	opts = append(opts,
+		grpc.WithDialer(dial),
+
+		// Allows received protobuf messages to be larger than 4MB
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+	)
 	grpcconn, err := grpc.Dial(cfg.Addr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %s", err)
