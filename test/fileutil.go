@@ -6,6 +6,7 @@ package test
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -27,4 +28,15 @@ func CopyFile(t *testing.T, srcPath, dstPath string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// TempDir creates a temporary directory under the default directory for temporary files (see
+// os.TempDir) and returns the path of the new directory or fails the test trying.
+func TempDir(t *testing.T, dirName string) string {
+	t.Helper()
+	tempDir, err := ioutil.TempDir("", dirName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tempDir
 }
