@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
 )
@@ -200,6 +201,13 @@ func update(p *pb.Path, val string) *pb.Update {
 	case "cli", "test-regen-cli":
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_AsciiVal{AsciiVal: val}}
+	case "p4_config":
+		b, err := ioutil.ReadFile(val)
+		if err != nil {
+			glog.Fatalf("Cannot read p4 file: %s", err)
+		}
+		v = &pb.TypedValue{
+			Value: &pb.TypedValue_ProtoBytes{ProtoBytes: b}}
 	default:
 		panic(fmt.Errorf("unexpected origin: %q", p.Origin))
 	}

@@ -168,6 +168,18 @@ gnmi [OPTIONS] update 'cli' 'management ssh
 idle-timeout 300'
 ```
 
+### P4 Config
+`gnmi` offers the ability to send p4 config files inside a `replace` operation.
+This is achieved by doing a `replace` and specifying `"origin=p4_config"`
+along with the path of the p4 config file to send.
+
+Example:
+
+Send the config.p4 file
+```
+gnmi [OPTIONS] replace 'origin=p4_config' 'config.p4'
+```
+
 ## Paths
 
 Paths in `gnmi` use a simplified xpath style. Path elements are

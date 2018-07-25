@@ -25,6 +25,23 @@ func TestNewSetRequest(t *testing.T) {
 	pathCli := &pb.Path{
 		Origin: "cli",
 	}
+	pathP4 := &pb.Path{
+		Origin: "p4_config",
+	}
+
+	p4FileContent := "p4_config test"
+	p4TestFile, err := ioutil.TempFile("", "p4TestFile")
+	if err != nil {
+		t.Errorf("cannot create test file for p4_config")
+	}
+	p4Filename := p4TestFile.Name()
+
+	defer os.Remove(p4Filename)
+
+	if _, err := p4TestFile.WriteString(p4FileContent); err != nil {
+		t.Errorf("cannot write test file for p4_config")
+	}
+	p4TestFile.Close()
 
 	testCases := map[string]struct {
 		setOps []*Operation
@@ -62,6 +79,17 @@ func TestNewSetRequest(t *testing.T) {
 					Path: pathCli,
 					Val: &pb.TypedValue{
 						Value: &pb.TypedValue_AsciiVal{AsciiVal: "hostname foo\nip routing"}},
+				}},
+			},
+		},
+		"p4_config": {
+			setOps: []*Operation{{Type: "replace", Origin: "p4_config",
+				Val: p4Filename}},
+			exp: pb.SetRequest{
+				Replace: []*pb.Update{{
+					Path: pathP4,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_ProtoBytes{ProtoBytes: []byte(p4FileContent)}},
 				}},
 			},
 		},
