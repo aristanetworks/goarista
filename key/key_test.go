@@ -42,6 +42,16 @@ func (c customKey) ToBuiltin() interface{} {
 	return c.i
 }
 
+var (
+	nilIntf = interface{}(nil)
+	nilMap  = map[string]interface{}(nil)
+	nilArr  = []interface{}(nil)
+	nilPath = Path(nil)
+
+	nilPtr Pointer
+	nilVal value.Value
+)
+
 func TestKeyEqual(t *testing.T) {
 	tests := []struct {
 		a      Key
@@ -139,6 +149,46 @@ func TestKeyEqual(t *testing.T) {
 		a:      New(customKey{i: 42}),
 		b:      New(customKey{i: 42}),
 		result: true,
+	}, {
+		a:      New(nil),
+		b:      New(nil),
+		result: true,
+	}, {
+		a:      New(nil),
+		b:      New(nilIntf),
+		result: true,
+	}, {
+		a:      New(nil),
+		b:      New(nilPtr),
+		result: true,
+	}, {
+		a:      New(nil),
+		b:      New(nilVal),
+		result: true,
+	}, {
+		a:      New(nil),
+		b:      New(nilMap),
+		result: false,
+	}, {
+		a:      New(nilMap),
+		b:      New(map[string]interface{}{}),
+		result: true,
+	}, {
+		a:      New(nil),
+		b:      New(nilArr),
+		result: false,
+	}, {
+		a:      New(nilArr),
+		b:      New([]interface{}{}),
+		result: true,
+	}, {
+		a:      New(nil),
+		b:      New(nilPath),
+		result: false,
+	}, {
+		a:      New(nilPath),
+		b:      New(Path{}),
+		result: true,
 	}}
 
 	for _, tcase := range tests {
@@ -162,6 +212,11 @@ func TestGetFromMap(t *testing.T) {
 		v     interface{}
 		found bool
 	}{{
+		k:     New(nil),
+		m:     map[Key]interface{}{New(nil): nil},
+		v:     nil,
+		found: true,
+	}, {
 		k:     New("a"),
 		m:     map[Key]interface{}{New("a"): "b"},
 		v:     "b",
@@ -451,6 +506,9 @@ func TestGoString(t *testing.T) {
 		in  Key
 		out string
 	}{{
+		in:  New(nil),
+		out: "key.New(nil)",
+	}, {
 		in:  New(uint8(1)),
 		out: "key.New(uint8(1))",
 	}, {

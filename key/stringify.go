@@ -6,7 +6,6 @@ package key
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -21,11 +20,10 @@ import (
 // representation of their keys as their names.
 // Note: this API is deprecated and will be removed.
 func StringifyInterface(key interface{}) (string, error) {
-	if key == nil {
-		return "", errors.New("Unable to stringify nil")
-	}
 	var str string
 	switch key := key.(type) {
+	case nil:
+		return "<nil>", nil
 	case bool:
 		str = strconv.FormatBool(key)
 	case uint8:

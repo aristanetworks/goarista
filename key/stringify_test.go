@@ -17,7 +17,7 @@ func TestStringify(t *testing.T) {
 	}{{
 		name:   "nil",
 		input:  nil,
-		output: "Unable to stringify nil",
+		output: "<nil>",
 	}, {
 		name:   "struct{}",
 		input:  struct{}{},
@@ -118,7 +118,7 @@ func TestStringify(t *testing.T) {
 		input: map[string]interface{}{
 			"n": nil,
 		},
-		output: "Unable to stringify nil",
+		output: "<nil>",
 	}, {
 		name: "[]interface{}",
 		input: []interface{}{

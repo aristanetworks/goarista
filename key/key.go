@@ -69,6 +69,8 @@ type pointerKey compositeKey
 
 type pathKey compositeKey
 
+type nilKey struct{}
+
 func pathToSlice(path Path) []interface{} {
 	s := make([]interface{}, len(path))
 	for i, element := range path {
@@ -98,6 +100,8 @@ func sliceToPointer(s []interface{}) pointer {
 // doesn't implement value.Value.
 func New(intf interface{}) Key {
 	switch t := intf.(type) {
+	case nil:
+		return nilKey{}
 	case map[string]interface{}:
 		return compositeKey{sentinel: sentinel, m: t}
 	case []interface{}:
@@ -565,4 +569,26 @@ func (k pathKey) Equal(other interface{}) bool {
 		return false
 	}
 	return ok && sliceToPath(k.s).Equal(key.Key())
+}
+
+// Key interface implementation for nil
+func (k nilKey) Key() interface{} {
+	return nil
+}
+
+func (k nilKey) String() string {
+	return "<nil>"
+}
+
+func (k nilKey) GoString() string {
+	return "key.New(nil)"
+}
+
+func (k nilKey) MarshalJSON() ([]byte, error) {
+	return []byte("null"), nil
+}
+
+func (k nilKey) Equal(other interface{}) bool {
+	_, ok := other.(nilKey)
+	return ok
 }
