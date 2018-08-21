@@ -71,10 +71,14 @@ func main() {
 	// gNMI subscription
 	respChan := make(chan *pb.SubscribeResponse)
 	errChan := make(chan error)
-	defer close(respChan)
 	defer close(errChan)
 	paths := strings.Split(*subscribePaths, ",")
-	go gnmi.Subscribe(ctx, client, gnmi.SplitPaths(paths), respChan, errChan)
+	subscribeOptions := &gnmi.SubscribeOptions{
+		Mode:       "stream",
+		StreamMode: "target_defined",
+		Paths:      gnmi.SplitPaths(paths),
+	}
+	go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
 
 	// Forward subscribe responses to Splunk
 	for {

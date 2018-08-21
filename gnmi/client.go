@@ -38,6 +38,17 @@ type Config struct {
 	TLS      bool
 }
 
+// SubscribeOptions is the gNMI subscription request options
+type SubscribeOptions struct {
+	UpdatesOnly       bool
+	Prefix            string
+	Mode              string
+	StreamMode        string
+	SampleInterval    uint64
+	HeartbeatInterval uint64
+	Paths             [][]string
+}
+
 // Dial connects to a gnmi service and returns a client
 func Dial(cfg *Config) (pb.GNMIClient, error) {
 	var opts []grpc.DialOption
@@ -130,17 +141,53 @@ func NewGetRequest(paths [][]string) (*pb.GetRequest, error) {
 }
 
 // NewSubscribeRequest returns a SubscribeRequest for the given paths
-func NewSubscribeRequest(paths [][]string) (*pb.SubscribeRequest, error) {
-	subList := &pb.SubscriptionList{
-		Subscription: make([]*pb.Subscription, len(paths)),
+func NewSubscribeRequest(subscribeOptions *SubscribeOptions) (*pb.SubscribeRequest, error) {
+	var mode pb.SubscriptionList_Mode
+	switch subscribeOptions.Mode {
+	case "once":
+		mode = pb.SubscriptionList_ONCE
+	case "poll":
+		mode = pb.SubscriptionList_POLL
+	case "stream":
+		mode = pb.SubscriptionList_STREAM
+	default:
+		return nil, fmt.Errorf("subscribe mode (%s) invalid", subscribeOptions.Mode)
 	}
-	for i, p := range paths {
+
+	var streamMode pb.SubscriptionMode
+	switch subscribeOptions.StreamMode {
+	case "on_change":
+		streamMode = pb.SubscriptionMode_ON_CHANGE
+	case "sample":
+		streamMode = pb.SubscriptionMode_SAMPLE
+	case "target_defined":
+		streamMode = pb.SubscriptionMode_TARGET_DEFINED
+	default:
+		return nil, fmt.Errorf("subscribe stream mode (%s) invalid", subscribeOptions.StreamMode)
+	}
+
+	prefixPath, err := ParseGNMIElements(SplitPath(subscribeOptions.Prefix))
+	if err != nil {
+		return nil, err
+	}
+	subList := &pb.SubscriptionList{
+		Subscription: make([]*pb.Subscription, len(subscribeOptions.Paths)),
+		Mode:         mode,
+		UpdatesOnly:  subscribeOptions.UpdatesOnly,
+		Prefix:       prefixPath,
+	}
+	for i, p := range subscribeOptions.Paths {
 		gnmiPath, err := ParseGNMIElements(p)
 		if err != nil {
 			return nil, err
 		}
-		subList.Subscription[i] = &pb.Subscription{Path: gnmiPath}
+		subList.Subscription[i] = &pb.Subscription{
+			Path:              gnmiPath,
+			Mode:              streamMode,
+			SampleInterval:    subscribeOptions.SampleInterval,
+			HeartbeatInterval: subscribeOptions.HeartbeatInterval,
+		}
 	}
-	return &pb.SubscribeRequest{
-		Request: &pb.SubscribeRequest_Subscribe{Subscribe: subList}}, nil
+	return &pb.SubscribeRequest{Request: &pb.SubscribeRequest_Subscribe{
+		Subscribe: subList}}, nil
 }
