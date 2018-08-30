@@ -2,6 +2,8 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
+// +build !go1.11
+
 // Package dscp provides helper functions to apply DSCP / ECN / CoS flags to sockets.
 package dscp
 
