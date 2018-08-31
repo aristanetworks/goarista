@@ -100,7 +100,12 @@ func main() {
 	}
 	respChan := make(chan *pb.SubscribeResponse)
 	errChan := make(chan error)
-	go gnmi.Subscribe(ctx, client, gnmi.SplitPaths(subscriptions), respChan, errChan)
+	subscribeOptions := &gnmi.SubscribeOptions{
+		Mode:       "stream",
+		StreamMode: "target_defined",
+		Paths:      gnmi.SplitPaths(subscriptions),
+	}
+	go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
 	for {
 		select {
 		case resp := <-respChan:
