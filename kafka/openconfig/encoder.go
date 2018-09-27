@@ -9,14 +9,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aristanetworks/goarista/elasticsearch"
 	"github.com/aristanetworks/goarista/kafka"
-	"github.com/aristanetworks/goarista/openconfig"
+	"github.com/aristanetworks/goarista/gnmi"
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
 	"github.com/golang/protobuf/proto"
-	pb "github.com/openconfig/reference/rpc/openconfig"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 // UnhandledMessageError is used for proto messages not matching the handled types
@@ -55,19 +54,14 @@ func NewEncoder(topic string, key sarama.Encoder, dataset string) kafka.MessageE
 	}
 }
 
-func (e *elasticsearchMessageEncoder) Encode(message proto.Message) ([]*sarama.ProducerMessage,
+func (e *elasticsearchMessageEncoder) Encode(response *pb.SubscribeResponse) ([]*sarama.ProducerMessage,
 	error) {
 
-	response, ok := message.(*pb.SubscribeResponse)
-	if !ok {
-		return nil, UnhandledMessageError{message: message}
-	}
 	update := response.GetUpdate()
 	if update == nil {
 		return nil, UnhandledSubscribeResponseError{response: response}
 	}
-	updateMap, err := openconfig.NotificationToMap(e.dataset, update,
-		elasticsearch.EscapeFieldName)
+	updateMap, err := gnmi.NotificationToMap(update)
 	if err != nil {
 		return nil, err
 	}

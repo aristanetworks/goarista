@@ -14,13 +14,13 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 // MessageEncoder is an encoder interface
 // which handles encoding proto.Message to sarama.ProducerMessage
 type MessageEncoder interface {
-	Encode(proto.Message) ([]*sarama.ProducerMessage, error)
+	Encode(*pb.SubscribeResponse) ([]*sarama.ProducerMessage, error)
 	HandleSuccess(*sarama.ProducerMessage)
 	HandleError(*sarama.ProducerError)
 }
@@ -60,8 +60,7 @@ func NewBaseEncoder(typ string) *BaseEncoder {
 	return e
 }
 
-// Encode encodes the proto message to a sarama.ProducerMessage
-func (e *BaseEncoder) Encode(message proto.Message) ([]*sarama.ProducerMessage,
+func (e *BaseEncoder) Encode(response *pb.SubscribeResponse) ([]*sarama.ProducerMessage,
 	error) {
 	// doesn't do anything, but keep it in order for BaseEncoder
 	// to implement MessageEncoder interface

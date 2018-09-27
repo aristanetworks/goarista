@@ -13,18 +13,18 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 // Producer forwards messages recvd on a channel to kafka.
 type Producer interface {
 	Start()
-	Write(proto.Message)
+	Write(*pb.SubscribeResponse)
 	Stop()
 }
 
 type producer struct {
-	notifsChan    chan proto.Message
+	notifsChan    chan *pb.SubscribeResponse
 	kafkaProducer sarama.AsyncProducer
 	encoder       kafka.MessageEncoder
 	done          chan struct{}
@@ -53,7 +53,7 @@ func New(encoder kafka.MessageEncoder,
 	}
 
 	p := &producer{
-		notifsChan:    make(chan proto.Message),
+		notifsChan:    make(chan *pb.SubscribeResponse),
 		kafkaProducer: kafkaProducer,
 		encoder:       encoder,
 		done:          make(chan struct{}),
@@ -91,9 +91,9 @@ func (p *producer) run() {
 	}
 }
 
-func (p *producer) Write(msg proto.Message) {
+func (p *producer) Write(response *pb.SubscribeResponse) {
 	select {
-	case p.notifsChan <- msg:
+	case p.notifsChan <- response:
 	case <-p.done:
 		// TODO: This should probably return an EOF error, but that
 		// would change the API
@@ -106,8 +106,8 @@ func (p *producer) Stop() {
 	p.kafkaProducer.Close()
 }
 
-func (p *producer) produceNotifications(protoMessage proto.Message) error {
-	messages, err := p.encoder.Encode(protoMessage)
+func (p *producer) produceNotifications(response *pb.SubscribeResponse) error {
+	messages, err := p.encoder.Encode(response)
 	if err != nil {
 		return err
 	}

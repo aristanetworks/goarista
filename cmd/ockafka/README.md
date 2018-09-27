@@ -9,18 +9,18 @@ Subscribe to all updates on the Arista device at `10.0.1.2` and stream to a loca
 Kafka instance:
 
 ```
-ockafka -addrs 10.0.1.2
+ockafka -addr 10.0.1.2
 ```
 
-Subscribe to temperature sensors from 2 switches and stream to a remote Kafka instance:
+Subscribe to temperature sensors and stream to a remote Kafka instance:
 
 ```
-ockafka -addrs 10.0.1.2,10.0.1.3 -kafkaaddrs kafka:9092 -subscribe /Sysdb/environment/temperature/status/tempSensor
+ockafka -addr 10.0.1.2 -kafkaaddrs kafka:9092 -subscribe /Sysdb/environment/temperature/status/tempSensor
 ```
 
 Start in a container:
 ```
-docker run aristanetworks/ockafka -addrs 10.0.1.1 -kafkaaddrs kafka:9092
+docker run aristanetworks/ockafka -addr 10.0.1.2 -kafkaaddrs kafka:9092
 ```
 
 ## Kafka/Elastic integration demo
