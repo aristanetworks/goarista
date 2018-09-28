@@ -80,7 +80,6 @@ func main() {
 		select {
 		case resp := <-respChan:
 			func(response *pb.SubscribeResponse) {
-				glog.V(9).Infof("publishing message: %v", *response)
 				p.Write(response)
 			}(resp)
 		case err := <-errChan:
