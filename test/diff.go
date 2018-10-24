@@ -54,7 +54,6 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 	case string, bool,
 		int8, int16, int32, int64,
 		uint8, uint16, uint32, uint64,
-		float32, float64,
 		complex64, complex128,
 		int, uint, uintptr:
 		if a != b {
@@ -62,6 +61,11 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 			return fmt.Sprintf("%s(%v) != %s(%v)", typ, a, typ, b)
 		}
 		return ""
+	case float32, float64:
+		if a != b {
+			typ := reflect.TypeOf(a).Name()
+			return fmt.Sprintf("%s(%g) != %s(%v)", typ, a, typ, b)
+		}
 	case []byte:
 		if !bytes.Equal(a, b.([]byte)) {
 			return fmt.Sprintf("[]byte(%q) != []byte(%q)", a, b)
@@ -186,7 +190,7 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		}
 	case reflect.Float32, reflect.Float64:
 		if af, bf := av.Float(), bv.Float(); af != bf {
-			return fmt.Sprintf("%s(%f) != %s(%f)", av.Type().Name(), af, bv.Type().Name(), bf)
+			return fmt.Sprintf("%s(%g) != %s(%g)", av.Type().Name(), af, bv.Type().Name(), bf)
 		}
 	case reflect.Complex64, reflect.Complex128:
 		if ac, bc := av.Complex(), bv.Complex(); ac != bc {
