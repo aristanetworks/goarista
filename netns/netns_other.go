@@ -2,6 +2,8 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
+// +build !linux
+
 package netns
 
 // stub: close closes the file descriptor mapped to a network namespace
