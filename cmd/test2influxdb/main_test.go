@@ -40,6 +40,7 @@ func TestParseTestOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
 
 	makeTags := func(pkg, resultType string) map[string]string {
 		return map[string]string{"package": pkg, "type": resultType, "tag": "foo"}
@@ -147,5 +148,106 @@ func TestFieldsFlag(t *testing.T) {
 				t.Errorf("unexpected diff from String: %q vs. %q", tc, s)
 			}
 		})
+	}
+}
+
+func TestParseBenchmarkOutput(t *testing.T) {
+	// Verify tags and fields set by flags are set in records
+	flagTags.Set("tag=foo")
+	flagFields.Set("field=true")
+	defaultMeasurement := *flagMeasurement
+	*flagMeasurement = "benchmarks"
+	defer func() {
+		flagTags = nil
+		flagFields = nil
+		*flagMeasurement = defaultMeasurement
+	}()
+
+	f, err := os.Open("testdata/bench-output.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	makeTags := func(pkg, benchmark string) map[string]string {
+		return map[string]string{
+			"package":   pkg,
+			"benchmark": benchmark,
+			"tag":       "foo",
+		}
+	}
+	makeFields := func(nsPerOp, mbPerS, bPerOp, allocsPerOp float64) map[string]interface{} {
+		m := map[string]interface{}{
+			"field": true,
+		}
+		if nsPerOp > 0 {
+			m[fieldNsPerOp] = nsPerOp
+		}
+		if mbPerS > 0 {
+			m[fieldMBPerS] = mbPerS
+		}
+		if bPerOp > 0 {
+			m[fieldAllocedBytesPerOp] = bPerOp
+		}
+		if allocsPerOp > 0 {
+			m[fieldAllocsPerOp] = allocsPerOp
+		}
+		return m
+	}
+
+	expected := []*client.Point{
+		newPoint(t,
+			"benchmarks",
+			makeTags("arista/pkg", "BenchmarkPassed-8"),
+			makeFields(127, 0, 16, 1),
+			"2018-11-08T15:53:12.935603594-08:00",
+		),
+		newPoint(t,
+			"benchmarks",
+			makeTags("arista/pkg/subpkg1", "BenchmarkLogged-8"),
+			makeFields(120, 0, 16, 1),
+			"2018-11-08T15:53:14.359792815-08:00",
+		),
+		newPoint(t,
+			"benchmarks",
+			makeTags("arista/pkg/subpkg2", "BenchmarkSetBytes-8"),
+			makeFields(120, 8.31, 16, 1),
+			"2018-11-08T15:53:15.717036333-08:00",
+		),
+		newPoint(t,
+			"benchmarks",
+			makeTags("arista/pkg/subpkg3", "BenchmarkWithSubs/sub_1-8"),
+			makeFields(118, 0, 16, 1),
+			"2018-11-08T15:53:17.952644273-08:00",
+		),
+		newPoint(t,
+			"benchmarks",
+			makeTags("arista/pkg/subpkg3", "BenchmarkWithSubs/sub_2-8"),
+			makeFields(117, 0, 16, 1),
+			"2018-11-08T15:53:20.443187742-08:00",
+		),
+	}
+
+	batch, err := client.NewBatchPoints(client.BatchPointsConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := parseBenchmarkOutput(f, batch); err != nil {
+		t.Fatal(err)
+	}
+
+	// parseBenchmarkOutput arranges the data in maps so the generated points
+	// are in random order. Therefore, we're diffing as map instead of a slice
+	pointsAsMap := func(points []*client.Point) map[string]*client.Point {
+		m := make(map[string]*client.Point, len(points))
+		for _, p := range points {
+			m[p.String()] = p
+		}
+		return m
+	}
+	expectedMap := pointsAsMap(expected)
+	actualMap := pointsAsMap(batch.Points())
+	if diff := test.Diff(expectedMap, actualMap); diff != "" {
+		t.Errorf("unexpected diff: %s\nexpected: %v\nactual: %v", diff, expectedMap, actualMap)
 	}
 }
