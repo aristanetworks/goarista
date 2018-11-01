@@ -34,6 +34,10 @@ func (w *fakeClient) Query(q influx.Query) (*influx.Response, error) {
 	return &influx.Response{Results: nil, Err: ""}, nil
 }
 
+func (w *fakeClient) QueryAsChunk(q influx.Query) (*influx.ChunkedResponse, error) {
+	return nil, nil
+}
+
 func (w *fakeClient) Close() error {
 	return nil
 }
