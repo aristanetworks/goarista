@@ -9,13 +9,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/aristanetworks/goarista/kafka/openconfig"
 	"github.com/aristanetworks/goarista/test"
 
 	"github.com/Shopify/sarama"
-	"github.com/golang/protobuf/proto"
-	pb "github.com/openconfig/reference/rpc/openconfig"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/openconfig/gnmi/value"
 )
 
 type mockAsyncProducer struct {
@@ -53,16 +54,22 @@ func (p *mockAsyncProducer) Errors() <-chan *sarama.ProducerError {
 	return p.errors
 }
 
-func newPath(path string) *pb.Path {
-	if path == "" {
-		return nil
+func newNotification(path []string, timestamp *time.Time) *pb.Notification {
+	sv, _ := value.FromScalar(timestamp.String())
+	return &pb.Notification{
+		Timestamp: timestamp.UnixNano() / 1e6,
+		Update: []*pb.Update{
+			{
+				Path: &pb.Path{Element: path},
+				Val:  sv,
+			},
+		},
 	}
-	return &pb.Path{Element: strings.Split(path, "/")}
 }
 
 func TestKafkaProducer(t *testing.T) {
 	mock := newMockAsyncProducer()
-	toDB := make(chan proto.Message)
+	toDB := make(chan *pb.SubscribeResponse)
 	topic := "occlient"
 	systemID := "Foobar"
 	toDBProducer := &producer{
@@ -75,23 +82,17 @@ func TestKafkaProducer(t *testing.T) {
 
 	toDBProducer.Start()
 
+	path := []string{"foo", "bar"}
+	timestamp := time.Now()
 	response := &pb.SubscribeResponse{
 		Response: &pb.SubscribeResponse_Update{
-			Update: &pb.Notification{
-				Timestamp: 0,
-				Prefix:    newPath("/foo/bar"),
-				Update:    []*pb.Update{},
-			},
+			Update: newNotification(path, &timestamp),
 		},
 	}
 	document := map[string]interface{}{
-		"timestamp": int64(0),
-		"update": map[string]interface{}{
-			"": map[string]interface{}{
-				"foo": map[string]interface{}{
-					"bar": map[string]interface{}{},
-				},
-			},
+		"timestamp": timestamp.UnixNano() / 1e6,
+		"updates": map[string]interface{}{
+			"/" + strings.Join(path, "/"): timestamp.String(),
 		},
 	}
 
@@ -118,11 +119,10 @@ func TestKafkaProducer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error decoding into JSON: %s", err)
 	}
-	if !test.DeepEqual(document["update"], result.(map[string]interface{})["update"]) {
-		t.Errorf("Protobuf sent from Kafka Producer does not match original.\nOriginal: %v\nNew:%v",
+	if !test.DeepEqual(document["updates"], result.(map[string]interface{})["updates"]) {
+		t.Errorf("Protobuf sent from Kafka Producer does not match original.\nOriginal: %#v\nNew:%#v",
 			document, result)
 	}
-
 	toDBProducer.Stop()
 }
 
@@ -136,7 +136,7 @@ func TestProducerStartStop(t *testing.T) {
 	// this test checks that Start() followed by Stop() doesn't cause any race conditions.
 
 	mock := newMockAsyncProducer()
-	toDB := make(chan proto.Message)
+	toDB := make(chan *pb.SubscribeResponse)
 	topic := "occlient"
 	systemID := "Foobar"
 	p := &producer{
@@ -146,13 +146,11 @@ func TestProducerStartStop(t *testing.T) {
 		done:          make(chan struct{}),
 	}
 
+	path := []string{"foo", "bar"}
+	timestamp := time.Now()
 	msg := &pb.SubscribeResponse{
 		Response: &pb.SubscribeResponse_Update{
-			Update: &pb.Notification{
-				Timestamp: 0,
-				Prefix:    newPath("/foo/bar"),
-				Update:    []*pb.Update{},
-			},
+			Update: newNotification(path, &timestamp),
 		},
 	}
 
