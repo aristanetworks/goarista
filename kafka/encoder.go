@@ -60,10 +60,9 @@ func NewBaseEncoder(typ string) *BaseEncoder {
 	return e
 }
 
+// Encode does nothing, but keep it in order for BaseEncoder to implement MessageEncoder interface
 func (e *BaseEncoder) Encode(response *pb.SubscribeResponse) ([]*sarama.ProducerMessage,
 	error) {
-	// doesn't do anything, but keep it in order for BaseEncoder
-	// to implement MessageEncoder interface
 	return nil, nil
 }
 

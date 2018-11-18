@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/gnmi"
+	"github.com/aristanetworks/goarista/kafka"
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
@@ -54,7 +54,8 @@ func NewEncoder(topic string, key sarama.Encoder, dataset string) kafka.MessageE
 	}
 }
 
-func (e *elasticsearchMessageEncoder) Encode(response *pb.SubscribeResponse) ([]*sarama.ProducerMessage,
+func (e *elasticsearchMessageEncoder) Encode(response *pb.SubscribeResponse) (
+	[]*sarama.ProducerMessage,
 	error) {
 
 	update := response.GetUpdate()

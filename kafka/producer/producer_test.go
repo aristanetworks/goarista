@@ -120,7 +120,8 @@ func TestKafkaProducer(t *testing.T) {
 		t.Errorf("Error decoding into JSON: %s", err)
 	}
 	if !test.DeepEqual(document["updates"], result.(map[string]interface{})["updates"]) {
-		t.Errorf("Protobuf sent from Kafka Producer does not match original.\nOriginal: %#v\nNew:%#v",
+		t.Errorf(
+			"Protobuf sent from Kafka Producer does not match original.\nOriginal: %#v\nNew:%#v",
 			document, result)
 	}
 	toDBProducer.Stop()
