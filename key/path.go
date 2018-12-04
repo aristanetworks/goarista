@@ -22,7 +22,13 @@ func (p Path) String() string {
 	var buf bytes.Buffer
 	for _, element := range p {
 		buf.WriteByte('/')
-		buf.WriteString(element.String())
+		// Use StringifyInterface instead of element.String() because
+		// that will escape any invalid UTF-8.
+		s, err := StringifyInterface(element.Key())
+		if err != nil {
+			panic(fmt.Errorf("unable to stringify %#v: %s", element, err))
+		}
+		buf.WriteString(s)
 	}
 	return buf.String()
 }

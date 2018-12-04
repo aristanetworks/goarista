@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/aristanetworks/goarista/key"
 	"github.com/aristanetworks/goarista/path"
@@ -137,5 +138,17 @@ func TestPathAsKey(t *testing.T) {
 	b := key.New(customPath("/foo/bar"))
 	if _, ok := b.Key().(customPath); !ok {
 		t.Errorf("customPath implementation not preserved: %T", b.Key())
+	}
+}
+
+func TestInvalidUTF8(t *testing.T) {
+	bytesAsString := string([]byte{0xFF, 0xFF, 0xFF, 0xFF})
+	if utf8.ValidString(bytesAsString) {
+		t.Fatalf("expected %q to be invalid utf8", bytesAsString)
+	}
+	p := key.Path{key.New(bytesAsString)}
+	pathString := p.String()
+	if !utf8.ValidString(pathString) {
+		t.Errorf("expected %q to be valid utf8", pathString)
 	}
 }
