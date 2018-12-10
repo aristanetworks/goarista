@@ -15,7 +15,6 @@ import (
 
 	"github.com/aristanetworks/goarista/lanz"
 	pb "github.com/aristanetworks/goarista/lanz/proto"
-	"github.com/aristanetworks/goarista/test"
 
 	"github.com/aristanetworks/glog"
 	"github.com/golang/protobuf/proto"
@@ -158,7 +157,7 @@ func TestSuccessPath(t *testing.T) {
 		if !ok {
 			t.Fatalf("Unexpected closed channel")
 		}
-		if !test.DeepEqual(p, r) {
+		if !proto.Equal(p, r) {
 			t.Fatalf("Test case %d: expected %v, but got %v", i, p, r)
 		}
 	}
@@ -283,7 +282,7 @@ func TestDefaultConnector(t *testing.T) {
 	c.Stop()
 	<-done
 
-	if !test.DeepEqual(p, testProtoBuf) {
+	if !proto.Equal(p, testProtoBuf) {
 		t.Fatalf("Expected protobuf %v, but got %v", testProtoBuf, p)
 	}
 }

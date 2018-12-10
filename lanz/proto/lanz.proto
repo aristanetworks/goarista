@@ -18,6 +18,7 @@ message ConfigRecord {
    required uint32 numOfPorts = 3;   // Num of ports in the switch
    required uint32 segmentSize = 4;  // Segement size
    required uint32 maxQueueSize = 5; // Maximum queue size in segments
+   optional uint32 qLenInterval = 10; // Frequency of update
    message PortConfigRecord {
       required string intfName = 1;      // Name of the port
       required uint32 switchId = 2;      // Id of the chip on a multi-chip system
@@ -54,6 +55,7 @@ message CongestionRecord {
       START = 1;
       UPDATE = 2;
       END = 3;
+      POLLING = 4;
    }
    optional EntryType entryType = 6;    // Type of entry
    optional uint32 trafficClass = 7;    // Traffic Class
