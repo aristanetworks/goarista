@@ -429,7 +429,7 @@ func parseBenchmarkOutput(r io.Reader, batch client.BatchPoints) error {
 	}
 	benchmarksPerPkg := make(map[string]*pkgBenchmarks)
 	for pkg, po := range outputByPkg {
-		glog.V(5).Infof("Package %s output:\n%s", pkg, po.output)
+		glog.V(5).Infof("Package %s output:\n%s", pkg, &po.output)
 
 		set, err := parse.ParseSet(&po.output)
 		if err != nil {
