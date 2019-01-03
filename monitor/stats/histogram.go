@@ -104,15 +104,15 @@ func (v HistogramValue) MarshalJSON() ([]byte, error) {
 		percentMulti = 100 / float64(v.Count)
 	}
 	fmt.Fprintf(&b,
-		`{"stats":{"count":%d,"min":%d,"max":%d,"avg":%.2f}, "buckets": {`,
+		`{"stats":{"count":%d,"min":%d,"max":%d,"avg":%.2f}, "buckets": [`,
 		v.Count, min, max, avg)
 
 	for i, bucket := range v.Buckets {
-		fmt.Fprintf(&b, `"[%d,`, bucket.LowBound)
+		fmt.Fprintf(&b, `{"range":"[%d,`, bucket.LowBound)
 		if i+1 < len(v.Buckets) {
-			fmt.Fprintf(&b, `%d)":{`, v.Buckets[i+1].LowBound)
+			fmt.Fprintf(&b, `%d)",`, v.Buckets[i+1].LowBound)
 		} else {
-			fmt.Fprintf(&b, `inf)":{`)
+			fmt.Fprintf(&b, `inf)",`)
 		}
 
 		fmt.Fprintf(&b, `"count":%d,"percentage":%.1f}`,
@@ -121,7 +121,7 @@ func (v HistogramValue) MarshalJSON() ([]byte, error) {
 			fmt.Fprintf(&b, ",")
 		}
 	}
-	fmt.Fprint(&b, `}}`)
+	fmt.Fprint(&b, `]}`)
 	return b.Bytes(), nil
 }
 
