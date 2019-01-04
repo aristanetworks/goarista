@@ -26,8 +26,8 @@ import (
 )
 
 // Get sents a GetRequest to the given client.
-func Get(ctx context.Context, client pb.GNMIClient, paths [][]string) error {
-	req, err := NewGetRequest(paths)
+func Get(ctx context.Context, client pb.GNMIClient, paths [][]string, origin string) error {
+	req, err := NewGetRequest(paths, origin)
 	if err != nil {
 		return err
 	}
@@ -200,6 +200,9 @@ func update(p *pb.Path, val string) *pb.Update {
 	case "":
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: extractJSON(val)}}
+	case "eos_native":
+		v = &pb.TypedValue{
+			Value: &pb.TypedValue_JsonVal{JsonVal: extractJSON(val)}}
 	case "cli", "test-regen-cli":
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_AsciiVal{AsciiVal: val}}
