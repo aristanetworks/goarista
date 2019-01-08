@@ -232,7 +232,11 @@ func TestParseBenchmarkOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := parseBenchmarkOutput(f, batch); err != nil {
+
+	err = parseBenchmarkOutput(f, batch)
+	switch err.(type) {
+	case duplicateTestsErr:
+	default:
 		t.Fatal(err)
 	}
 

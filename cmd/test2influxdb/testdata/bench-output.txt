@@ -65,3 +65,14 @@
 {"Time":"2018-11-08T15:53:21.743118494-08:00","Action":"output","Package":"arista/pkg/subpkg3","Output":"PASS\n"}
 {"Time":"2018-11-08T15:53:21.744485534-08:00","Action":"output","Package":"arista/pkg/subpkg3","Output":"ok  \tarista/pkg/subpkg3\t4.697s\n"}
 {"Time":"2018-11-08T15:53:21.744547934-08:00","Action":"pass","Package":"arista/pkg/subpkg3","Elapsed":4.697}
+{"Time":"2018-11-08T15:53:22.952573911-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"goos: darwin\n"}
+{"Time":"2018-11-08T15:53:22.952607727-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"goarch: amd64\n"}
+{"Time":"2018-11-08T15:53:22.952644273-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"subpkg4: arista/subpkg4\n"}
+{"Time":"2018-11-08T15:53:23.442803179-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"BenchmarkDuplicate-8   \t"}
+{"Time":"2018-11-08T15:53:23.443187742-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"10000000\t       127 ns/op\t      16 B/op\t       1 allocs/op\n"}
+{"Time":"2018-11-08T15:53:24.952573911-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"goos: darwin\n"}
+{"Time":"2018-11-08T15:53:24.952607727-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"goarch: amd64\n"}
+{"Time":"2018-11-08T15:53:24.952644273-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"subpkg4: arista/subpkg4\n"}
+{"Time":"2018-11-08T15:53:25.442803179-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"BenchmarkDuplicate-8   \t"}
+{"Time":"2018-11-08T15:53:25.443187742-08:00","Action":"output","Package":"arista/subpkg4","Test":"BenchmarkDuplicate","Output":"10000000\t       127 ns/op\t      16 B/op\t       1 allocs/op\n"}
+{"Time":"2018-11-08T15:53:25.744547934-08:00","Action":"pass","Package":"arista/pkg/subpkg4","Elapsed":4.697}
