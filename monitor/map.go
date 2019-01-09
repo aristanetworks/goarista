@@ -11,9 +11,9 @@
 package monitor
 
 import (
-	"bytes"
 	"expvar"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -25,7 +25,7 @@ type Map struct {
 }
 
 func (v *Map) String() string {
-	var b bytes.Buffer
+	var b strings.Builder
 	b.WriteByte('{')
 	first := true
 	v.m.Range(func(k, value interface{}) bool {

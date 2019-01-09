@@ -180,18 +180,18 @@ func strDecimal64(d *pb.Decimal64) string {
 
 // strLeafList builds a human-readable form of a leaf-list. e.g. [1, 2, 3] or [a, b, c]
 func strLeaflist(v *pb.ScalarArray) string {
-	var buf bytes.Buffer
-	buf.WriteByte('[')
+	var b strings.Builder
+	b.WriteByte('[')
 
 	for i, elm := range v.Element {
-		buf.WriteString(StrVal(elm))
+		b.WriteString(StrVal(elm))
 		if i < len(v.Element)-1 {
-			buf.WriteString(", ")
+			b.WriteString(", ")
 		}
 	}
 
-	buf.WriteByte(']')
-	return buf.String()
+	b.WriteByte(']')
+	return b.String()
 }
 
 func update(p *pb.Path, val string) *pb.Update {

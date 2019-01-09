@@ -5,9 +5,9 @@
 package path
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/aristanetworks/goarista/key"
 )
@@ -303,12 +303,12 @@ func (m *Map) Delete(p key.Path) bool {
 }
 
 func (m *Map) String() string {
-	var b bytes.Buffer
+	var b strings.Builder
 	m.write(&b, "")
 	return b.String()
 }
 
-func (m *Map) write(b *bytes.Buffer, indent string) {
+func (m *Map) write(b *strings.Builder, indent string) {
 	if m.ok {
 		b.WriteString(indent)
 		fmt.Fprintf(b, "Val: %v", m.val)

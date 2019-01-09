@@ -127,7 +127,7 @@ func (v HistogramValue) MarshalJSON() ([]byte, error) {
 
 // String returns the textual output of the histogram values as string.
 func (v HistogramValue) String() string {
-	var b bytes.Buffer
+	var b strings.Builder
 	v.PrintChart(&b)
 	return b.String()
 }

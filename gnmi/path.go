@@ -5,7 +5,6 @@
 package gnmi
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -85,10 +84,10 @@ func StrPath(path *pb.Path) string {
 
 // strPathV04 handles the v0.4 gnmi and later path.Elem member.
 func strPathV04(path *pb.Path) string {
-	buf := &bytes.Buffer{}
+	b := &strings.Builder{}
 	for _, elm := range path.Elem {
-		buf.WriteRune('/')
-		writeSafeString(buf, elm.Name, '/')
+		b.WriteRune('/')
+		writeSafeString(b, elm.Name, '/')
 		if len(elm.Key) > 0 {
 			// Sort the keys so that they print in a conistent
 			// order. We don't have the YANG AST information, so the
@@ -99,15 +98,15 @@ func strPathV04(path *pb.Path) string {
 			}
 			sort.Strings(keys)
 			for _, k := range keys {
-				buf.WriteRune('[')
-				buf.WriteString(k)
-				buf.WriteRune('=')
-				writeSafeString(buf, elm.Key[k], ']')
-				buf.WriteRune(']')
+				b.WriteRune('[')
+				b.WriteString(k)
+				b.WriteRune('=')
+				writeSafeString(b, elm.Key[k], ']')
+				b.WriteRune(']')
 			}
 		}
 	}
-	return buf.String()
+	return b.String()
 }
 
 // strPathV03 handles the v0.3 gnmi and earlier path.Element member.
@@ -115,12 +114,12 @@ func strPathV03(path *pb.Path) string {
 	return "/" + strings.Join(path.Element, "/")
 }
 
-func writeSafeString(buf *bytes.Buffer, s string, esc rune) {
+func writeSafeString(b *strings.Builder, s string, esc rune) {
 	for _, c := range s {
 		if c == esc || c == '\\' {
-			buf.WriteRune('\\')
+			b.WriteRune('\\')
 		}
-		buf.WriteRune(c)
+		b.WriteRune(c)
 	}
 }
 
@@ -210,19 +209,19 @@ func findUnescaped(s string, find byte) (string, int) {
 	}
 
 	// Find the first match, taking care of escaped chars.
-	buf := &bytes.Buffer{}
+	var b strings.Builder
 	var i int
 	len := len(s)
 	for i = 0; i < len; {
 		ch := s[i]
 		if ch == find {
-			return buf.String(), i
+			return b.String(), i
 		} else if ch == '\\' && i < len-1 {
 			i++
 			ch = s[i]
 		}
-		buf.WriteByte(ch)
+		b.WriteByte(ch)
 		i++
 	}
-	return buf.String(), -1
+	return b.String(), -1
 }
