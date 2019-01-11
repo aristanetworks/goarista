@@ -23,7 +23,8 @@ import (
 )
 
 var keysFlag = flag.String("kafkakeys", "",
-	"Keys for kafka messages (comma-separated, default: the value of -addrs")
+	"Keys for kafka messages (comma-separated, default: the value of -addrs). The key '"+
+		client.HostnameArg+"' is replaced by the current hostname.")
 
 func newProducer(addresses []string, topic, key, dataset string) (producer.Producer, error) {
 	encodedKey := sarama.StringEncoder(key)
@@ -38,10 +39,16 @@ func newProducer(addresses []string, topic, key, dataset string) (producer.Produ
 func main() {
 	username, password, subscriptions, grpcAddrs, opts := client.ParseFlags()
 
+	var keys []string
+	var err error
 	if *keysFlag == "" {
-		*keysFlag = strings.Join(grpcAddrs, ",")
+		keys = grpcAddrs
+	} else {
+		keys, err = client.ParseHostnames(*keysFlag)
+		if err != nil {
+			glog.Fatal(err)
+		}
 	}
-	keys := strings.Split(*keysFlag, ",")
 	if len(grpcAddrs) != len(keys) {
 		glog.Fatal("Please provide the same number of addresses and Kafka keys")
 	}

@@ -9,12 +9,36 @@ import (
 	"crypto/x509"
 	"flag"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/aristanetworks/glog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+const (
+	// HostnameArg is the value to be replaced by the actual hostname
+	HostnameArg = "HOSTNAME"
+)
+
+// ParseHostnames parses a comma-separated list of names and replaces HOSTNAME with the current
+// hostname in it
+func ParseHostnames(list string) ([]string, error) {
+	items := strings.Split(list, ",")
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(items))
+	for i, name := range items {
+		if name == HostnameArg {
+			name = hostname
+		}
+		names[i] = name
+	}
+	return names, nil
+}
 
 // ParseFlags registers some additional common flags,
 // parses the flags, and returns the resulting gRPC options,
@@ -24,7 +48,8 @@ func ParseFlags() (username string, password string, subscriptions, addrs []stri
 
 	var (
 		addrsFlag = flag.String("addrs", "localhost:6030",
-			"Comma-separated list of addresses of OpenConfig gRPC servers")
+			"Comma-separated list of addresses of OpenConfig gRPC servers. The address 'HOSTNAME' "+
+				"is replaced by the current hostname.")
 
 		caFileFlag = flag.String("cafile", "",
 			"Path to server TLS certificate file")
@@ -78,7 +103,11 @@ func ParseFlags() (username string, password string, subscriptions, addrs []stri
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	addrs = strings.Split(*addrsFlag, ",")
+	var err error
+	addrs, err = ParseHostnames(*addrsFlag)
+	if err != nil {
+		glog.Fatal(err)
+	}
 	subscriptions = strings.Split(*subscribeFlag, ",")
 	return *usernameFlag, *passwordFlag, subscriptions, addrs, opts
 }
