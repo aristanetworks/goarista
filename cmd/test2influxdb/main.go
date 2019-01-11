@@ -210,7 +210,7 @@ func main() {
 	}
 
 	if parseErr != nil {
-		glog.Fatal(err)
+		glog.Fatal(parseErr)
 	}
 }
 
