@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	influxdb "github.com/influxdata/influxdb/client/v2"
+	influxdb "github.com/aristanetworks/influxdb/client/v2"
 )
 
 // Row is defined as a map where the key (string) is the name of the

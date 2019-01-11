@@ -38,7 +38,7 @@ import (
 	"time"
 
 	"github.com/aristanetworks/glog"
-	client "github.com/influxdata/influxdb/client/v2"
+	client "github.com/aristanetworks/influxdb/client/v2"
 	"golang.org/x/tools/benchmark/parse"
 )
 

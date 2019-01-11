@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	influx "github.com/influxdata/influxdb/client/v2"
+	influx "github.com/aristanetworks/influxdb/client/v2"
 )
 
 // This will serve as a fake client object to test off of.
