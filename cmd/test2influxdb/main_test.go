@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/aristanetworks/goarista/test"
-	"github.com/aristanetworks/influxdb/client/v2"
+	client "github.com/influxdata/influxdb1-client/v2"
 )
 
 func newPoint(t *testing.T, measurement string, tags map[string]string,
