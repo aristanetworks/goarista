@@ -203,7 +203,7 @@ func main() {
 	// duplicate test names.
 	// The process still exits with a non-zero code in this case.
 	switch parseErr.(type) {
-	case nil, *duplicateTestsErr:
+	case nil, duplicateTestsErr:
 		if err := c.Write(batch); err != nil {
 			glog.Fatal(err)
 		}
