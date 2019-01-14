@@ -187,16 +187,22 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	if err := run(c, os.Stdin); err != nil {
+		glog.Fatal(err)
+	}
+}
+
+func run(c client.Client, r io.Reader) error {
 	batch, err := client.NewBatchPoints(client.BatchPointsConfig{Database: *flagDB})
 	if err != nil {
-		glog.Fatal(err)
+		return err
 	}
 
 	var parseErr error
 	if *flagBenchOnly {
-		parseErr = parseBenchmarkOutput(os.Stdin, batch)
+		parseErr = parseBenchmarkOutput(r, batch)
 	} else {
-		parseErr = parseTestOutput(os.Stdin, batch)
+		parseErr = parseTestOutput(r, batch)
 	}
 
 	// Partial results can still be published with certain parsing errors like
@@ -205,13 +211,11 @@ func main() {
 	switch parseErr.(type) {
 	case nil, duplicateTestsErr:
 		if err := c.Write(batch); err != nil {
-			glog.Fatal(err)
+			return err
 		}
 	}
 
-	if parseErr != nil {
-		glog.Fatal(parseErr)
-	}
+	return parseErr
 }
 
 // See https://golang.org/cmd/test2json/ for a description of 'go test
