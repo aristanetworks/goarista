@@ -213,6 +213,7 @@ func run(c client.Client, r io.Reader) error {
 		if err := c.Write(batch); err != nil {
 			return err
 		}
+		glog.Infof("wrote %d data points", len(batch.Points()))
 	}
 
 	return parseErr
