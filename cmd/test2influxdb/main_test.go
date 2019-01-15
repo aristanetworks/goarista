@@ -52,7 +52,7 @@ func newPoint(t *testing.T, measurement string, tags map[string]string,
 	return p
 }
 
-func TestParseTestOutput(t *testing.T) {
+func TestRunWithTestData(t *testing.T) {
 	// Verify tags and fields set by flags are set in records
 	flagTags.Set("tag=foo")
 	flagFields.Set("field=true")
@@ -117,15 +117,12 @@ func TestParseTestOutput(t *testing.T) {
 		),
 	}
 
-	batch, err := client.NewBatchPoints(client.BatchPointsConfig{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := parseTestOutput(f, batch); err != nil {
+	var mc mockedConn
+	if err := run(&mc, f); err != nil {
 		t.Fatal(err)
 	}
 
-	if diff := test.Diff(expected, batch.Points()); diff != "" {
+	if diff := test.Diff(expected, mc.bp.Points()); diff != "" {
 		t.Errorf("unexpected diff: %s", diff)
 	}
 }
