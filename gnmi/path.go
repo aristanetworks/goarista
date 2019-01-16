@@ -114,6 +114,30 @@ func strPathV03(path *pb.Path) string {
 	return "/" + strings.Join(path.Element, "/")
 }
 
+// upgradePath modernizes a Path by translating the contents of the Element field to Elem
+func upgradePath(path *pb.Path) *pb.Path {
+	if len(path.Elem) == 0 {
+		var elems []*pb.PathElem
+		for _, element := range path.Element {
+			n, keys, _ := parseElement(element)
+			elems = append(elems, &pb.PathElem{Name: n, Key: keys})
+		}
+		path.Elem = elems
+		path.Element = nil
+	}
+	return path
+}
+
+// JoinPaths joins multiple gnmi paths and returns a string representation
+func JoinPaths(paths ...*pb.Path) *pb.Path {
+	var elems []*pb.PathElem
+	for _, path := range paths {
+		path = upgradePath(path)
+		elems = append(elems, path.Elem...)
+	}
+	return &pb.Path{Elem: elems}
+}
+
 func writeSafeString(b *strings.Builder, s string, esc rune) {
 	for _, c := range s {
 		if c == esc || c == '\\' {

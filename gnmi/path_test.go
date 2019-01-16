@@ -226,6 +226,62 @@ func TestParseElement(t *testing.T) {
 	}
 }
 
+func strToPath(pathStr string) *pb.Path {
+	splitPath := SplitPath(pathStr)
+	path, _ := ParseGNMIElements(splitPath)
+	path.Element = nil
+	return path
+}
+
+func strsToPaths(pathStrs []string) []*pb.Path {
+	var paths []*pb.Path
+	for _, splitPath := range SplitPaths(pathStrs) {
+		path, _ := ParseGNMIElements(splitPath)
+		path.Element = nil
+		paths = append(paths, path)
+	}
+	return paths
+}
+
+func TestJoinPath(t *testing.T) {
+	cases := []struct {
+		paths []*pb.Path
+		exp   string
+	}{{
+		paths: strsToPaths([]string{"/foo/bar", "/baz/qux"}),
+		exp:   "/foo/bar/baz/qux",
+	},
+		{
+			paths: strsToPaths([]string{
+				"/foo/bar[somekey=someval][otherkey=otherval]", "/baz/qux"}),
+			exp: "/foo/bar[otherkey=otherval][somekey=someval]/baz/qux",
+		},
+		{
+			paths: strsToPaths([]string{
+				"/foo/bar[somekey=someval][otherkey=otherval]",
+				"/baz/qux[somekey=someval][otherkey=otherval]"}),
+			exp: "/foo/bar[otherkey=otherval][somekey=someval]/" +
+				"baz/qux[otherkey=otherval][somekey=someval]",
+		},
+		{
+			paths: []*pb.Path{
+				&pb.Path{Element: []string{"foo", "bar[somekey=someval][otherkey=otherval]"}},
+				&pb.Path{Element: []string{"baz", "qux[somekey=someval][otherkey=otherval]"}}},
+			exp: "/foo/bar[somekey=someval][otherkey=otherval]/" +
+				"baz/qux[somekey=someval][otherkey=otherval]",
+		},
+	}
+
+	for _, tc := range cases {
+		got := JoinPaths(tc.paths...)
+		exp := strToPath(tc.exp)
+		exp.Element = nil
+		if !test.DeepEqual(got, exp) {
+			t.Fatalf("ERROR!\n Got: %s,\n Want %s\n", got, exp)
+		}
+	}
+}
+
 func BenchmarkPathElementToSigleElementName(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _, _ = parseElement("hello")
