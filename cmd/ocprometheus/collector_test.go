@@ -131,30 +131,26 @@ metrics:
 		Update: []*pb.Update{
 			{
 				Path: makePath("lag/intfCounterDir/Ethernet1/intfCounter"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("42"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("42")},
 				},
 			},
 			{
 				Path: makePath("environment/cooling/status/fan/speed"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("{\"value\": 45}"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("{\"value\": 45}")},
 				},
 			},
 			{
 				Path: makePath("igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:01/intf/Cpu"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("true"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("true")},
 				},
 			},
 			{
 				Path: makePath("environment/cooling/status/fan/name"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("\"Fan1.1\""),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("\"Fan1.1\"")},
 				},
 			},
 		},
@@ -190,23 +186,20 @@ metrics:
 		Update: []*pb.Update{
 			{
 				Path: makePath("lag/intfCounterDir/Ethernet1/intfCounter"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("52"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("52")},
 				},
 			},
 			{
 				Path: makePath("environment/cooling/status/fan/name"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("\"Fan2.1\""),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("\"Fan2.1\"")},
 				},
 			},
 			{
 				Path: makePath("environment/doesntexist/status"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("{\"value\": 45}"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("{\"value\": 45}")},
 				},
 			},
 		},
@@ -229,9 +222,8 @@ metrics:
 		Update: []*pb.Update{
 			{
 				Path: makePath("lag/intfCounterDir/Ethernet1/intfCounter"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("42"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("42")},
 				},
 			},
 		},
@@ -265,9 +257,8 @@ metrics:
 		Update: []*pb.Update{
 			{
 				Path: makePath("lag/intfCounterDir/Ethernet1/intfCounter"),
-				Value: &pb.Value{
-					Type:  pb.Encoding_JSON,
-					Value: []byte("\"test\""),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("\"test\"")},
 				},
 			},
 		},

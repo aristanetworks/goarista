@@ -6,10 +6,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -137,10 +137,6 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config, notif *pb.No
 	}
 	prefix := gnmi.StrPath(notif.Prefix)
 	for _, update := range notif.Update {
-		if update.Value == nil || update.Value.Type != pb.Encoding_JSON {
-			glog.V(9).Infof("Ignoring incompatible update value in %s", update)
-			continue
-		}
 		value := parseValue(update)
 		if value == nil {
 			continue
@@ -148,7 +144,7 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config, notif *pb.No
 		path := prefix + gnmi.StrPath(update.Path)
 		metricName, tags := config.Match(path)
 		if metricName == "" {
-			glog.V(8).Infof("Ignoring unmatched update at %s: %+v", path, update.Value)
+			glog.V(8).Infof("Ignoring unmatched update at %s with value %+v", path, value)
 			continue
 		}
 		tags["host"] = host
@@ -173,28 +169,48 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config, notif *pb.No
 // the value is a slice of integers/floating point values. If the value is neither of these
 // or if any element in the slice is non numerical, parseValue returns nil.
 func parseValue(update *pb.Update) []interface{} {
-	var value interface{}
-
-	decoder := json.NewDecoder(bytes.NewReader(update.Value.Value))
-	decoder.UseNumber()
-	err := decoder.Decode(&value)
+	value, err := gnmi.ExtractValue(update)
 	if err != nil {
-		glog.Fatalf("Malformed JSON update %q in %s", update.Value.Value, update)
+		glog.Fatalf("Malformed JSON update %q in %s", update.Val.GetJsonVal(), update)
 	}
 
 	switch value := value.(type) {
+	case int64:
+		return []interface{}{value}
+	case uint64:
+		return []interface{}{value}
+	case float32:
+		return []interface{}{value}
+	case *pb.Decimal64:
+		val := gnmi.DecimalToFloat(value)
+		if math.IsInf(val, 0) || math.IsNaN(val) {
+			return nil
+		}
+		return []interface{}{val}
 	case json.Number:
 		return []interface{}{parseNumber(value, update)}
 	case []interface{}:
 		for i, val := range value {
-			jsonNum, ok := val.(json.Number)
-			if !ok {
+			switch val := val.(type) {
+			case int64:
+				value[i] = val
+			case uint64:
+				value[i] = val
+			case float32:
+				value[i] = val
+			case *pb.Decimal64:
+				v := gnmi.DecimalToFloat(val)
+				if math.IsInf(v, 0) || math.IsNaN(v) {
+					value[i] = nil
+				}
+				value[i] = v
+			case json.Number:
+				value[i] = parseNumber(val, update)
+			default:
 				// If any value is not a number, skip it.
 				glog.Infof("Element %d: %v is %T, not json.Number", i, val, val)
 				continue
 			}
-			num := parseNumber(jsonNum, update)
-			value[i] = num
 		}
 		return value
 	case map[string]interface{}:

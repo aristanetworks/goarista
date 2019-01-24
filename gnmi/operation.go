@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"strconv"
@@ -279,6 +280,11 @@ func decode(byteArr []byte) (interface{}, error) {
 	var value interface{}
 	err := decoder.Decode(&value)
 	return value, err
+}
+
+// DecimalToFloat converts a gNMI Decimal64 to a float64
+func DecimalToFloat(dec *pb.Decimal64) float64 {
+	return float64(dec.Digits) / math.Pow10(int(dec.Precision))
 }
 
 func update(p *pb.Path, val string) (*pb.Update, error) {
