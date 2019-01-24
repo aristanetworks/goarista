@@ -186,8 +186,7 @@ func redisPublish(path, kind string, payload interface{}) {
 }
 
 func joinPath(path *pb.Path) string {
-	// path.Elem is empty for some reason so using path.Element instead
-	return strings.Join(path.Element, "/")
+	return gnmi.StrPath(path)
 }
 
 func convertUpdate(update *pb.Update) interface{} {

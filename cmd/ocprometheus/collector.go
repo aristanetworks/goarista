@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/aristanetworks/glog"
+	"github.com/aristanetworks/goarista/gnmi"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
@@ -59,10 +60,10 @@ func (c *collector) update(addr string, message proto.Message) {
 	}
 
 	device := strings.Split(addr, ":")[0]
-	prefix := "/" + strings.Join(notif.Prefix.Element, "/")
+	prefix := gnmi.StrPath(notif.Prefix)
 	// Process deletes first
 	for _, del := range notif.Delete {
-		path := prefix + "/" + strings.Join(del.Element, "/")
+		path := prefix + gnmi.StrPath(del)
 		key := source{addr: device, path: path}
 		c.m.Lock()
 		delete(c.metrics, key)
@@ -77,7 +78,7 @@ func (c *collector) update(addr string, message proto.Message) {
 			continue
 		}
 
-		path := prefix + "/" + strings.Join(update.Path.Element, "/")
+		path := prefix + gnmi.StrPath(update.Path)
 		value, suffix, ok := parseValue(update)
 		if !ok {
 			continue

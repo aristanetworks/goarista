@@ -135,7 +135,7 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config, notif *pb.No
 			return
 		}
 	}
-	prefix := "/" + strings.Join(notif.Prefix.Element, "/")
+	prefix := gnmi.StrPath(notif.Prefix)
 	for _, update := range notif.Update {
 		if update.Value == nil || update.Value.Type != pb.Encoding_JSON {
 			glog.V(9).Infof("Ignoring incompatible update value in %s", update)
@@ -145,7 +145,7 @@ func pushToOpenTSDB(addr string, conn OpenTSDBConn, config *Config, notif *pb.No
 		if value == nil {
 			continue
 		}
-		path := prefix + "/" + strings.Join(update.Path.Element, "/")
+		path := prefix + gnmi.StrPath(update.Path)
 		metricName, tags := config.Match(path)
 		if metricName == "" {
 			glog.V(8).Infof("Ignoring unmatched update at %s: %+v", path, update.Value)
