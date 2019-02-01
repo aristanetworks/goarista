@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
 )
@@ -194,7 +193,7 @@ func strLeaflist(v *pb.ScalarArray) string {
 	return b.String()
 }
 
-func update(p *pb.Path, val string) *pb.Update {
+func update(p *pb.Path, val string) (*pb.Update, error) {
 	var v *pb.TypedValue
 	switch p.Origin {
 	case "":
@@ -209,15 +208,15 @@ func update(p *pb.Path, val string) *pb.Update {
 	case "p4_config":
 		b, err := ioutil.ReadFile(val)
 		if err != nil {
-			glog.Fatalf("Cannot read p4 file: %s", err)
+			return nil, err
 		}
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_ProtoBytes{ProtoBytes: b}}
 	default:
-		panic(fmt.Errorf("unexpected origin: %q", p.Origin))
+		return nil, fmt.Errorf("unexpected origin: %q", p.Origin)
 	}
 
-	return &pb.Update{Path: p, Val: v}
+	return &pb.Update{Path: p, Val: v}, nil
 }
 
 // Operation describes an gNMI operation.
@@ -241,9 +240,17 @@ func newSetRequest(setOps []*Operation) (*pb.SetRequest, error) {
 		case "delete":
 			req.Delete = append(req.Delete, p)
 		case "update":
-			req.Update = append(req.Update, update(p, op.Val))
+			u, err := update(p, op.Val)
+			if err != nil {
+				return nil, err
+			}
+			req.Update = append(req.Update, u)
 		case "replace":
-			req.Replace = append(req.Replace, update(p, op.Val))
+			u, err := update(p, op.Val)
+			if err != nil {
+				return nil, err
+			}
+			req.Replace = append(req.Replace, u)
 		}
 	}
 	return req, nil
