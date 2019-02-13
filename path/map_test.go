@@ -20,6 +20,29 @@ func accumulator(counter map[int]int) VisitorFunc {
 	}
 }
 
+func TestIsEmpty(t *testing.T) {
+	m := Map{}
+
+	if !m.IsEmpty() {
+		t.Errorf("Expected IsEmpty() to return false; Got true")
+	}
+
+	nonWildcardPath := key.Path{key.New("foo")}
+	wildcardPath := key.Path{Wildcard, key.New("bar"), key.New("baz")}
+
+	m.Set(nonWildcardPath, 0)
+	m.Set(wildcardPath, 2)
+	if m.IsEmpty() {
+		t.Errorf("Expected IsEmpty() to return true; Got false")
+	}
+
+	m.Delete(nonWildcardPath)
+	m.Delete(wildcardPath)
+	if !m.IsEmpty() {
+		t.Errorf("Expected IsEmpty() to return false; Got true")
+	}
+}
+
 func TestMapSet(t *testing.T) {
 	m := Map{}
 	a := m.Set(key.Path{key.New("foo")}, 0)

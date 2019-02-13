@@ -181,6 +181,11 @@ func (m *Map) visitSubtree(fn VisitorFunc) error {
 	return nil
 }
 
+// IsEmpty returns true if no paths have been registered, false otherwise.
+func (m *Map) IsEmpty() bool {
+	return m.wildcard == nil && len(m.children) == 0
+}
+
 // Get returns the value registered with an exact match of a
 // path p. If there is no exact match for p, Get returns nil
 // and false. If p has an exact match and it is set to true,
