@@ -164,7 +164,7 @@ Example:
 
 Configure the idle-timeout on SSH connections
 ```
-gnmi [OPTIONS] update 'cli' 'management ssh
+gnmi [OPTIONS] update 'origin=cli' "" 'management ssh
 idle-timeout 300'
 ```
 
