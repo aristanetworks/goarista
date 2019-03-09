@@ -60,11 +60,12 @@ func loadConfig(path string) (*Config, error) {
 func (c *Config) Match(path string) (metricName string, tags map[string]string) {
 	tags = make(map[string]string)
 
-	for _, metric := range c.Metrics {
+	for name, metric := range c.Metrics {
 		found := metric.re.FindStringSubmatch(path)
 		if found == nil {
 			continue
 		}
+		metricName = name
 		for i, name := range metric.re.SubexpNames() {
 			if i == 0 {
 				continue
