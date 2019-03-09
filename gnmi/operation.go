@@ -144,6 +144,8 @@ func StrVal(val *pb.TypedValue) string {
 		return v.AsciiVal
 	case *pb.TypedValue_AnyVal:
 		return v.AnyVal.String()
+	case *pb.TypedValue_ProtoBytes:
+		return base64.StdEncoding.EncodeToString(v.ProtoBytes)
 	default:
 		panic(v)
 	}

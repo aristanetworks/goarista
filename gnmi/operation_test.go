@@ -238,6 +238,11 @@ func TestStrUpdateVal(t *testing.T) {
 				Value: &pb.TypedValue_AsciiVal{AsciiVal: "foobar"}}},
 			exp: "foobar",
 		},
+		"ProtoBytes": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_ProtoBytes{ProtoBytes: anyBytes}}},
+			exp: "CgZmb29iYXI=",
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got := StrUpdateVal(tc.update)
