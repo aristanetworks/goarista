@@ -6,6 +6,7 @@ package gnmi
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -285,5 +286,77 @@ func TestExtractJSON(t *testing.T) {
 				t.Errorf("Unexpected diff. Expected: %q Got: %q", exp, got)
 			}
 		})
+	}
+}
+
+func TestExtractValue(t *testing.T) {
+	cases := []struct {
+		in  *pb.Update
+		exp interface{}
+	}{{
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_StringVal{StringVal: "foo"}}},
+		exp: "foo",
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_IntVal{IntVal: 123}}},
+		exp: int64(123),
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_UintVal{UintVal: 123}}},
+		exp: uint64(123),
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_BoolVal{BoolVal: true}}},
+		exp: true,
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_BytesVal{BytesVal: []byte{0xde, 0xad}}}},
+		exp: []byte{0xde, 0xad},
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_FloatVal{FloatVal: -12.34}}},
+		exp: float32(-12.34),
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_DecimalVal{DecimalVal: &pb.Decimal64{
+				Digits: -1234, Precision: 2}}}},
+		exp: &pb.Decimal64{Digits: -1234, Precision: 2},
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_LeaflistVal{LeaflistVal: &pb.ScalarArray{
+				Element: []*pb.TypedValue{
+					&pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: "foo"}},
+					&pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: 123}}}}}}},
+		exp: []interface{}{"foo", int64(123)},
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_JsonVal{JsonVal: []byte(`12.34`)}}},
+		exp: json.Number("12.34"),
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_JsonVal{JsonVal: []byte(`[12.34, 123, "foo"]`)}}},
+		exp: []interface{}{json.Number("12.34"), json.Number("123"), "foo"},
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_JsonVal{JsonVal: []byte(`{"foo":"bar"}`)}}},
+		exp: map[string]interface{}{"foo": "bar"},
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_JsonVal{JsonVal: []byte(`{"foo":45.67}`)}}},
+		exp: map[string]interface{}{"foo": json.Number("45.67")},
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte(`{"foo":"bar"}`)}}},
+		exp: map[string]interface{}{"foo": "bar"},
+	}}
+	for _, tc := range cases {
+		out, err := ExtractValue(tc.in)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		if !test.DeepEqual(tc.exp, out) {
+			t.Errorf("Extracted value is incorrect. Expected %+v, got %+v", tc.exp, out)
+		}
 	}
 }

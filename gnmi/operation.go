@@ -193,6 +193,94 @@ func strLeaflist(v *pb.ScalarArray) string {
 	return b.String()
 }
 
+// ExtractValue pulls a value out of a gNMI Update, parsing JSON if present.
+// Possible return types:
+//  string
+//  int64
+//  uint64
+//  bool
+//  []byte
+//  float32
+//  *gnmi.Decimal64
+//  json.Number
+//  *any.Any
+//  []interface{}
+//  map[string]interface{}
+func ExtractValue(update *pb.Update) (interface{}, error) {
+	var i interface{}
+	var err error
+	if update == nil {
+		return nil, fmt.Errorf("empty update")
+	}
+	if update.Val != nil {
+		i, err = extractValueV04(update.Val)
+	} else if update.Value != nil {
+		i, err = extractValueV03(update.Value)
+	}
+	return i, err
+}
+
+func extractValueV04(val *pb.TypedValue) (interface{}, error) {
+	switch v := val.Value.(type) {
+	case *pb.TypedValue_StringVal:
+		return v.StringVal, nil
+	case *pb.TypedValue_IntVal:
+		return v.IntVal, nil
+	case *pb.TypedValue_UintVal:
+		return v.UintVal, nil
+	case *pb.TypedValue_BoolVal:
+		return v.BoolVal, nil
+	case *pb.TypedValue_BytesVal:
+		return v.BytesVal, nil
+	case *pb.TypedValue_FloatVal:
+		return v.FloatVal, nil
+	case *pb.TypedValue_DecimalVal:
+		return v.DecimalVal, nil
+	case *pb.TypedValue_LeaflistVal:
+		elementList := v.LeaflistVal.Element
+		l := make([]interface{}, len(elementList))
+		for i, element := range elementList {
+			el, err := extractValueV04(element)
+			if err != nil {
+				return nil, err
+			}
+			l[i] = el
+		}
+		return l, nil
+	case *pb.TypedValue_AnyVal:
+		return v.AnyVal, nil
+	case *pb.TypedValue_JsonVal:
+		return decode(v.JsonVal)
+	case *pb.TypedValue_JsonIetfVal:
+		return decode(v.JsonIetfVal)
+	case *pb.TypedValue_AsciiVal:
+		return v.AsciiVal, nil
+	case *pb.TypedValue_ProtoBytes:
+		return v.ProtoBytes, nil
+	}
+	return nil, fmt.Errorf("unhandled type of value %v", val.GetValue())
+}
+
+func extractValueV03(val *pb.Value) (interface{}, error) {
+	switch val.Type {
+	case pb.Encoding_JSON, pb.Encoding_JSON_IETF:
+		return decode(val.Value)
+	case pb.Encoding_BYTES, pb.Encoding_PROTO:
+		return val.Value, nil
+	case pb.Encoding_ASCII:
+		return string(val.Value), nil
+	}
+	return nil, fmt.Errorf("unhandled type of value %v", val.GetValue())
+}
+
+func decode(byteArr []byte) (interface{}, error) {
+	decoder := json.NewDecoder(bytes.NewReader(byteArr))
+	decoder.UseNumber()
+	var value interface{}
+	err := decoder.Decode(&value)
+	return value, err
+}
+
 func update(p *pb.Path, val string) (*pb.Update, error) {
 	var v *pb.TypedValue
 	switch p.Origin {
