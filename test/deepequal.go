@@ -108,6 +108,17 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			return ok && a == v
 		}
 		return deepEqual(*a, *v, seen)
+
+	case error:
+		var s1, s2 string
+		if a != nil {
+			s1 = a.(error).Error()
+		}
+		if b != nil {
+			s2 = b.(error).Error()
+		}
+		return s1 == s2
+
 	case key.Comparable:
 		return a.Equal(b)
 

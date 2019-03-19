@@ -5,6 +5,8 @@
 package test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/aristanetworks/goarista/key"
@@ -37,6 +39,12 @@ type deepEqualTestCase struct {
 type code int32
 
 type message string
+
+type myError string
+
+func (e myError) Error() string {
+	return string(e)
+}
 
 func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	var deepEqualNullMapString map[string]interface{}
@@ -440,6 +448,12 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 			` vs key.compositeKey{sentinel:uintptr(18379810577513696751), ` +
 			`m:map[string]interface {}{"a":map[key.Key]interface {}` +
 			`{<max_depth>:<max_depth>}}, s:[]interface {}{}}`,
+	}, {
+		a: fmt.Errorf("This is a %d error", 42),
+		b: errors.New("This is a 42 error"),
+	}, {
+		a: fmt.Errorf("This is a %d error", 42),
+		b: myError("This is a 42 error"),
 	}, {
 		a: code(42),
 		b: code(42),
