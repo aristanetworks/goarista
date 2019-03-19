@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -103,4 +104,43 @@ func stringify(key interface{}) string {
 		panic(err)
 	}
 	return s
+}
+
+// StringifyCollection safely returns a string representation of a
+// map[Key]interface{} that is similar in form to the standard
+// stringification of a map, "map[k1:v1, k2:v2]". This differs from
+// StringifyInterface's handling of a map which emits a string with
+// "=" to join a key to its value and "_" to separate key value pairs.
+func StringifyCollection(m map[Key]interface{}) string {
+	type kv struct {
+		key string
+		val string
+	}
+	var length int
+	kvs := make([]kv, 0, len(m))
+	for k, v := range m {
+		valString, err := StringifyInterface(v)
+		if err != nil {
+			valString = fmt.Sprintf("<error stringifying: %s>", err)
+		}
+		element := kv{key: k.String(), val: valString}
+		kvs = append(kvs, element)
+		length += len(element.key) + len(element.val)
+	}
+	sort.Slice(kvs, func(i, j int) bool {
+		return kvs[i].key < kvs[j].key
+	})
+	var buf strings.Builder
+	buf.Grow(length + len("map[]") + 3*len(kvs) /* room for seperators: ", :" */)
+	buf.WriteString("map[")
+	for i, kv := range kvs {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(kv.key)
+		buf.WriteByte(':')
+		buf.WriteString(kv.val)
+	}
+	buf.WriteByte(']')
+	return buf.String()
 }

@@ -157,3 +157,50 @@ func TestStringify(t *testing.T) {
 		}()
 	}
 }
+
+func TestStringifyCollection(t *testing.T) {
+	for _, tcase := range []struct {
+		name   string
+		input  map[Key]interface{}
+		output string
+	}{{
+		name:   "empty",
+		input:  map[Key]interface{}{},
+		output: "map[]",
+	}, {
+		name: "single",
+		input: map[Key]interface{}{
+			New("foobar"): uint32(42),
+		},
+		output: "map[foobar:42]",
+	}, {
+		name: "double",
+		input: map[Key]interface{}{
+			New("foobar"): uint32(42),
+			New("baz"):    uint32(11),
+		},
+		output: "map[baz:11, foobar:42]",
+	}, {
+		name: "map_keys",
+		input: map[Key]interface{}{
+			New(map[string]interface{}{"foo": uint32(1), "bar": uint32(2)}): uint32(42),
+			New(map[string]interface{}{"foo": uint32(3), "bar": uint32(4)}): uint32(11),
+		},
+		output: "map[2_1:42, 4_3:11]",
+	}, {
+		name: "mixed types",
+		input: map[Key]interface{}{
+			New(uint32(42)): true,
+			New("foo"):      "bar",
+			New(map[string]interface{}{"hello": "world"}): "yolo",
+		},
+		output: "map[42:true, foo:bar, world:yolo]",
+	}} {
+		t.Run(tcase.name, func(t *testing.T) {
+			got := StringifyCollection(tcase.input)
+			if got != tcase.output {
+				t.Errorf("expected: %q\ngot: %q", tcase.output, got)
+			}
+		})
+	}
+}
