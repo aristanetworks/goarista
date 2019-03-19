@@ -28,7 +28,7 @@ func (d *DataPoint) String() string {
 			tags += " " + tag + "=" + value
 		}
 	}
-	return fmt.Sprintf("put %s %d %#v%s\n", d.Metric, d.Timestamp/1e9, d.Value, tags)
+	return fmt.Sprintf("put %s %d %v%s\n", d.Metric, d.Timestamp/1e9, d.Value, tags)
 }
 
 // OpenTSDBConn is a managed connection to an OpenTSDB instance (or cluster).
