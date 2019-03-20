@@ -111,11 +111,11 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 
 	case error:
 		var s1, s2 string
-		if a != nil {
-			s1 = a.(error).Error()
+		if ae, ok := a.(error); ok && !reflect.ValueOf(ae).IsNil() {
+			s1 = ae.Error()
 		}
-		if b != nil {
-			s2 = b.(error).Error()
+		if be, ok := b.(error); ok && !reflect.ValueOf(be).IsNil() {
+			s2 = be.Error()
 		}
 		return s1 == s2
 

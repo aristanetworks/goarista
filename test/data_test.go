@@ -40,10 +40,16 @@ type code int32
 
 type message string
 
-type myError string
+type myError struct {
+	e string
+}
 
-func (e myError) Error() string {
-	return string(e)
+type myEmbeddedErrorPtr struct {
+	e *myError
+}
+
+func (e *myError) Error() string {
+	return e.e
 }
 
 func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
@@ -453,7 +459,13 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b: errors.New("This is a 42 error"),
 	}, {
 		a: fmt.Errorf("This is a %d error", 42),
-		b: myError("This is a 42 error"),
+		b: &myError{e: "This is a 42 error"},
+	}, {
+		a:    &myError{e: "This is a 42 error"},
+		diff: `expected a *test.myError (&test.myError{e:"This is a 42 error"}) but got nil`,
+	}, {
+		a: &myEmbeddedErrorPtr{},
+		b: &myEmbeddedErrorPtr{},
 	}, {
 		a: code(42),
 		b: code(42),
