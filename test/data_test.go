@@ -52,6 +52,12 @@ func (e *myError) Error() string {
 	return e.e
 }
 
+type myStringError string
+
+func (e myStringError) Error() string {
+	return string(e)
+}
+
 func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	var deepEqualNullMapString map[string]interface{}
 	recursive := &complexCompare{}
@@ -463,6 +469,9 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    &myError{e: "This is a 42 error"},
 		diff: `expected a *test.myError (&test.myError{e:"This is a 42 error"}) but got nil`,
+	}, {
+		a: myStringError("This is a 42 error"),
+		b: fmt.Errorf("This is a %d error", 42),
 	}, {
 		a: &myEmbeddedErrorPtr{},
 		b: &myEmbeddedErrorPtr{},
