@@ -7,7 +7,6 @@ package key
 import (
 	"encoding/base64"
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -44,9 +43,9 @@ func StringifyInterface(key interface{}) (string, error) {
 	case int64:
 		str = strconv.FormatInt(key, 10)
 	case float32:
-		str = "f" + strconv.FormatInt(int64(math.Float32bits(key)), 10)
+		str = strconv.FormatFloat(float64(key), 'E', -1, 32)
 	case float64:
-		str = "f" + strconv.FormatInt(int64(math.Float64bits(key)), 10)
+		str = strconv.FormatFloat(float64(key), 'E', -1, 64)
 	case string:
 		str = escape(key)
 	case map[string]interface{}:

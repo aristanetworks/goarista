@@ -89,11 +89,11 @@ func TestStringify(t *testing.T) {
 	}, {
 		name:   "float32",
 		input:  float32(2.345),
-		output: "f1075188859",
+		output: "2.345E+00",
 	}, {
 		name:   "float64",
 		input:  float64(-34.6543),
-		output: "f-4593298060402564373",
+		output: "-3.46543E+01",
 	}, {
 		name: "map[string]interface{}",
 		input: map[string]interface{}{
