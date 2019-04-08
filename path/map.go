@@ -33,32 +33,6 @@ type VisitorFunc func(v interface{}) error
 // general case, time complexity is linear with respect
 // to the length of p but it can be as bad as O(2^len(p))
 // if there are a lot of paths with wildcards registered.
-//
-// Example:
-//
-// a := path.New("foo", "bar", "baz")
-// b := path.New("foo", path.Wildcard, "baz")
-// c := path.New(path.Wildcard, "bar", "baz")
-// d := path.New("foo", "bar", path.Wildcard)
-// e := path.New(path.Wildcard, path.Wildcard, "baz")
-// f := path.New(path.Wildcard, "bar", path.Wildcard)
-// g := path.New("foo", path.Wildcard, path.Wildcard)
-// h := path.New(path.Wildcard, path.Wildcard, path.Wildcard)
-//
-// m.Set(a, 1)
-// m.Set(b, 2)
-// m.Set(c, 3)
-// m.Set(d, 4)
-// m.Set(e, 5)
-// m.Set(f, 6)
-// m.Set(g, 7)
-// m.Set(h, 8)
-//
-// p := path.New("foo", "bar", "baz")
-//
-// m.Visit(p, fn)
-//
-// Result: fn(1), fn(2), fn(3), fn(4), fn(5), fn(6), fn(7) and fn(8)
 func (m *Map) Visit(p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.wildcard != nil {
@@ -80,26 +54,6 @@ func (m *Map) Visit(p key.Path, fn VisitorFunc) error {
 
 // VisitPrefixes calls a function fn for every value in the
 // Map that is registered with a prefix of a path p.
-//
-// Example:
-//
-// a := path.New()
-// b := path.New("foo")
-// c := path.New("foo", "bar")
-// d := path.New("foo", "baz")
-// e := path.New(path.Wildcard, "bar")
-//
-// m.Set(a, 1)
-// m.Set(b, 2)
-// m.Set(c, 3)
-// m.Set(d, 4)
-// m.Set(e, 5)
-//
-// p := path.New("foo", "bar", "baz")
-//
-// m.VisitPrefixes(p, fn)
-//
-// Result: fn(1), fn(2), fn(3), fn(5)
 func (m *Map) VisitPrefixes(p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.ok {
@@ -128,24 +82,6 @@ func (m *Map) VisitPrefixes(p key.Path, fn VisitorFunc) error {
 // registerd with a path that is prefixed by p. This method
 // can be used to visit every registered path if p is the
 // empty path (or root path) which prefixes all paths.
-//
-// Example:
-//
-// a := path.New("foo")
-// b := path.New("foo", "bar")
-// c := path.New("foo", "bar", "baz")
-// d := path.New("foo", path.Wildcard)
-//
-// m.Set(a, 1)
-// m.Set(b, 2)
-// m.Set(c, 3)
-// m.Set(d, 4)
-//
-// p := path.New("foo", "bar")
-//
-// m.VisitPrefixed(p, fn)
-//
-// Result: fn(2), fn(3), fn(4)
 func (m *Map) VisitPrefixed(p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.wildcard != nil {
@@ -190,17 +126,6 @@ func (m *Map) IsEmpty() bool {
 // path p. If there is no exact match for p, Get returns nil
 // and false. If p has an exact match and it is set to true,
 // Get returns nil and true.
-//
-// Example:
-//
-// m.Set(path.New("foo", "bar"), 1)
-// m.Set(path.New("baz", "qux"), nil)
-//
-// a := m.Get(path.New("foo", "bar"))
-// b := m.Get(path.New("foo", path.Wildcard))
-// c, ok := m.Get(path.New("baz", "qux"))
-//
-// Result: a == 1, b == nil, c == nil and ok == true
 func (m *Map) Get(p key.Path) (interface{}, bool) {
 	for _, element := range p {
 		if element.Equal(Wildcard) {
@@ -220,18 +145,7 @@ func (m *Map) Get(p key.Path) (interface{}, bool) {
 }
 
 // Set registers a path p with a value. If the path was already
-// registered with a value it returns true and false otherwise.
-//
-// Example:
-//
-// p := path.New("foo", "bar")
-//
-// a := m.Set(p, 0)
-// b := m.Set(p, 1)
-//
-// v := m.Get(p)
-//
-// Result: a == false, b == true and v == 1
+// registered with a value it returns false and true otherwise.
 func (m *Map) Set(p key.Path, v interface{}) bool {
 	for _, element := range p {
 		if element.Equal(Wildcard) {
@@ -258,17 +172,6 @@ func (m *Map) Set(p key.Path, v interface{}) bool {
 
 // Delete unregisters the value registered with a path. It
 // returns true if a value was deleted and false otherwise.
-//
-// Example:
-//
-// p := path.New("foo", "bar")
-//
-// m.Set(p, 0)
-//
-// a := m.Delete(p)
-// b := m.Delete(p)
-//
-// Result: a == true and b == false
 func (m *Map) Delete(p key.Path) bool {
 	maps := make([]*Map, len(p)+1)
 	for i, element := range p {
