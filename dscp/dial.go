@@ -6,8 +6,8 @@
 package dscp
 
 import (
-	"fmt"
 	"net"
+	"syscall"
 	"time"
 )
 
@@ -15,14 +15,14 @@ import (
 // to the use the given ToS (Type of Service), to specify DSCP / ECN / class
 // of service flags to use for incoming connections.
 func DialTCPWithTOS(laddr, raddr *net.TCPAddr, tos byte) (*net.TCPConn, error) {
-	d := net.Dialer{LocalAddr: laddr}
-	addControlConfig(&d, tos)
+	d := net.Dialer{
+		LocalAddr: laddr,
+		Control: func(network, address string, c syscall.RawConn) error {
+			return setTOS(network, c, tos)
+		},
+	}
 	conn, err := d.Dial("tcp", raddr.String())
 	if err != nil {
-		return nil, err
-	}
-	if err = setTOS(raddr.IP, conn, tos); err != nil {
-		conn.Close()
 		return nil, err
 	}
 	return conn.(*net.TCPConn), err
@@ -33,31 +33,14 @@ func DialTCPWithTOS(laddr, raddr *net.TCPAddr, tos byte) (*net.TCPConn, error) {
 // of service flags to use for incoming connections.
 func DialTimeoutWithTOS(network, address string, timeout time.Duration, tos byte) (net.Conn,
 	error) {
-	d := net.Dialer{Timeout: timeout}
-	addControlConfig(&d, tos)
+	d := net.Dialer{
+		Timeout: timeout,
+		Control: func(network, address string, c syscall.RawConn) error {
+			return setTOS(network, c, tos)
+		},
+	}
 	conn, err := d.Dial(network, address)
 	if err != nil {
-		return nil, err
-	}
-	var ip net.IP
-	// Unfortunately we have to explicitly switch on the address type here to
-	// avoid calling net.ResolveIpAddr(), as this would resolve the address
-	// again leading to a potentially different result.
-	switch addr := conn.RemoteAddr().(type) {
-	case *net.TCPAddr:
-		ip = addr.IP
-	case *net.UDPAddr:
-		ip = addr.IP
-	case *net.IPAddr:
-		ip = addr.IP
-	case *net.IPNet:
-		ip = addr.IP
-	default:
-		conn.Close()
-		return nil, fmt.Errorf("DialTimeoutWithTOS: cannot set TOS on a %s socket", network)
-	}
-	if err = setTOS(ip, conn, tos); err != nil {
-		conn.Close()
 		return nil, err
 	}
 	return conn, err
@@ -67,16 +50,17 @@ func DialTimeoutWithTOS(network, address string, timeout time.Duration, tos byte
 // providing an option to specify local address (source)
 func DialTCPTimeoutWithTOS(laddr, raddr *net.TCPAddr, tos byte, timeout time.Duration) (net.Conn,
 	error) {
-	d := net.Dialer{Timeout: timeout, LocalAddr: laddr}
-	addControlConfig(&d, tos)
+	d := net.Dialer{
+		Timeout:   timeout,
+		LocalAddr: laddr,
+		Control: func(network, address string, c syscall.RawConn) error {
+			return setTOS(network, c, tos)
+		},
+	}
 	conn, err := d.Dial("tcp", raddr.String())
 	if err != nil {
 		return nil, err
 	}
 
-	if err = setTOS(raddr.IP, conn, tos); err != nil {
-		conn.Close()
-		return nil, err
-	}
 	return conn, err
 }

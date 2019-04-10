@@ -2,8 +2,6 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-// +build go1.11
-
 package dscp
 
 import (
@@ -23,7 +21,7 @@ import (
 func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) {
 	cfg := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
-			return setTOS111(network, c, tos)
+			return setTOS(network, c, tos)
 		},
 	}
 
@@ -35,13 +33,7 @@ func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) 
 	return lsnr.(*net.TCPListener), err
 }
 
-func addControlConfig(d *net.Dialer, tos byte) {
-	d.Control = func(network, address string, c syscall.RawConn) error {
-		return setTOS111(network, c, tos)
-	}
-}
-
-func setTOS111(network string, c syscall.RawConn, tos byte) error {
+func setTOS(network string, c syscall.RawConn, tos byte) error {
 	var proto, optname int
 	if strings.HasSuffix(network, "4") {
 		proto = unix.IPPROTO_IP
@@ -63,9 +55,4 @@ func setTOS111(network string, c syscall.RawConn, tos byte) error {
 		return setsockoptErr
 	}
 	return err
-}
-
-func setTOS(ip net.IP, conn interface{}, tos byte) error {
-	// Intentional no-op. In go1.11 we use the control func to set TOS
-	return nil
 }
