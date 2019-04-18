@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -39,6 +40,19 @@ func SetValue(m map[string]interface{}, val interface{}) error {
 		m["ValueDouble"] = dub
 	} else if arr := toValueArray(val); arr != nil {
 		m["Value"] = arr
+	} else if json := toJSONValue(val); json != nil {
+		switch tv := json.(type) {
+		case string:
+			m["ValueString"] = &tv
+		case int, uint:
+			m["ValueLong"] = &tv
+		case bool:
+			m["ValueBool"] = &tv
+		case float32:
+			m["ValueDouble"] = &tv
+		case float64:
+			m["ValueDouble"] = &tv
+		}
 	} else {
 		// this type may not be supported yet, or could not convert
 		return fmt.Errorf("unknown type %v", val)
@@ -118,6 +132,18 @@ func toValueArray(val interface{}) []*map[string]interface{} {
 			fields = append(fields, &m)
 		}
 		return fields
+	}
+	return nil
+}
+
+// Unmarshall a json value
+func toJSONValue(val interface{}) interface{} {
+	if tv, ok := val.(*gnmi.TypedValue_JsonVal); ok {
+		var out interface{}
+		if err := json.Unmarshal(tv.JsonVal, &out); err != nil {
+			return nil
+		}
+		return out
 	}
 	return nil
 }

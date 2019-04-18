@@ -7,7 +7,6 @@ package elasticsearch
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -63,50 +62,26 @@ func TestDataConversion(t *testing.T) {
 			data: []Data{
 				Data{
 					Timestamp:   "123",
-					DatasetID:   "",
+					DatasetID:   "0",
 					Path:        "/foo/String",
 					Key:         []byte("/String"),
 					KeyString:   toPtr("/String").(*string),
 					ValueString: toPtr("hello").(*string)},
 				Data{
 					Timestamp: "123",
-					DatasetID: "",
+					DatasetID: "0",
 					Path:      "/foo/Int",
 					Key:       []byte("/Int"),
 					KeyString: toPtr("/Int").(*string),
 					ValueLong: toPtr(-123).(*int64)},
 				Data{
 					Timestamp: "123",
-					DatasetID: "",
+					DatasetID: "0",
 					Path:      "/foo/Bool",
 					Key:       []byte("/Bool"),
 					KeyString: toPtr("/Bool").(*string),
 					ValueBool: toPtr(true).(*bool)},
 			},
-			/*
-				{
-				// JsonVal -> ValueString
-				in: &pb.Notification{
-					Timestamp: 1234,
-					Prefix:    stringToGNMIPath("foo"),
-					Update: []*pb.Update{gnmiUpdate("bar",
-						&pb.TypedValue{Value: &pb.TypedValue_JsonVal{StringVal: "hello"}})}},
-				exp: []map[string]interface{}{
-					map[string]interface{}{
-						"Timestamp":   1234,
-						"DatasetID":   "",
-						"Path":        "/foo/bar",
-						"Key":         []byte("bar"),
-						"KeyString":   strPtr("bar"),
-						"ValueString": strPtr("hello")}},
-				data: Data{
-					Timestamp:   "1234",
-					DatasetID:   "",
-					Path:        "/foo/bar",
-					Key:         []byte("/bar"),
-					KeyString:   strPtr("/bar"),
-					ValueString: strPtr("hello")}},
-			*/
 		},
 		{
 			in: &pb.Notification{
@@ -119,7 +94,7 @@ func TestDataConversion(t *testing.T) {
 			data: []Data{
 				Data{
 					Timestamp:   "234",
-					DatasetID:   "",
+					DatasetID:   "0",
 					Path:        "/bar/Decimal",
 					Key:         []byte("/Decimal"),
 					KeyString:   toPtr("/Decimal").(*string),
@@ -141,7 +116,7 @@ func TestDataConversion(t *testing.T) {
 			data: []Data{
 				Data{
 					Timestamp: "345",
-					DatasetID: "",
+					DatasetID: "0",
 					Path:      "/baz/Leaflist",
 					Key:       []byte("/Leaflist"),
 					KeyString: toPtr("/Leaflist").(*string),
@@ -151,9 +126,28 @@ func TestDataConversion(t *testing.T) {
 						&field{Bool: toPtr(true).(*bool)}}},
 			},
 		},
+		{
+			// JsonVal -> ValueString
+			in: &pb.Notification{
+				Timestamp: 456,
+				Prefix:    stringToGNMIPath("foo"),
+				Update: []*pb.Update{gnmiUpdate("bar",
+					&pb.TypedValue{Value: &pb.TypedValue_JsonVal{
+						//JsonVal: []byte(`[ {"json": "val"}]`)}})}},
+						JsonVal: []byte("67")}})}},
+			data: []Data{
+				Data{
+					Timestamp:   "456",
+					DatasetID:   "0",
+					Path:        "/foo/bar",
+					Key:         []byte("/bar"),
+					KeyString:   toPtr("/bar").(*string),
+					ValueDouble: toPtr(float64(67)).(*float64)},
+			},
+		},
 	}
 	for _, tc := range cases {
-		maps, err := NotificationToMaps(0, tc.in)
+		maps, err := NotificationToMaps("0", tc.in)
 		if err != nil {
 			t.Fatalf("issue converting %v to data map. Err: %v", tc.in, err)
 		}
@@ -163,7 +157,7 @@ func TestDataConversion(t *testing.T) {
 		}
 		byteArr, err := json.Marshal(maps)
 		if err != nil {
-			fmt.Printf("err is %v", err)
+			t.Fatalf("error while trying to marshal map: %v", err)
 		}
 
 		data := []Data{}

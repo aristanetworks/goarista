@@ -14,7 +14,7 @@ import (
 
 // NotificationToMaps converts a gNMI Notification into a map[string][interface] that adheres
 // to the Data schema defined in schema.go
-func NotificationToMaps(datasetID int64,
+func NotificationToMaps(datasetID string,
 	notification *pb.Notification) ([]map[string]interface{}, error) {
 	var requests []map[string]interface{}
 	var trueVar = true
@@ -22,16 +22,11 @@ func NotificationToMaps(datasetID int64,
 	ts := time.Unix(0, notification.Timestamp)
 	timeStampNano := strconv.FormatInt(ts.UnixNano(), 10)
 
-	var did string
-	if datasetID != 0 {
-		did = strconv.FormatInt(datasetID, 10)
-	}
-
 	for _, delete := range notification.Delete {
 		path := gnmi.JoinPaths(notification.Prefix, delete)
 		doc := map[string]interface{}{
 			"Timestamp": timeStampNano,
-			"DatasetID": did,
+			"DatasetID": datasetID,
 			"Path":      gnmi.StrPath(path),
 			"Del":       &trueVar,
 		}
@@ -49,7 +44,7 @@ func NotificationToMaps(datasetID int64,
 		path := gnmi.JoinPaths(notification.Prefix, key)
 		doc := map[string]interface{}{
 			"Timestamp": timeStampNano,
-			"DatasetID": did,
+			"DatasetID": datasetID,
 			"Path":      gnmi.StrPath(path),
 		}
 		keyStr := gnmi.StrPath(key)
