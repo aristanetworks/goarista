@@ -61,21 +61,21 @@ func TestDataConversion(t *testing.T) {
 				}},
 			data: []Data{
 				Data{
-					Timestamp:   "123",
+					Timestamp:   123,
 					DatasetID:   "0",
 					Path:        "/foo/String",
 					Key:         []byte("/String"),
 					KeyString:   toPtr("/String").(*string),
 					ValueString: toPtr("hello").(*string)},
 				Data{
-					Timestamp: "123",
+					Timestamp: 123,
 					DatasetID: "0",
 					Path:      "/foo/Int",
 					Key:       []byte("/Int"),
 					KeyString: toPtr("/Int").(*string),
 					ValueLong: toPtr(-123).(*int64)},
 				Data{
-					Timestamp: "123",
+					Timestamp: 123,
 					DatasetID: "0",
 					Path:      "/foo/Bool",
 					Key:       []byte("/Bool"),
@@ -93,7 +93,7 @@ func TestDataConversion(t *testing.T) {
 				}},
 			data: []Data{
 				Data{
-					Timestamp:   "234",
+					Timestamp:   234,
 					DatasetID:   "0",
 					Path:        "/bar/Decimal",
 					Key:         []byte("/Decimal"),
@@ -115,7 +115,7 @@ func TestDataConversion(t *testing.T) {
 				}},
 			data: []Data{
 				Data{
-					Timestamp: "345",
+					Timestamp: 345,
 					DatasetID: "0",
 					Path:      "/baz/Leaflist",
 					Key:       []byte("/Leaflist"),
@@ -137,7 +137,7 @@ func TestDataConversion(t *testing.T) {
 						JsonVal: []byte("67")}})}},
 			data: []Data{
 				Data{
-					Timestamp:   "456",
+					Timestamp:   456,
 					DatasetID:   "0",
 					Path:        "/foo/bar",
 					Key:         []byte("/bar"),

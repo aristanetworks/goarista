@@ -10,12 +10,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aristanetworks/goarista/kafka/openconfig"
+	"github.com/aristanetworks/goarista/kafka/gnmi"
 	"github.com/aristanetworks/goarista/test"
 
 	"github.com/Shopify/sarama"
 	"github.com/golang/protobuf/proto"
-	pb "github.com/openconfig/reference/rpc/openconfig"
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
 
 type mockAsyncProducer struct {
@@ -57,7 +57,20 @@ func newPath(path string) *pb.Path {
 	if path == "" {
 		return nil
 	}
-	return &pb.Path{Element: strings.Split(path, "/")}
+	paths := strings.Split(path, "/")
+	elems := make([]*pb.PathElem, len(paths))
+	for i, elem := range paths {
+		elems[i] = &pb.PathElem{Name: elem}
+	}
+	return &pb.Path{Elem: elems}
+}
+
+func ToStringPtr(str string) *string {
+	return &str
+}
+
+func ToFloatPtr(flt float64) *float64 {
+	return &flt
 }
 
 func TestKafkaProducer(t *testing.T) {
@@ -68,7 +81,7 @@ func TestKafkaProducer(t *testing.T) {
 	toDBProducer := &producer{
 		notifsChan:    toDB,
 		kafkaProducer: mock,
-		encoder:       openconfig.NewEncoder(topic, sarama.StringEncoder(systemID), ""),
+		encoder:       gnmi.NewEncoder(topic, sarama.StringEncoder(systemID), ""),
 		done:          make(chan struct{}),
 		wg:            sync.WaitGroup{},
 	}
@@ -80,20 +93,23 @@ func TestKafkaProducer(t *testing.T) {
 			Update: &pb.Notification{
 				Timestamp: 0,
 				Prefix:    newPath("/foo/bar"),
-				Update:    []*pb.Update{},
-			},
-		},
-	}
-	document := map[string]interface{}{
-		"timestamp": int64(0),
-		"update": map[string]interface{}{
-			"": map[string]interface{}{
-				"foo": map[string]interface{}{
-					"bar": map[string]interface{}{},
+				Update: []*pb.Update{
+					&pb.Update{
+						Path: newPath("/bar"),
+						Val: &pb.TypedValue{
+							Value: &pb.TypedValue_IntVal{IntVal: 42},
+						}},
 				},
 			},
 		},
 	}
+	document := map[string]interface{}{
+		"Timestamp":   "1",
+		"DatasetID":   "foo",
+		"Path":        "/foo/bar",
+		"Key":         []byte("/bar"),
+		"KeyString":   ToStringPtr("/bar"),
+		"ValueDouble": ToFloatPtr(float64(42))}
 
 	toDB <- response
 
@@ -142,7 +158,7 @@ func TestProducerStartStop(t *testing.T) {
 	p := &producer{
 		notifsChan:    toDB,
 		kafkaProducer: mock,
-		encoder:       openconfig.NewEncoder(topic, sarama.StringEncoder(systemID), ""),
+		encoder:       gnmi.NewEncoder(topic, sarama.StringEncoder(systemID), ""),
 		done:          make(chan struct{}),
 	}
 

@@ -5,9 +5,6 @@
 package elasticsearch
 
 import (
-	"strconv"
-	"time"
-
 	"github.com/aristanetworks/goarista/gnmi"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
@@ -19,8 +16,7 @@ func NotificationToMaps(datasetID string,
 	var requests []map[string]interface{}
 	var trueVar = true
 
-	ts := time.Unix(0, notification.Timestamp)
-	timeStampNano := strconv.FormatInt(ts.UnixNano(), 10)
+	timeStampNano := uint64(notification.Timestamp)
 
 	for _, delete := range notification.Delete {
 		path := gnmi.JoinPaths(notification.Prefix, delete)

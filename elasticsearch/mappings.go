@@ -136,7 +136,7 @@ func toValueArray(val interface{}) []*map[string]interface{} {
 	return nil
 }
 
-// Unmarshall a json value
+// Unmarshal a json value
 func toJSONValue(val interface{}) interface{} {
 	if tv, ok := val.(*gnmi.TypedValue_JsonVal); ok {
 		var out interface{}

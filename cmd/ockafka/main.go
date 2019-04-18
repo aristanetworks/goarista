@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/aristanetworks/goarista/kafka"
-	"github.com/aristanetworks/goarista/kafka/openconfig"
+	"github.com/aristanetworks/goarista/kafka/gnmi"
 	"github.com/aristanetworks/goarista/kafka/producer"
 	"github.com/aristanetworks/goarista/openconfig/client"
 
@@ -28,7 +28,7 @@ var keysFlag = flag.String("kafkakeys", "",
 
 func newProducer(addresses []string, topic, key, dataset string) (producer.Producer, error) {
 	encodedKey := sarama.StringEncoder(key)
-	p, err := producer.New(openconfig.NewEncoder(topic, encodedKey, dataset), addresses, nil)
+	p, err := producer.New(gnmi.NewEncoder(topic, encodedKey, dataset), addresses, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kafka brokers: %s", err)
 	}

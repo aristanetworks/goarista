@@ -23,7 +23,7 @@ type field struct {
 // Data represents the document format for a notification
 type Data struct {
 	// The timestamp in nanosecond resolution
-	Timestamp string
+	Timestamp uint64
 	// Organization ID
 	OrgID       string
 	DatasetType string

@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/aristanetworks/goarista/kafka"
-	"github.com/aristanetworks/goarista/kafka/openconfig"
+	"github.com/aristanetworks/goarista/kafka/gnmi"
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
@@ -81,7 +81,7 @@ func (p *producer) run() {
 			}
 			err := p.produceNotifications(batch)
 			if err != nil {
-				if _, ok := err.(openconfig.UnhandledSubscribeResponseError); !ok {
+				if _, ok := err.(gnmi.UnhandledSubscribeResponseError); !ok {
 					panic(err)
 				}
 			}
