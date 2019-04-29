@@ -68,7 +68,17 @@ func (c *collector) update(addr string, message proto.Message) {
 		path := prefix + gnmi.StrPath(del)
 		key := source{addr: device, path: path}
 		c.m.Lock()
-		delete(c.metrics, key)
+		if _, ok := c.metrics[key]; ok {
+			delete(c.metrics, key)
+		} else {
+			// TODO: replace this with a prefix tree
+			p := path + "/"
+			for k := range c.metrics {
+				if k.addr == device && strings.HasPrefix(k.path, p) {
+					delete(c.metrics, k)
+				}
+			}
+		}
 		c.m.Unlock()
 	}
 

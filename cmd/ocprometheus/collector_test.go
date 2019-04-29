@@ -270,3 +270,100 @@ metrics:
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}
 }
+
+func TestCoalescedDelete(t *testing.T) {
+	config := []byte(`
+devicelabels:
+        10.1.1.1:
+                lab1: val1
+                lab2: val2
+        '*':
+                lab1: val3
+                lab2: val4
+subscriptions:
+        - /Sysdb/environment/cooling/status
+        - /Sysdb/environment/power/status
+        - /Sysdb/bridging/igmpsnooping/forwarding/forwarding/status
+metrics:
+        - name: fanName
+          path: /Sysdb/environment/cooling/status/fan/name
+          help: Fan Name
+          valuelabel: name
+          defaultvalue: 2.5
+        - name: intfCounter
+          path: /Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter
+          help: Per-Interface Bytes/Errors/Discards Counters
+        - name: fanSpeed
+          path: /Sysdb/environment/cooling/status/fan/speed/value
+          help: Fan Speed
+        - name: igmpSnoopingInf
+          path: /Sysdb/igmpsnooping/vlanStatus/(?P<vlan>.+)/ethGroup/(?P<mac>.+)/intf/(?P<intf>.+)
+          help: IGMP snooping status`)
+	cfg, err := parseConfig(config)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	coll := newCollector(cfg)
+
+	notif := &pb.Notification{
+		Prefix: makePath("Sysdb"),
+		Update: []*pb.Update{
+			{
+				Path: makePath("igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:01/intf/Cpu"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("true")},
+				},
+			},
+			{
+				Path: makePath("igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:02/intf/Cpu"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("true")},
+				},
+			},
+			{
+				Path: makePath("igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:03/intf/Cpu"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("true")},
+				},
+			},
+		},
+	}
+	expValues := map[source]float64{
+		{
+			addr: "10.1.1.1",
+			path: "/Sysdb/igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:01/intf/Cpu",
+		}: 1,
+		{
+			addr: "10.1.1.1",
+			path: "/Sysdb/igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:02/intf/Cpu",
+		}: 1,
+		{
+			addr: "10.1.1.1",
+			path: "/Sysdb/igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:03/intf/Cpu",
+		}: 1,
+	}
+
+	coll.update("10.1.1.1:6042", makeResponse(notif))
+	expMetrics := makeMetrics(cfg, expValues, notif, nil)
+	if !test.DeepEqual(expMetrics, coll.metrics) {
+		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
+	}
+
+	// Delete a subtree
+	notif = &pb.Notification{
+		Prefix: makePath("Sysdb"),
+		Delete: []*pb.Path{makePath("igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:02")},
+	}
+	src := source{
+		addr: "10.1.1.1",
+		path: "/Sysdb/igmpsnooping/vlanStatus/2050/ethGroup/01:00:5e:01:01:02/intf/Cpu",
+	}
+	delete(expValues, src)
+
+	coll.update("10.1.1.1:6042", makeResponse(notif))
+	expMetrics = makeMetrics(cfg, expValues, notif, expMetrics)
+	if !test.DeepEqual(expMetrics, coll.metrics) {
+		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
+	}
+
+}
