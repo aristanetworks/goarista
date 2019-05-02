@@ -15,7 +15,7 @@ metrics:
         - name: tempSensor
           path: /Sysdb/environment/temperature/status/tempSensor/(?P<sensor>.+)/(?P<type>(?:maxT|t)emperature)/value
           help: Temperature and Maximum Temperature
-          ...
+          # ...
 ```
 
 Applied to an update for the path
