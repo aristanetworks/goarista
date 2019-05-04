@@ -8,15 +8,18 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"flag"
 	"fmt"
 	"math"
 	"net"
+	"os"
 	"time"
 
 	"io/ioutil"
 	"strings"
 
 	"github.com/aristanetworks/goarista/netns"
+	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -26,7 +29,30 @@ import (
 
 const (
 	defaultPort = "6030"
+	// HostnameArg is the value to be replaced by the actual hostname
+	HostnameArg = "HOSTNAME"
 )
+
+// PublishFunc is the method to publish responses
+type PublishFunc func(addr string, message proto.Message)
+
+// ParseHostnames parses a comma-separated list of names and replaces HOSTNAME with the current
+// hostname in it
+func ParseHostnames(list string) ([]string, error) {
+	items := strings.Split(list, ",")
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(items))
+	for i, name := range items {
+		if name == HostnameArg {
+			name = hostname
+		}
+		names[i] = name
+	}
+	return names, nil
+}
 
 // Config is the gnmi.Client config
 type Config struct {
@@ -51,6 +77,55 @@ type SubscribeOptions struct {
 	HeartbeatInterval uint64
 	Paths             [][]string
 	Origin            string
+}
+
+// ParseFlags reads arguments from stdin and returns a populated Config object and a list of
+// paths to subscribe to
+func ParseFlags() (*Config, []string) {
+	// flags
+	var (
+		addrsFlag = flag.String("addrs", "localhost:6030",
+			"Comma-separated list of addresses of OpenConfig gRPC servers. The address 'HOSTNAME' "+
+				"is replaced by the current hostname.")
+
+		caFileFlag = flag.String("cafile", "",
+			"Path to server TLS certificate file")
+
+		certFileFlag = flag.String("certfile", "",
+			"Path to client TLS certificate file")
+
+		keyFileFlag = flag.String("keyfile", "",
+			"Path to client TLS private key file")
+
+		passwordFlag = flag.String("password", "",
+			"Password to authenticate with")
+
+		usernameFlag = flag.String("username", "",
+			"Username to authenticate with")
+
+		tlsFlag = flag.Bool("tls", false,
+			"Enable TLS")
+
+		compressionFlag = flag.String("compression", "",
+			"Type of compression to use")
+
+		subscribeFlag = flag.String("subscribe", "",
+			"Comma-separated list of paths to subscribe to upon connecting to the server")
+	)
+	flag.Parse()
+	cfg := &Config{
+		Addr:        *addrsFlag,
+		CAFile:      *caFileFlag,
+		CertFile:    *certFileFlag,
+		KeyFile:     *keyFileFlag,
+		Password:    *passwordFlag,
+		Username:    *usernameFlag,
+		TLS:         *tlsFlag,
+		Compression: *compressionFlag,
+	}
+	subscriptions := strings.Split(*subscribeFlag, ",")
+	return cfg, subscriptions
+
 }
 
 // Dial connects to a gnmi service and returns a client

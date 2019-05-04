@@ -7,19 +7,21 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"strings"
 	"sync"
 
+	client "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/kafka/gnmi"
 	"github.com/aristanetworks/goarista/kafka/producer"
-	"github.com/aristanetworks/goarista/openconfig/client"
+
+	pb "github.com/openconfig/gnmi/proto/gnmi"
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
 )
 
 var keysFlag = flag.String("kafkakeys", "",
@@ -37,7 +39,10 @@ func newProducer(addresses []string, topic, key, dataset string) (producer.Produ
 }
 
 func main() {
-	username, password, subscriptions, grpcAddrs, opts := client.ParseFlags()
+	ctx := context.Background()
+	config, subscriptions := client.ParseFlags()
+	ctx = client.NewContext(ctx, config)
+	grpcAddrs := strings.Split(config.Addr, ",")
 
 	var keys []string
 	var err error
@@ -54,6 +59,10 @@ func main() {
 	}
 	addresses := strings.Split(*kafka.Addresses, ",")
 	wg := new(sync.WaitGroup)
+	respChan := make(chan *pb.SubscribeResponse)
+	defer close(respChan)
+	errChan := make(chan error)
+	defer close(errChan)
 	for i, grpcAddr := range grpcAddrs {
 		key := keys[i]
 		p, err := newProducer(addresses, *kafka.Topic, key, grpcAddr)
@@ -62,14 +71,28 @@ func main() {
 		} else {
 			glog.Infof("Initialized Kafka producer for %s", grpcAddr)
 		}
-		publish := func(addr string, message proto.Message) {
-			p.Write(message)
-		}
 		wg.Add(1)
 		p.Start()
 		defer p.Stop()
-		c := client.New(username, password, grpcAddr, opts)
-		go c.Subscribe(wg, subscriptions, publish)
+		c, err := client.Dial(config)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		subscribeOptions := &client.SubscribeOptions{
+			Paths: client.SplitPaths(subscriptions),
+		}
+		go client.Subscribe(ctx, c, subscribeOptions, respChan, errChan)
+		for {
+			select {
+			case resp, open := <-respChan:
+				if !open {
+					return
+				}
+				p.Write(resp)
+			case err := <-errChan:
+				glog.Fatal(err)
+			}
+		}
 	}
 	wg.Wait()
 }
