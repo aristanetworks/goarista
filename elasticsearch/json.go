@@ -18,8 +18,13 @@ func NotificationToMaps(datasetID string,
 
 	timeStampNano := uint64(notification.Timestamp)
 
+	prefix := notification.Prefix
+	if prefix == nil {
+		prefix = &pb.Path{}
+	}
+
 	for _, delete := range notification.Delete {
-		path := gnmi.JoinPaths(notification.Prefix, delete)
+		path := gnmi.JoinPaths(prefix, delete)
 		doc := map[string]interface{}{
 			"Timestamp": timeStampNano,
 			"DatasetID": datasetID,
@@ -37,7 +42,7 @@ func NotificationToMaps(datasetID string,
 	}
 	for _, update := range notification.Update {
 		key := update.Path
-		path := gnmi.JoinPaths(notification.Prefix, key)
+		path := gnmi.JoinPaths(prefix, key)
 		doc := map[string]interface{}{
 			"Timestamp": timeStampNano,
 			"DatasetID": datasetID,
