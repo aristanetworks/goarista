@@ -145,6 +145,24 @@ func TestDataConversion(t *testing.T) {
 					ValueDouble: toPtr(float64(67)).(*float64)},
 			},
 		},
+		{
+			// JsonIetfVal -> ValueString
+			in: &pb.Notification{
+				Timestamp: 456,
+				Prefix:    stringToGNMIPath("foo"),
+				Update: []*pb.Update{gnmiUpdate("bar",
+					&pb.TypedValue{Value: &pb.TypedValue_JsonIetfVal{
+						JsonIetfVal: []byte("67")}})}},
+			data: []Data{
+				Data{
+					Timestamp:   456,
+					DatasetID:   "0",
+					Path:        "/foo/bar",
+					Key:         []byte("/bar"),
+					KeyString:   toPtr("/bar").(*string),
+					ValueDouble: toPtr(float64(67)).(*float64)},
+			},
+		},
 	}
 	for _, tc := range cases {
 		maps, err := NotificationToMaps("0", tc.in)

@@ -55,7 +55,7 @@ func SetValue(m map[string]interface{}, val interface{}) error {
 		}
 	} else {
 		// this type may not be supported yet, or could not convert
-		return fmt.Errorf("unknown type %v", val)
+		return fmt.Errorf("unknown type %T for value %v", val, val)
 	}
 	return nil
 }
@@ -141,6 +141,13 @@ func toJSONValue(val interface{}) interface{} {
 	if tv, ok := val.(*gnmi.TypedValue_JsonVal); ok {
 		var out interface{}
 		if err := json.Unmarshal(tv.JsonVal, &out); err != nil {
+			return nil
+		}
+		return out
+	}
+	if tv, ok := val.(*gnmi.TypedValue_JsonIetfVal); ok {
+		var out interface{}
+		if err := json.Unmarshal(tv.JsonIetfVal, &out); err != nil {
 			return nil
 		}
 		return out
