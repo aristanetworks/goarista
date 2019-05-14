@@ -43,6 +43,15 @@ func TestStringifyCollection(t *testing.T) {
 			},
 			output: "map[map[bar:2 foo:1]:42 map[bar:4 foo:3]:11]",
 		},
+		"string map in key map in string map in key map": {
+			input: map[Key]interface{}{
+				New(map[string]interface{}{"coll": map[Key]interface{}{
+					New(map[string]interface{}{"one": "two"}):    uint64(22),
+					New(map[string]interface{}{"three": "four"}): uint64(33),
+				}}): uint32(42),
+			},
+			output: "map[map[coll:map[map[one:two]:22 map[three:four]:33]]:42]",
+		},
 		"mixed types": {
 			input: map[Key]interface{}{
 				New(uint32(42)):    true,

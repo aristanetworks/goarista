@@ -151,6 +151,14 @@ func stringifyCollectionHelper(val interface{}) string {
 	switch val := val.(type) {
 	case string:
 		return escape(val)
+	case map[string]interface{}:
+		keys := SortedKeys(val)
+		for i, k := range keys {
+			v := val[k]
+			s := stringifyCollectionHelper(v)
+			keys[i] = k + ":" + s
+		}
+		return "map[" + strings.Join(keys, " ") + "]"
 	case map[Key]interface{}:
 		return StringifyCollection(val)
 	case []interface{}:
