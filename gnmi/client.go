@@ -38,6 +38,7 @@ type Config struct {
 	Username    string
 	TLS         bool
 	Compression string
+	DialOptions []grpc.DialOption
 }
 
 // SubscribeOptions is the gNMI subscription request options
@@ -54,7 +55,7 @@ type SubscribeOptions struct {
 
 // Dial connects to a gnmi service and returns a client
 func Dial(cfg *Config) (pb.GNMIClient, error) {
-	var opts []grpc.DialOption
+	opts := append([]grpc.DialOption(nil), cfg.DialOptions...)
 
 	switch cfg.Compression {
 	case "":
