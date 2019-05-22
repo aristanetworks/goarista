@@ -119,7 +119,7 @@ func (m *Map) visitSubtree(fn VisitorFunc) error {
 
 // IsEmpty returns true if no paths have been registered, false otherwise.
 func (m *Map) IsEmpty() bool {
-	return m.wildcard == nil && len(m.children) == 0
+	return m.wildcard == nil && len(m.children) == 0 && !m.ok
 }
 
 // Get returns the value registered with an exact match of a
