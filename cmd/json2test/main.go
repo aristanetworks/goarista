@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -27,7 +28,10 @@ import (
 var errTestFailure = errors.New("testfailure")
 
 func main() {
-	err := writeTestOutput(os.Stdin, os.Stdout)
+	verbose := flag.Bool("v", false, "Verbose output. "+
+		"By default only failed tests emit verbose output in test result summary.")
+	flag.Parse()
+	err := writeTestOutput(os.Stdin, os.Stdout, *verbose)
 	if err == errTestFailure {
 		os.Exit(1)
 	} else if err != nil {
@@ -62,7 +66,7 @@ type testFailure struct {
 	o outputBuffer
 }
 
-func writeTestOutput(in io.Reader, out io.Writer) error {
+func writeTestOutput(in io.Reader, out io.Writer, verbose bool) error {
 	testOutputBuffer := map[test]*outputBuffer{}
 	var failures []testFailure
 	d := json.NewDecoder(in)
@@ -81,9 +85,25 @@ func writeTestOutput(in io.Reader, out io.Writer) error {
 		case "run":
 			testOutputBuffer[test{pkg: e.Package, test: e.Test}] = new(outputBuffer)
 		case "pass":
+			if !verbose && e.Test == "" {
+				// Match go test output:
+				// 	ok  	foo/bar	2.109s
+				fmt.Fprintf(buf, "ok  \t%s\t%.3fs\n", e.Package, e.Elapsed)
+			}
 			// Don't hold onto text for passing
 			delete(testOutputBuffer, test{pkg: e.Package, test: e.Test})
 		case "fail":
+			if !verbose {
+				if e.Test != "" {
+					// Match go test output:
+					// 	--- FAIL: TestFooBar (0.00s)
+					fmt.Fprintf(buf, "--- FAIL: %s (%.3f)\n", e.Test, e.Elapsed)
+				} else {
+					// Match go test output:
+					// 	FAIL	foo/bar	1.444s
+					fmt.Fprintf(buf, "FAIL\t%s\t%.3fs\n", e.Package, e.Elapsed)
+				}
+			}
 			// fail may be for a package, which won't have an entry in
 			// testOutputBuffer because packages don't have a "run"
 			// action.
@@ -94,7 +114,9 @@ func writeTestOutput(in io.Reader, out io.Writer) error {
 				failures = append(failures, f)
 			}
 		case "output":
-			buf.WriteString(e.Output)
+			if verbose {
+				buf.WriteString(e.Output)
+			}
 			// output may be for a package, which won't have an entry
 			// in testOutputBuffer because packages don't have a "run"
 			// action.
