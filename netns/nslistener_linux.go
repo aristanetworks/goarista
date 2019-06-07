@@ -35,6 +35,11 @@ func getNsDir() (string, error) {
 // NewNSListener creates a new net.Listener bound to a network namespace. The listening socket will
 // be bound to the specified local address and will have the specified tos.
 func NewNSListener(nsName string, addr *net.TCPAddr, tos byte) (net.Listener, error) {
+	// The default namespace doesn't get recreated and avoid the watcher helps with environments
+	// that aren't setup for multiple namespaces (eg inside containers)
+	if nsName == "" || nsName == "default" {
+		return makeListener(nsName, addr, tos)
+	}
 	nsDir, err := getNsDir()
 	if err != nil {
 		return nil, err
