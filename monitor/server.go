@@ -21,6 +21,7 @@ import (
 // Server represents a monitoring server
 type Server interface {
 	Run(serveMux *http.ServeMux)
+	Serve(serveMux *http.ServeMux) error
 }
 
 // server contains information for the monitoring server
@@ -72,8 +73,15 @@ func histogramHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Run sets up the HTTP server and any handlers
+// Run calls Serve. On error the program exits.
 func (s *server) Run(serveMux *http.ServeMux) {
+	if err := s.Serve(serveMux); err != nil {
+		glog.Fatal(err)
+	}
+}
+
+// Serve registers handlers and starts serving.
+func (s *server) Serve(serveMux *http.ServeMux) error {
 	serveMux.HandleFunc("/debug", debugHandler)
 	serveMux.HandleFunc("/debug/histograms", histogramHandler)
 
@@ -84,11 +92,8 @@ func (s *server) Run(serveMux *http.ServeMux) {
 		return err
 	})
 	if err != nil {
-		glog.Fatalf("Could not start monitor server in VRF %q: %s", s.vrfName, err)
+		return fmt.Errorf("could not start monitor server in VRF %q: %s", s.vrfName, err)
 	}
 
-	err = http.Serve(listener, serveMux)
-	if err != nil {
-		glog.Fatal("http serve returned with error:", err)
-	}
+	return http.Serve(listener, serveMux)
 }
