@@ -471,6 +471,90 @@ func TestHasPrefix(t *testing.T) {
 	}
 }
 
+func TestHasPrefixString(t *testing.T) {
+	tcases := []struct {
+		a      key.Path
+		b      key.Path
+		result bool
+	}{
+		{
+			a:      nil,
+			b:      nil,
+			result: true,
+		}, {
+			a:      nil,
+			b:      key.Path{},
+			result: true,
+		}, {
+			a:      key.Path{},
+			b:      nil,
+			result: true,
+		}, {
+			a:      key.Path{},
+			b:      key.Path{},
+			result: true,
+		}, {
+			a:      key.Path{},
+			b:      key.Path{key.New("foo")},
+			result: false,
+		}, {
+			a:      key.Path{key.New("foo")},
+			b:      key.Path{},
+			result: true,
+		}, {
+			a:      key.Path{key.New(true)},
+			b:      key.Path{key.New(false)},
+			result: false,
+		}, {
+			a:      key.Path{key.New("foo"), key.New("bar")},
+			b:      key.Path{key.New("bar"), key.New("foo")},
+			result: false,
+		}, {
+			a:      key.Path{key.New(int8(0)), key.New(uint8(0))},
+			b:      key.Path{key.New(uint8(0)), key.New(uint8(0))},
+			result: false,
+		}, {
+			a:      key.Path{key.New(true), key.New(true)},
+			b:      key.Path{key.New(true), key.New(true), key.New(true)},
+			result: false,
+		}, {
+			a:      key.Path{key.New(true), key.New(true), key.New(true)},
+			b:      key.Path{key.New(true), key.New(true)},
+			result: true,
+		}, {
+			a:      key.Path{Wildcard, key.New(int32(0)), Wildcard},
+			b:      key.Path{key.New(int64(0)), Wildcard},
+			result: false,
+		}, {
+			a:      key.Path{key.New("foo"), key.New("b")},
+			b:      key.Path{key.New("foo"), key.New("bar")},
+			result: false,
+		}, {
+			a:      key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
+			b:      key.Path{key.New("foo"), key.New("b")},
+			result: true,
+		}, {
+			a:      key.Path{key.New("foo"), key.New("bar"), key.New("xyz")},
+			b:      key.Path{key.New("foo"), key.New("b")},
+			result: true,
+		}, {
+			a:      key.Path{key.New("foo"), key.New("baz")},
+			b:      key.Path{key.New("foo"), key.New("baz")},
+			result: true,
+		}, {
+			a:      key.Path{key.New("foo"), key.New(int32(0))},
+			b:      key.Path{key.New("foo"), key.New("baz")},
+			result: false,
+		},
+	}
+	for i, tcase := range tcases {
+		if result := HasPrefixString(tcase.a, tcase.b); result != tcase.result {
+			t.Fatalf("Test %d failed: a: %#v; b: %#v, result: %t",
+				i, tcase.a, tcase.b, tcase.result)
+		}
+	}
+}
+
 func TestMatchPrefix(t *testing.T) {
 	tcases := []struct {
 		a      key.Path
