@@ -6,12 +6,12 @@ package dscp
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"strings"
 	"syscall"
 
+	"github.com/aristanetworks/glog"
 	"golang.org/x/sys/unix"
 )
 
@@ -34,25 +34,24 @@ func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) 
 }
 
 func setTOS(network string, c syscall.RawConn, tos byte) error {
-	var proto, optname int
-	if strings.HasSuffix(network, "4") {
-		proto = unix.IPPROTO_IP
-		optname = unix.IP_TOS
-	} else if strings.HasSuffix(network, "6") {
-		proto = unix.IPPROTO_IPV6
-		optname = unix.IPV6_TCLASS
-	} else {
-		return fmt.Errorf("unknown network: %q", network)
-	}
-
-	var setsockoptErr error
-	err := c.Control(func(fd uintptr) {
-		if err := unix.SetsockoptInt(int(fd), proto, optname, int(tos)); err != nil {
-			setsockoptErr = os.NewSyscallError("setsockopt", err)
+	return c.Control(func(fd uintptr) {
+		// Configure ipv4 TOS for both IPv4 and IPv6 networks because
+		// v4 connections can still come over v6 networks.
+		err := unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, int(tos))
+		if err != nil {
+			glog.Errorf("failed to configure IP_TOS: %v", os.NewSyscallError("setsockopt", err))
 		}
+		if strings.HasSuffix(network, "4") {
+			// Skip configuring IPv6 when we know we are using an IPv4
+			// network to avoid error.
+			return
+		}
+		err6 := unix.SetsockoptInt(int(fd), unix.IPPROTO_IPV6, unix.IPV6_TCLASS, int(tos))
+		if err6 != nil {
+			glog.Errorf(
+				"failed to configure IPV6_TCLASS, traffic may not use the configured DSCP: %v",
+				os.NewSyscallError("setsockopt", err6))
+		}
+
 	})
-	if setsockoptErr != nil {
-		return setsockoptErr
-	}
-	return err
 }
