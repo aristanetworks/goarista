@@ -105,17 +105,6 @@ func HasPrefix(a, b key.Path) bool {
 	return len(a) >= len(b) && hasPrefix(a, b)
 }
 
-// HasPrefixString returns whether path b is a prefix of path a.
-// It checks that b is at most the length of path a and
-// that every element of a matches corresponding element of b exactly
-// except the last element.
-// The last element of a is considered a match if it matches exactly
-// or if it is a string and the last element of a is a substring
-// of corresponding element of b
-func HasPrefixString(a, b key.Path) bool {
-	return len(a) >= len(b) && hasPrefixString(a, b)
-}
-
 // Match returns whether path a and path b are the same
 // length and whether each element in b corresponds to the
 // same element or a wildcard in a.
@@ -181,33 +170,6 @@ func hasPrefix(a, b key.Path) bool {
 		}
 	}
 	return true
-}
-
-func compareElementString(a, b key.Key) bool {
-	// If the element is a string, then it must be
-	// a prefix of the corresponding element in a.
-	bStr, bOk := b.Key().(string)
-	aStr, aOk := a.Key().(string)
-	if aOk && bOk {
-		return strings.HasPrefix(aStr, bStr)
-	}
-
-	// Last element is not a string
-	return b.Equal(a)
-}
-
-func hasPrefixString(a, b key.Path) bool {
-	if len(b) == 0 {
-		return true
-	}
-
-	if !hasPrefix(Parent(a), Parent(b)) {
-		return false
-	}
-
-	// Compare the element in a that corresponds to last element of b.
-	// This is needed because a can be longer than b.
-	return compareElementString(a[len(b)-1], Base(b))
 }
 
 func matchPrefix(a, b key.Path) bool {
