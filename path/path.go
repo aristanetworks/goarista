@@ -121,18 +121,6 @@ func MatchPrefix(a, b key.Path) bool {
 	return len(a) >= len(b) && matchPrefix(a, b)
 }
 
-// MatchPrefixString returns whether path b is a prefix of path a
-// where path a may contain wildcards.
-// It checks that b is at most the length of path a and
-// that every element of a matches corresponding element of b exactly
-// or a wildcard except the last element.
-// The last element of a is considered a match if it matches exactly
-// or it is a wildcard or if it is a string and the last element of a
-// is a substring of corresponding element of b
-func MatchPrefixString(a, b key.Path) bool {
-	return len(a) >= len(b) && matchPrefixString(a, b)
-}
-
 // FromString constructs a path from the elements resulting
 // from a split of the input string by "/". Strings that do
 // not lead with a '/' are accepted but not reconstructable
@@ -179,20 +167,4 @@ func matchPrefix(a, b key.Path) bool {
 		}
 	}
 	return true
-}
-
-func matchPrefixString(a, b key.Path) bool {
-	if len(b) == 0 {
-		return true
-	}
-
-	if !matchPrefix(Parent(a), Parent(b)) {
-		return false
-	}
-
-	// Compare the element in a that corresponds to last element of b.
-	// This is needed because a can be longer than b.
-	aKey := a[len(b)-1]
-
-	return aKey.Equal(Wildcard) || compareElementString(aKey, Base(b))
 }
