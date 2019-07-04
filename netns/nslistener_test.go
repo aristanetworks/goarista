@@ -16,15 +16,16 @@ import (
 )
 
 type mockListener struct {
-	makes   int
-	accepts int
-	closes  int
-	stop    chan struct{}
-	done    chan struct{}
+	makes      int
+	accepts    int
+	closes     int
+	maxAccepts int
+	stop       chan struct{}
+	done       chan struct{}
 }
 
 func (l *mockListener) Accept() (net.Conn, error) {
-	if l.accepts >= 1 {
+	if l.accepts >= l.maxAccepts {
 		<-l.stop
 		return nil, errors.New("closed")
 	}
@@ -35,7 +36,7 @@ func (l *mockListener) Accept() (net.Conn, error) {
 func (l *mockListener) Close() error {
 	l.closes++
 	close(l.stop)
-	l.done <- struct{}{}
+	close(l.done)
 	return nil
 }
 
@@ -48,19 +49,22 @@ var currentMockListener struct {
 	listener *mockListener
 }
 
-func makeMockListener(_ string, _ *net.TCPAddr, _ byte) (net.Listener, error) {
-	currentMockListener.mu.Lock()
-	defer currentMockListener.mu.Unlock()
-	currentMockListener.listener = &mockListener{
-		stop: make(chan struct{}),
-		done: make(chan struct{}),
+func makeMockListener(n int) func(string, *net.TCPAddr, byte) (net.Listener, error) {
+	return func(_ string, _ *net.TCPAddr, _ byte) (net.Listener, error) {
+		currentMockListener.mu.Lock()
+		defer currentMockListener.mu.Unlock()
+		currentMockListener.listener = &mockListener{
+			maxAccepts: n,
+			stop:       make(chan struct{}),
+			done:       make(chan struct{}),
+		}
+		currentMockListener.listener.makes++
+		return currentMockListener.listener, nil
 	}
-	currentMockListener.listener.makes++
-	return currentMockListener.listener, nil
 }
 
 func TestNSListener(t *testing.T) {
-	makeListener = makeMockListener
+	makeListener = makeMockListener(1)
 	hasMount = func(_ string) bool {
 		return true
 	}
@@ -111,6 +115,38 @@ func TestNSListener(t *testing.T) {
 	}
 
 	l.Close()
+}
+
+func TestNSListenerClose(t *testing.T) {
+	makeListener = makeMockListener(0)
+	hasMount = func(_ string) bool {
+		return true
+	}
+
+	nsDir, err := ioutil.TempDir("", "netns")
+	if err != nil {
+		t.Fatalf("Can't create temp file: %v", err)
+	}
+	defer os.RemoveAll(nsDir)
+
+	l, err := newNSListenerWithDir(nsDir, "ns-yolo", nil, 0)
+	if err != nil {
+		t.Fatalf("Can't create mock listener: %v", err)
+	}
+
+	nsFile := filepath.Join(nsDir, "ns-yolo")
+	if err = ioutil.WriteFile(nsFile, []byte{}, os.FileMode(0777)); err != nil {
+		t.Fatalf("Can't create ns file: %v", err)
+	}
+	defer os.Remove(nsFile)
+
+	done := make(chan struct{})
+	go func() {
+		l.Accept()
+		close(done)
+	}()
+	l.Close()
+	<-done
 }
 
 func TestHasMount(t *testing.T) {

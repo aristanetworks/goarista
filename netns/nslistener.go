@@ -101,6 +101,13 @@ func (l *nsListener) watch() {
 		select {
 		case <-l.done:
 			l.tearDown()
+			go func() {
+				// Drain the events, otherwise closing the watcher will get stuck
+				for range l.watcher.Events {
+				}
+			}()
+			l.watcher.Close()
+			close(l.conns)
 			return
 		case ev := <-l.watcher.Events:
 			if ev.Name != l.nsFile {
