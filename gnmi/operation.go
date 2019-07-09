@@ -371,35 +371,41 @@ func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
 }
 
 // Subscribe sends a SubscribeRequest to the given client.
+// Deprecated: Use SubscribeErr instead.
 func Subscribe(ctx context.Context, client pb.GNMIClient, subscribeOptions *SubscribeOptions,
 	respChan chan<- *pb.SubscribeResponse, errChan chan<- error) {
+	if err := SubscribeErr(ctx, client, subscribeOptions, respChan); err != nil {
+		errChan <- err
+	}
+}
+
+// SubscribeErr makes a gNMI.Subscribe call and writes the responses
+// to the respChan. Before returning respChan will be closed.
+func SubscribeErr(ctx context.Context, client pb.GNMIClient, subscribeOptions *SubscribeOptions,
+	respChan chan<- *pb.SubscribeResponse) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	defer close(respChan)
 
 	stream, err := client.Subscribe(ctx)
 	if err != nil {
-		errChan <- err
-		return
+		return err
 	}
 	req, err := NewSubscribeRequest(subscribeOptions)
 	if err != nil {
-		errChan <- err
-		return
+		return err
 	}
 	if err := stream.Send(req); err != nil {
-		errChan <- err
-		return
+		return err
 	}
 
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				return
+				return nil
 			}
-			errChan <- err
-			return
+			return err
 		}
 		respChan <- resp
 
@@ -417,8 +423,7 @@ func Subscribe(ctx context.Context, client pb.GNMIClient, subscribeOptions *Subs
 					},
 				}
 				if err := stream.Send(pollReq); err != nil {
-					errChan <- err
-					return
+					return err
 				}
 			}
 		}
