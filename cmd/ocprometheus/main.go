@@ -12,11 +12,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
+
+	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -68,26 +70,25 @@ func main() {
 	}
 
 	respChan := make(chan *pb.SubscribeResponse)
-	errChan := make(chan error)
 	subscribeOptions := &gnmi.SubscribeOptions{
 		Mode:       "stream",
 		StreamMode: "target_defined",
 		Paths:      gnmi.SplitPaths(subscriptions),
 	}
-	go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
-	go handleSubscription(respChan, errChan, coll, gNMIcfg.Addr)
+	go handleSubscription(ctx, client, subscribeOptions, respChan, coll, gNMIcfg.Addr)
 	http.Handle(*url, promhttp.Handler())
 	glog.Fatal(http.ListenAndServe(*listenaddr, nil))
 }
 
-func handleSubscription(respChan chan *pb.SubscribeResponse,
-	errChan chan error, coll *collector, addr string) {
-	for {
-		select {
-		case resp := <-respChan:
-			coll.update(addr, resp)
-		case err := <-errChan:
-			glog.Fatal(err)
-		}
+func handleSubscription(ctx context.Context, client pb.GNMIClient,
+	subscribeOptions *gnmi.SubscribeOptions, respChan chan *pb.SubscribeResponse, coll *collector,
+	addr string) {
+	var g errgroup.Group
+	g.Go(func() error { return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan) })
+	for resp := range respChan {
+		coll.update(addr, resp)
+	}
+	if err := g.Wait(); err != nil {
+		glog.Fatal(err)
 	}
 }

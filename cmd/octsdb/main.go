@@ -19,6 +19,7 @@ import (
 
 	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -99,20 +100,18 @@ func main() {
 		glog.Fatal(err)
 	}
 	respChan := make(chan *pb.SubscribeResponse)
-	errChan := make(chan error)
 	subscribeOptions := &gnmi.SubscribeOptions{
 		Mode:       "stream",
 		StreamMode: "target_defined",
 		Paths:      gnmi.SplitPaths(subscriptions),
 	}
-	go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
-	for {
-		select {
-		case resp := <-respChan:
-			pushToOpenTSDB(cfg.Addr, c, config, resp.GetUpdate())
-		case err := <-errChan:
-			glog.Fatal(err)
-		}
+	var g errgroup.Group
+	g.Go(func() error { return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan) })
+	for resp := range respChan {
+		pushToOpenTSDB(cfg.Addr, c, config, resp.GetUpdate())
+	}
+	if err := g.Wait(); err != nil {
+		glog.Fatal(err)
 	}
 }
 

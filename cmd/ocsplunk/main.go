@@ -14,11 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
-	"github.com/aristanetworks/splunk-hec-go"
 
+	"github.com/aristanetworks/glog"
+	hec "github.com/aristanetworks/splunk-hec-go"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"golang.org/x/sync/errgroup"
 )
 
 func exitWithError(s string) {
@@ -70,57 +71,53 @@ func main() {
 
 	// gNMI subscription
 	respChan := make(chan *pb.SubscribeResponse)
-	errChan := make(chan error)
-	defer close(errChan)
 	paths := strings.Split(*subscribePaths, ",")
 	subscribeOptions := &gnmi.SubscribeOptions{
 		Mode:       "stream",
 		StreamMode: "target_defined",
 		Paths:      gnmi.SplitPaths(paths),
 	}
-	go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
+	var g errgroup.Group
+	g.Go(func() error { return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan) })
 
 	// Forward subscribe responses to Splunk
-	for {
-		select {
+	for resp := range respChan {
 		// We got a subscribe response
-		case resp := <-respChan:
-			response := resp.GetResponse()
-			update, ok := response.(*pb.SubscribeResponse_Update)
-			if !ok {
-				continue
-			}
+		response := resp.GetResponse()
+		update, ok := response.(*pb.SubscribeResponse_Update)
+		if !ok {
+			continue
+		}
 
-			// Convert the response into a map[string]interface{}
-			notification, err := gnmi.NotificationToMap(update.Update)
-			if err != nil {
-				exitWithError(err.Error())
-			}
-
-			// Build the Splunk event
-			path := notification["path"].(string)
-			delete(notification, "path")
-			timestamp := notification["timestamp"].(int64)
-			delete(notification, "timestamp")
-			// Should this be configurable?
-			sourceType := "openconfig"
-			event := &hec.Event{
-				Host:       &addr,
-				Index:      splunkIndex,
-				Source:     &path,
-				SourceType: &sourceType,
-				Event:      notification,
-			}
-			event.SetTime(time.Unix(timestamp/1e9, timestamp%1e9))
-
-			// Write the event to Splunk
-			if err := cluster.WriteEvent(event); err != nil {
-				exitWithError("failed to write event: " + err.Error())
-			}
-
-		// We got an error
-		case err := <-errChan:
+		// Convert the response into a map[string]interface{}
+		notification, err := gnmi.NotificationToMap(update.Update)
+		if err != nil {
 			exitWithError(err.Error())
 		}
+
+		// Build the Splunk event
+		path := notification["path"].(string)
+		delete(notification, "path")
+		timestamp := notification["timestamp"].(int64)
+		delete(notification, "timestamp")
+		// Should this be configurable?
+		sourceType := "openconfig"
+		event := &hec.Event{
+			Host:       &addr,
+			Index:      splunkIndex,
+			Source:     &path,
+			SourceType: &sourceType,
+			Event:      notification,
+		}
+		event.SetTime(time.Unix(timestamp/1e9, timestamp%1e9))
+
+		// Write the event to Splunk
+		if err := cluster.WriteEvent(event); err != nil {
+			exitWithError("failed to write event: " + err.Error())
+		}
+
+	}
+	if err := g.Wait(); err != nil {
+		exitWithError(err.Error())
 	}
 }

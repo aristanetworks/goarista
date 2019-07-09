@@ -17,6 +17,7 @@ import (
 
 	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"golang.org/x/sync/errgroup"
 	redis "gopkg.in/redis.v4"
 )
 
@@ -89,20 +90,18 @@ func main() {
 		glog.Fatal(err)
 	}
 	respChan := make(chan *pb.SubscribeResponse)
-	errChan := make(chan error)
 	subscribeOptions := &gnmi.SubscribeOptions{
 		Mode:       "stream",
 		StreamMode: "target_defined",
 		Paths:      gnmi.SplitPaths(subscriptions),
 	}
-	go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
-	for {
-		select {
-		case resp := <-respChan:
-			bufferToRedis(cfg.Addr, resp.GetUpdate())
-		case err := <-errChan:
-			glog.Fatal(err)
-		}
+	var g errgroup.Group
+	g.Go(func() error { return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan) })
+	for resp := range respChan {
+		bufferToRedis(cfg.Addr, resp.GetUpdate())
+	}
+	if err := g.Wait(); err != nil {
+		glog.Fatal(err)
 	}
 }
 

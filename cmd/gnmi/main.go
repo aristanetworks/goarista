@@ -16,6 +16,7 @@ import (
 
 	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"golang.org/x/sync/errgroup"
 )
 
 // TODO: Make this more clear
@@ -123,24 +124,21 @@ func main() {
 				i++
 			}
 			respChan := make(chan *pb.SubscribeResponse)
-			errChan := make(chan error)
-			defer close(errChan)
 			subscribeOptions.Origin = origin
 			subscribeOptions.Paths = gnmi.SplitPaths(args[i+1:])
-			go gnmi.Subscribe(ctx, client, subscribeOptions, respChan, errChan)
-			for {
-				select {
-				case resp, open := <-respChan:
-					if !open {
-						return
-					}
-					if err := gnmi.LogSubscribeResponse(resp); err != nil {
-						glog.Fatal(err)
-					}
-				case err := <-errChan:
+			var g errgroup.Group
+			g.Go(func() error {
+				return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan)
+			})
+			for resp := range respChan {
+				if err := gnmi.LogSubscribeResponse(resp); err != nil {
 					glog.Fatal(err)
 				}
 			}
+			if err := g.Wait(); err != nil {
+				glog.Fatal(err)
+			}
+			return
 		case "update", "replace", "delete":
 			if len(args) == i+1 {
 				usageAndExit("error: missing path")
