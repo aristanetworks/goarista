@@ -53,6 +53,9 @@ func SetValue(m map[string]interface{}, val interface{}) error {
 		case float64:
 			m["ValueDouble"] = &tv
 		}
+	} else if val, ok := val.(*gnmi.TypedValue_BytesVal); ok {
+		// TODO: handle byte arrays properly:
+		fmt.Printf("ignoring byte array with string value %s\n", val.BytesVal)
 	} else {
 		// this type may not be supported yet, or could not convert
 		return fmt.Errorf("unknown type %T for value %v", val, val)
@@ -113,9 +116,10 @@ func toDoublePtr(val interface{}) *float64 {
 // Flatten a non-simple type into a []*field
 func toValueArray(val interface{}) []*map[string]interface{} {
 	if tv, ok := val.(*gnmi.TypedValue_LeaflistVal); ok {
-		var fields []*map[string]interface{}
+		elements := tv.LeaflistVal.Element
+		fields := make([]*map[string]interface{}, len(elements))
 		// LeaflistVal should only have simple types
-		for _, el := range tv.LeaflistVal.Element {
+		for i, el := range elements {
 			m := make(map[string]interface{})
 			if str := toStringPtr(el.Value); str != nil {
 				m["String"] = str
@@ -129,14 +133,14 @@ func toValueArray(val interface{}) []*map[string]interface{} {
 				// this type is not supported yet
 				return nil
 			}
-			fields = append(fields, &m)
+			fields[i] = &m
 		}
 		return fields
 	}
 	return nil
 }
 
-// Unmarshal a json value
+//	*TypedValue_JsonVal, *TypedValue_JsonIetfVal
 func toJSONValue(val interface{}) interface{} {
 	if tv, ok := val.(*gnmi.TypedValue_JsonVal); ok {
 		var out interface{}

@@ -107,6 +107,24 @@ func TestDataConversion(t *testing.T) {
 				Prefix:    stringToGNMIPath("baz"),
 				Update: []*pb.Update{
 					gnmiUpdate("Leaflist", &pb.TypedValue{Value: &pb.TypedValue_LeaflistVal{
+						LeaflistVal: &pb.ScalarArray{Element: []*pb.TypedValue{}}}}),
+				}},
+			data: []Data{
+				Data{
+					Timestamp: 345,
+					DatasetID: "0",
+					Path:      "/baz/Leaflist",
+					Key:       []byte("/Leaflist"),
+					KeyString: toPtr("/Leaflist").(*string),
+					Value:     []*field{}},
+			},
+		},
+		{
+			in: &pb.Notification{
+				Timestamp: 345,
+				Prefix:    stringToGNMIPath("baz"),
+				Update: []*pb.Update{
+					gnmiUpdate("Leaflist", &pb.TypedValue{Value: &pb.TypedValue_LeaflistVal{
 						LeaflistVal: &pb.ScalarArray{Element: []*pb.TypedValue{
 							&pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: "hello"}},
 							&pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: -123}},
