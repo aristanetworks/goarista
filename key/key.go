@@ -49,6 +49,7 @@ type interfaceKey struct {
 }
 
 type strKey string
+type bytesKey string
 
 type int8Key int8
 type int16Key int16
@@ -134,6 +135,8 @@ func New(intf interface{}) Key {
 		return interfaceKey{key: intf}
 	case Pointer:
 		return pointerKey{sentinel: sentinel, s: pointerToSlice(t)}
+	case []byte:
+		return bytesKey(t)
 	case Path:
 		return pathKey{sentinel: sentinel, s: pathToSlice(t)}
 	default:
@@ -271,6 +274,28 @@ func (k strKey) MarshalJSON() ([]byte, error) {
 func (k strKey) Equal(other interface{}) bool {
 	o, ok := other.(strKey)
 	return ok && k == o
+}
+
+// Key interface implementation for []bytes
+func (k bytesKey) Key() interface{} {
+	return string(k)
+}
+
+func (k bytesKey) String() string {
+	return fmt.Sprintf("%s", []byte(k))
+}
+
+func (k bytesKey) GoString() string {
+	return fmt.Sprintf("key.New(%q)", []byte(k))
+}
+
+func (k bytesKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]byte(k))
+}
+
+func (k bytesKey) Equal(other interface{}) bool {
+	o, ok := other.(bytesKey)
+	return ok && o == k
 }
 
 // Key interface implementation for int8

@@ -189,6 +189,22 @@ func TestKeyEqual(t *testing.T) {
 		a:      New(nilPath),
 		b:      New(Path{}),
 		result: true,
+	}, {
+		a:      New([]byte{0x0}),
+		b:      New([]byte{}),
+		result: false,
+	}, {
+		a:      New([]byte{0x1, 0x2}),
+		b:      New([]byte{0x1, 0x2}),
+		result: true,
+	}, {
+		a:      New([]byte{0x2, 0x1}),
+		b:      New([]byte{0x1, 0x2}),
+		result: false,
+	}, {
+		a:      New(string([]byte{0x1, 0x2})),
+		b:      New([]byte{0x1, 0x2}),
+		result: false,
 	}}
 
 	for _, tcase := range tests {
@@ -390,6 +406,10 @@ func TestDeleteFromMap(t *testing.T) {
 		k: New(customKey{i: 42}),
 		m: map[Key]interface{}{New(customKey{i: 42}): "c"},
 		r: map[Key]interface{}{},
+	}, {
+		k: New([]byte{0x1, 0x2}),
+		m: map[Key]interface{}{New([]byte{0x1, 0x2}): "a", New([]byte{0x1}): "b"},
+		r: map[Key]interface{}{New([]byte{0x1}): "b"},
 	}}
 
 	for _, tcase := range tests {
