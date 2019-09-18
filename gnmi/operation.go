@@ -22,6 +22,7 @@ import (
 	"time"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/openconfig/gnmi/proto/gnmi_ext"
 	"google.golang.org/grpc/codes"
 )
 
@@ -323,7 +324,7 @@ type Operation struct {
 	Val    string
 }
 
-func newSetRequest(setOps []*Operation) (*pb.SetRequest, error) {
+func newSetRequest(setOps []*Operation, exts ...*gnmi_ext.Extension) (*pb.SetRequest, error) {
 	req := &pb.SetRequest{}
 	for _, op := range setOps {
 		p, err := ParseGNMIElements(op.Path)
@@ -349,12 +350,16 @@ func newSetRequest(setOps []*Operation) (*pb.SetRequest, error) {
 			req.Replace = append(req.Replace, u)
 		}
 	}
+	for _, ext := range exts {
+		req.Extension = append(req.Extension, ext)
+	}
 	return req, nil
 }
 
 // Set sends a SetRequest to the given client.
-func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
-	req, err := newSetRequest(setOps)
+func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation,
+	exts ...*gnmi_ext.Extension) error {
+	req, err := newSetRequest(setOps, exts...)
 	if err != nil {
 		return err
 	}
@@ -365,8 +370,6 @@ func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
 	if resp.Message != nil && codes.Code(resp.Message.Code) != codes.OK {
 		return errors.New(resp.Message.Message)
 	}
-	// TODO: Iterate over SetResponse.Response for more detailed error message?
-
 	return nil
 }
 
