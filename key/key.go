@@ -255,6 +255,16 @@ func (k compositeKey) Equal(other interface{}) bool {
 	return ok && sliceEqual(k.s, o.s)
 }
 
+// make compositeKey a Hashable
+func (k compositeKey) Hash() uint64 {
+	if k.m != nil {
+		return uint64(hashMapString(k.m))
+	} else if k.s != nil {
+		return uint64(hashSlice(k.s))
+	}
+	return 0
+}
+
 func (k strKey) Key() interface{} {
 	return string(k)
 }
