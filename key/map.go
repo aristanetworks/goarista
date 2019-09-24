@@ -210,3 +210,22 @@ func (m *Map) Del(k interface{}) {
 		m.length--
 	}
 }
+
+// Iter applies func f to every key-value pair in the Map
+func (m *Map) Iter(f func(k, v interface{}) error) error {
+	for k, v := range m.normal {
+		if err := f(k, v); err != nil {
+			return err
+		}
+	}
+	for _, e := range m.custom {
+		curr := &e
+		for curr != nil {
+			if err := f(curr.k, curr.v); err != nil {
+				return err
+			}
+			curr = curr.next
+		}
+	}
+	return nil
+}

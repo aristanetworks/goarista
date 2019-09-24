@@ -5,6 +5,7 @@
 package key
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -313,6 +314,76 @@ func TestMapDel(t *testing.T) {
 		if !tcase.m.Equal(tcase.exp) {
 			t.Errorf("map %#v after del of element %v does not equal expected %#v",
 				tcase.m, tcase.del, tcase.exp)
+		}
+	}
+}
+
+func contains(elementlist []interface{}, element interface{}) bool {
+	for _, el := range elementlist {
+		if el == element {
+			return true
+		}
+	}
+	return false
+}
+
+func TestMapIter(t *testing.T) {
+	tests := []struct {
+		m     *Map
+		elems []interface{}
+	}{{
+		m:     &Map{},
+		elems: []interface{}{},
+	}, {
+		m:     &Map{normal: map[interface{}]interface{}{"a": true}, length: 1},
+		elems: []interface{}{"a"},
+	}, {
+		m: &Map{length: 1, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
+		elems: []interface{}{dumbHashable{dumb: "hashable1"}},
+	}, {
+		m: &Map{length: 1, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
+		elems: []interface{}{dumbHashable{dumb: "hashable1"}},
+	}, {
+		m: &Map{length: 3, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
+					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+		elems: []interface{}{dumbHashable{dumb: "hashable2"},
+			dumbHashable{dumb: "hashable3"}, dumbHashable{dumb: "hashable4"}},
+	}, {
+		m: formMap(
+			&tuple{New(map[string]interface{}{"a": 123}), "b"},
+			&tuple{New(map[string]interface{}{"c": 456}), "d"},
+			&tuple{dumbHashable{dumb: "hashable1"}, 1},
+			&tuple{dumbHashable{dumb: "hashable2"}, 2},
+			&tuple{dumbHashable{dumb: "hashable3"}, 3},
+			&tuple{"x", true},
+			&tuple{"y", false},
+			&tuple{"z", nil},
+		),
+		elems: []interface{}{
+			New(map[string]interface{}{"a": 123}), New(map[string]interface{}{"c": 456}),
+			dumbHashable{dumb: "hashable1"}, dumbHashable{dumb: "hashable2"},
+			dumbHashable{dumb: "hashable3"}, "x", "y", "z"},
+	}}
+	for _, tcase := range tests {
+		count := 0
+		iterfunc := func(k, v interface{}) error {
+			if !contains(tcase.elems, k) {
+				return fmt.Errorf("map %#v should not contain element %v", tcase.m, k)
+			}
+			count++
+			return nil
+		}
+		if err := tcase.m.Iter(iterfunc); err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
+
+		expectedcount := len(tcase.elems)
+		if count != expectedcount || tcase.m.length != expectedcount {
+			t.Errorf("found %d elements in map %#v when expected %d", count, tcase.m, expectedcount)
 		}
 	}
 }
