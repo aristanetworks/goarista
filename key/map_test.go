@@ -246,3 +246,73 @@ func TestMapSetGet(t *testing.T) {
 	}
 
 }
+
+func TestMapDel(t *testing.T) {
+	tests := []struct {
+		m   *Map
+		del interface{}
+		exp *Map
+	}{{
+		m:   &Map{},
+		del: "a",
+		exp: &Map{},
+	}, {
+		m:   &Map{},
+		del: New(map[string]interface{}{"a": 1}),
+		exp: &Map{},
+	}, {
+		m:   &Map{normal: map[interface{}]interface{}{"a": true}, length: 1},
+		del: "a",
+		exp: &Map{},
+	}, {
+		m: &Map{length: 1, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
+		del: dumbHashable{dumb: "hashable1"},
+		exp: &Map{},
+	}, {
+		m: &Map{length: 3, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
+					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+		del: dumbHashable{dumb: "hashable2"},
+		exp: &Map{length: 2, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}},
+	}, {
+		m: &Map{length: 3, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
+					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+		del: dumbHashable{dumb: "hashable3"},
+		exp: &Map{length: 2, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}},
+	}, {
+		m: &Map{length: 3, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
+					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+		del: dumbHashable{dumb: "hashable4"},
+		exp: &Map{length: 2, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42}}}},
+	}, {
+		m: &Map{length: 3, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
+					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+		del: dumbHashable{dumb: "hashable5"},
+		exp: &Map{length: 3, custom: map[uint64]entry{
+			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
+				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
+					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+	}}
+
+	for _, tcase := range tests {
+		tcase.m.Del(tcase.del)
+		if !tcase.m.Equal(tcase.exp) {
+			t.Errorf("map %#v after del of element %v does not equal expected %#v",
+				tcase.m, tcase.del, tcase.exp)
+		}
+	}
+}

@@ -165,3 +165,48 @@ func (m *Map) Get(k interface{}) (interface{}, bool) {
 	v, ok := m.normal[k]
 	return v, ok
 }
+
+// Del removes an entry with key k from the Map
+func (m *Map) Del(k interface{}) {
+	if hkey, ok := k.(Hashable); ok {
+		if m.custom == nil {
+			return
+		}
+		h := hkey.Hash()
+		hentry, ok := m.custom[h]
+		if !ok {
+			return
+		}
+		var prev *entry
+		curr := &hentry
+		for curr != nil {
+			if curr.k.Equal(hkey) { // del
+				if prev == nil { // delete the head
+					if curr.next == nil { // no more entries at this hash, remove it
+						delete(m.custom, h)
+					} else {
+						m.custom[h] = *curr.next
+					}
+				} else {
+					// delete a mid/tail entry node
+					prev.next = curr.next
+					m.custom[h] = hentry
+				}
+				m.length--
+				return
+			}
+			prev = curr
+			curr = curr.next
+		}
+		return
+	}
+	// not Hashable, check normal
+	if m.normal == nil {
+		return
+	}
+	l := len(m.normal)
+	delete(m.normal, k)
+	if l != len(m.normal) {
+		m.length--
+	}
+}
