@@ -4,10 +4,6 @@
 
 package key
 
-import (
-	"reflect"
-)
-
 // An entry represents an entry in a map whose key is not normally hashable,
 // and is therefore of type Hashable
 // (that is, a Hash method has been defined for this entry's key, and we can index it)
@@ -30,21 +26,70 @@ func (m *Map) String() string {
 	return ""
 }
 
-// Equal will eventually do a better job of comparing two Maps
+// true if two arbitrary maps are equal
+func mapEqual(a, b map[interface{}]interface{}) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, av := range a {
+		bv, ok := b[k]
+		if !ok {
+			return false
+		}
+		if !keyEqual(av, bv) {
+			return false
+		}
+	}
+	return true
+}
+
+// true if entry a in entry list b
+func findEntry(a, b entry) bool {
+	bn := &b
+	for bn != nil {
+		if a.k.Equal(bn.k) {
+			return keyEqual(a.v, bn.v)
+		}
+		bn = bn.next
+	}
+	return false
+}
+
+// return true if all entries in list a can be found in b
+func entryEqual(a, b entry) bool {
+	an := &a
+	for an != nil {
+		if !findEntry(*an, b) {
+			return false
+		}
+		an = an.next
+	}
+	return true
+}
+
+// Equal compares two Maps
 func (m *Map) Equal(other interface{}) bool {
-	o, ok := other.(Map)
+	o, ok := other.(*Map)
 	if !ok {
 		return false
 	}
 	if m.length != o.length {
 		return false
 	}
-	// TODO: revise
-	if !reflect.DeepEqual(m.normal, o.normal) {
+	if !mapEqual(m.normal, o.normal) {
 		return false
 	}
-	if !reflect.DeepEqual(m.custom, o.custom) {
-		return false
+	for k, mv := range m.custom {
+		if len(m.custom) != len(o.custom) {
+			return false
+		}
+		if ov, ok := o.custom[k]; ok {
+			if !entryEqual(mv, ov) {
+				return false
+			}
+		} else {
+			return false
+		}
 	}
 	return true
 }
