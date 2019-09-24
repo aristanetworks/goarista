@@ -166,3 +166,73 @@ func TestMapSet(t *testing.T) {
 		}
 	}
 }
+
+func TestMapSetGet(t *testing.T) {
+	m := Map{}
+	tests := []struct {
+		setkey interface{}
+		getkey interface{}
+		val    interface{}
+		found  bool
+	}{{
+		setkey: "a",
+		getkey: "a",
+		val:    1,
+		found:  true,
+	}, {
+		setkey: "b",
+		getkey: "b",
+		val:    1,
+		found:  true,
+	}, {
+		setkey: 42,
+		getkey: 42,
+		val:    "foobar",
+		found:  true,
+	}, {
+		setkey: dumbHashable{dumb: "hashable1"},
+		getkey: dumbHashable{dumb: "hashable1"},
+		val:    1,
+		found:  true,
+	}, {
+		getkey: dumbHashable{dumb: "hashable2"},
+		val:    nil,
+		found:  false,
+	}, {
+		setkey: dumbHashable{dumb: "hashable2"},
+		getkey: dumbHashable{dumb: "hashable2"},
+		val:    2,
+		found:  true,
+	}, {
+		getkey: dumbHashable{dumb: "hashable42"},
+		val:    nil,
+		found:  false,
+	}, {
+		setkey: New(map[string]interface{}{"a": 1}),
+		getkey: New(map[string]interface{}{"a": 1}),
+		val:    "foo",
+		found:  true,
+	}, {
+		getkey: New(map[string]interface{}{"a": 2}),
+		val:    nil,
+		found:  false,
+	}, {
+		setkey: New(map[string]interface{}{"a": 2}),
+		getkey: New(map[string]interface{}{"a": 2}),
+		val:    "bar",
+		found:  true,
+	}}
+	for _, tcase := range tests {
+		if tcase.setkey != nil {
+			m.Set(tcase.setkey, tcase.val)
+		}
+		val, found := m.Get(tcase.getkey)
+		if found != tcase.found {
+			t.Errorf("found is %t, but expected found %t", found, tcase.found)
+		}
+		if val != tcase.val {
+			t.Errorf("val is %v for key %v, but expected val %v", val, tcase.getkey, tcase.val)
+		}
+	}
+
+}

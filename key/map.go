@@ -99,3 +99,24 @@ func (m *Map) Set(k, v interface{}) {
 	}
 	m.length++
 }
+
+// Get retrieves the value stored with key k from the Map
+func (m *Map) Get(k interface{}) (interface{}, bool) {
+	if hkey, ok := k.(Hashable); ok {
+		h := hkey.Hash()
+		hentry, ok := m.custom[h]
+		if !ok {
+			return nil, false
+		}
+		curr := &hentry
+		for curr != nil {
+			if curr.k.Equal(hkey) {
+				return curr.v, true
+			}
+			curr = curr.next
+		}
+		return nil, false
+	}
+	v, ok := m.normal[k]
+	return v, ok
+}
