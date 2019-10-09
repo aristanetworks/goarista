@@ -13,7 +13,8 @@ type entry struct {
 	next *entry
 }
 
-// Map represents a map of arbitrary keys and values.
+// Map allows the indexing of entries with arbitrary key types, so long as the keys are
+// either hashable natively or implement Hashable
 type Map struct {
 	normal map[interface{}]interface{}
 	custom map[uint64]entry
@@ -105,8 +106,7 @@ type Hashable interface {
 	Equal(other interface{}) bool
 }
 
-// Set allows the indexing of entries with arbitrary key types, so long as the keys are
-// either hashable natively or are of type Hashable
+// Set adds a key-value pair to the Map
 func (m *Map) Set(k, v interface{}) {
 	if k == nil {
 		return
