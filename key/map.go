@@ -26,6 +26,11 @@ func (m *Map) String() string {
 	return ""
 }
 
+// Len returns the length of the Map
+func (m *Map) Len() int {
+	return m.length
+}
+
 // true if two arbitrary maps are equal
 func mapEqual(a, b map[interface{}]interface{}) bool {
 	if len(a) != len(b) {
@@ -79,10 +84,10 @@ func (m *Map) Equal(other interface{}) bool {
 	if !mapEqual(m.normal, o.normal) {
 		return false
 	}
+	if len(m.custom) != len(o.custom) {
+		return false
+	}
 	for k, mv := range m.custom {
-		if len(m.custom) != len(o.custom) {
-			return false
-		}
 		if ov, ok := o.custom[k]; ok {
 			if !entryEqual(mv, ov) {
 				return false
