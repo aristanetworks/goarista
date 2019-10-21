@@ -16,6 +16,7 @@ import (
 
 	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/openconfig/gnmi/proto/gnmi_ext"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -175,7 +176,11 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	err = gnmi.Set(ctx, client, setOps, arb)
+	var exts []*gnmi_ext.Extension
+	if arb != nil {
+		exts = append(exts, arb)
+	}
+	err = gnmi.Set(ctx, client, setOps, exts...)
 	if err != nil {
 		glog.Fatal(err)
 	}
