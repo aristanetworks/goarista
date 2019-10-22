@@ -9,18 +9,6 @@ import (
 	"testing"
 )
 
-type tuple struct {
-	k, v interface{}
-}
-
-func formMap(pairs ...*tuple) *Map {
-	m := Map{}
-	for _, en := range pairs {
-		m.Set(en.k, en.v)
-	}
-	return &m
-}
-
 func TestMapEqual(t *testing.T) {
 	tests := []struct {
 		a      *Map
@@ -36,57 +24,57 @@ func TestMapEqual(t *testing.T) {
 		result: false,
 	}, { // map[string]interface{}
 		a:      &Map{normal: map[interface{}]interface{}{"a": 1}, length: 1},
-		b:      formMap(&tuple{"a", 1}),
+		b:      NewMap("a", 1),
 		result: true,
 	}, { // differing keys in normal
 		a:      &Map{normal: map[interface{}]interface{}{"a": "b"}, length: 1},
-		b:      formMap(&tuple{"b", "b"}),
+		b:      NewMap("b", "b"),
 		result: false,
 	}, { // differing values in normal
 		a:      &Map{normal: map[interface{}]interface{}{"a": "b"}, length: 1},
-		b:      formMap(&tuple{"a", false}),
+		b:      NewMap("a", false),
 		result: false,
 	}, { // multiple entries
 		a:      &Map{normal: map[interface{}]interface{}{"a": 1, "b": true}, length: 2},
-		b:      formMap(&tuple{"a", 1}, &tuple{"b", true}),
+		b:      NewMap("a", 1, "b", true),
 		result: true,
 	}, { // nested maps in values
 		a: &Map{
 			normal: map[interface{}]interface{}{"a": map[string]interface{}{"b": 3}},
 			length: 1},
-		b:      formMap(&tuple{"a", map[string]interface{}{"b": 3}}),
+		b:      NewMap("a", map[string]interface{}{"b": 3}),
 		result: true,
 	}, { // differing nested maps in values
 		a: &Map{
 			normal: map[interface{}]interface{}{"a": map[string]interface{}{"b": 3}},
 			length: 1},
-		b:      formMap(&tuple{"a", map[string]interface{}{"b": 4}}),
+		b:      NewMap("a", map[string]interface{}{"b": 4}),
 		result: false,
 	}, { // map with map as key
-		a:      formMap(&tuple{New(map[string]interface{}{"a": 123}), "b"}),
-		b:      formMap(&tuple{New(map[string]interface{}{"a": 123}), "b"}),
+		a:      NewMap(New(map[string]interface{}{"a": 123}), "b"),
+		b:      NewMap(New(map[string]interface{}{"a": 123}), "b"),
 		result: true,
 	}, {
-		a:      formMap(&tuple{New(map[string]interface{}{"a": 123}), "a"}),
-		b:      formMap(&tuple{New(map[string]interface{}{"a": 123}), "b"}),
+		a:      NewMap(New(map[string]interface{}{"a": 123}), "a"),
+		b:      NewMap(New(map[string]interface{}{"a": 123}), "b"),
 		result: false,
 	}, {
-		a:      formMap(&tuple{New(map[string]interface{}{"a": 123}), "b"}),
-		b:      formMap(&tuple{New(map[string]interface{}{"b": 123}), "b"}),
+		a:      NewMap(New(map[string]interface{}{"a": 123}), "b"),
+		b:      NewMap(New(map[string]interface{}{"b": 123}), "b"),
 		result: false,
 	}, {
-		a:      formMap(&tuple{New(map[string]interface{}{"a": 1, "b": 2}), "c"}),
-		b:      formMap(&tuple{New(map[string]interface{}{"a": 1, "b": 2}), "c"}),
+		a:      NewMap(New(map[string]interface{}{"a": 1, "b": 2}), "c"),
+		b:      NewMap(New(map[string]interface{}{"a": 1, "b": 2}), "c"),
 		result: true,
 	}, { // maps with keys that hash to same buckets
 		a: &Map{length: 3, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 1,
 				next: &entry{k: dumbHashable{dumb: "hashable2"}, v: 2,
 					next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 3}}}}},
-		b: formMap(
-			&tuple{dumbHashable{dumb: "hashable3"}, 3},
-			&tuple{dumbHashable{dumb: "hashable2"}, 2},
-			&tuple{dumbHashable{dumb: "hashable1"}, 1}),
+		b: NewMap(
+			dumbHashable{dumb: "hashable3"}, 3,
+			dumbHashable{dumb: "hashable2"}, 2,
+			dumbHashable{dumb: "hashable1"}, 1),
 		result: true,
 	}, { // maps with map as value
 		a: &Map{normal: map[interface{}]interface{}{
@@ -121,40 +109,48 @@ func (d dumbHashable) Hash() uint64 {
 func TestMapSet(t *testing.T) {
 	tests := []struct {
 		m      *Map
-		t      tuple
+		k      interface{}
+		v      interface{}
 		result *Map
 	}{{
 		m:      &Map{},
-		t:      tuple{},
+		k:      nil,
+		v:      nil,
 		result: &Map{},
 	}, {
 		m:      &Map{},
-		t:      tuple{"a", 1},
+		k:      "a",
+		v:      1,
 		result: &Map{normal: map[interface{}]interface{}{"a": 1}, length: 1},
 	}, {
 		m:      &Map{normal: map[interface{}]interface{}{"a": 1}, length: 1},
-		t:      tuple{"a", 1},
+		k:      "a",
+		v:      1,
 		result: &Map{normal: map[interface{}]interface{}{"a": 1}, length: 1},
 	}, {
 		m: &Map{},
-		t: tuple{dumbHashable{dumb: "hashable1"}, 42},
+		k: dumbHashable{dumb: "hashable1"},
+		v: 42,
 		result: &Map{length: 1, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
 	}, {
 		m: &Map{length: 1, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
-		t: tuple{dumbHashable{dumb: "hashable1"}, 0},
+		k: dumbHashable{dumb: "hashable1"},
+		v: 0,
 		result: &Map{length: 1, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 0}}},
 	}, {
 		m: &Map{},
-		t: tuple{dumbHashable{dumb: "hashable2"}, 42},
+		k: dumbHashable{dumb: "hashable2"},
+		v: 42,
 		result: &Map{length: 1, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42}}},
 	}, {
 		m: &Map{length: 1, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42}}},
-		t: tuple{dumbHashable{dumb: "hashable3"}, 42},
+		k: dumbHashable{dumb: "hashable3"},
+		v: 42,
 		result: &Map{length: 2, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
 				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42}}}},
@@ -162,7 +158,8 @@ func TestMapSet(t *testing.T) {
 		m: &Map{length: 2, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
 				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42}}}},
-		t: tuple{dumbHashable{dumb: "hashable4"}, 42},
+		k: dumbHashable{dumb: "hashable4"},
+		v: 42,
 		result: &Map{length: 3, custom: map[uint64]entry{
 			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
 				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
@@ -171,7 +168,7 @@ func TestMapSet(t *testing.T) {
 
 	for _, tcase := range tests {
 		setmap := tcase.m
-		setmap.Set(tcase.t.k, tcase.t.v)
+		setmap.Set(tcase.k, tcase.v)
 		if !setmap.Equal(tcase.result) {
 			t.Errorf("set map %#v does not equal expected result %#v", setmap, tcase.result)
 		}
@@ -353,15 +350,15 @@ func TestMapIter(t *testing.T) {
 		elems: []interface{}{dumbHashable{dumb: "hashable2"},
 			dumbHashable{dumb: "hashable3"}, dumbHashable{dumb: "hashable4"}},
 	}, {
-		m: formMap(
-			&tuple{New(map[string]interface{}{"a": 123}), "b"},
-			&tuple{New(map[string]interface{}{"c": 456}), "d"},
-			&tuple{dumbHashable{dumb: "hashable1"}, 1},
-			&tuple{dumbHashable{dumb: "hashable2"}, 2},
-			&tuple{dumbHashable{dumb: "hashable3"}, 3},
-			&tuple{"x", true},
-			&tuple{"y", false},
-			&tuple{"z", nil},
+		m: NewMap(
+			New(map[string]interface{}{"a": 123}), "b",
+			New(map[string]interface{}{"c": 456}), "d",
+			dumbHashable{dumb: "hashable1"}, 1,
+			dumbHashable{dumb: "hashable2"}, 2,
+			dumbHashable{dumb: "hashable3"}, 3,
+			"x", true,
+			"y", false,
+			"z", nil,
 		),
 		elems: []interface{}{
 			New(map[string]interface{}{"a": 123}), New(map[string]interface{}{"c": 456}),

@@ -21,6 +21,20 @@ type Map struct {
 	length int // length of the Map
 }
 
+// NewMap creates a new Map from a list of key-value pairs, so long as the list is of even length.
+func NewMap(keysAndVals ...interface{}) *Map {
+	len := len(keysAndVals)
+	if len%2 != 0 {
+		panic("Odd number of arguments passed to NewMap. Arguments should be of form: " +
+			"key1, value1, key2, value2, ...")
+	}
+	m := Map{}
+	for i := 0; i < len; i += 2 {
+		m.Set(keysAndVals[i], keysAndVals[i+1])
+	}
+	return &m
+}
+
 // String will output the string representation of the map
 func (m *Map) String() string {
 	// TODO
