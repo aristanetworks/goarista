@@ -195,6 +195,11 @@ func sliceEqual(a, b []interface{}) bool {
 	return true
 }
 
+// Equal compares two arbitrary interfaces for equality.
+func Equal(a, b interface{}) bool {
+	return keyEqual(a, b)
+}
+
 func keyEqual(a, b interface{}) bool {
 	switch a := a.(type) {
 	case map[string]interface{}:
