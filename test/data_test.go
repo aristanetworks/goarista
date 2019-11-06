@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/aristanetworks/goarista/key"
 )
@@ -62,6 +63,9 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	var deepEqualNullMapString map[string]interface{}
 	recursive := &complexCompare{}
 	recursive.p = recursive
+	time1 := time.Now()
+	time2 := time1.Add(time.Second)
+	time1a := time.Unix(0, time1.UnixNano())
 	return []deepEqualTestCase{{
 		a: nil,
 		b: nil,
@@ -496,6 +500,16 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a:    []byte("foo"),
 		b:    []byte("bar"),
 		diff: `[]byte("foo") != []byte("bar")`,
+	}, {
+		a: time1,
+		b: time1a,
+	}, {
+		a: time1,
+		b: time1.UTC(),
+	}, {
+		a:    time1,
+		b:    time2,
+		diff: fmt.Sprintf("time.Time values are different: %s vs %s", time1, time2),
 	}, {
 		a: embedder{builtinCompare: builtinCompare{}},
 		b: embedder{builtinCompare: builtinCompare{}},

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"math"
 	"reflect"
+	"time"
 
 	"github.com/aristanetworks/goarista/areflect"
 	"github.com/aristanetworks/goarista/key"
@@ -117,6 +118,10 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 
 	case key.Comparable:
 		return a.Equal(b)
+
+	case time.Time:
+		bt, ok := b.(time.Time)
+		return ok && a.Equal(bt)
 
 	case []uint32:
 		v, ok := b.([]uint32)

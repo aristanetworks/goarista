@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/aristanetworks/goarista/areflect"
 	"github.com/aristanetworks/goarista/key"
@@ -78,6 +79,13 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		}
 		return fmt.Sprintf("Comparable types are different: %s vs %s",
 			PrettyPrint(a), PrettyPrint(b))
+	}
+
+	if at, ok := a.(time.Time); ok {
+		if at.Equal(b.(time.Time)) {
+			return ""
+		}
+		return fmt.Sprintf("time.Time values are different: %s vs %s", at, b.(time.Time))
 	}
 
 	switch av.Kind() {
