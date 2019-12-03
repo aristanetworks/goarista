@@ -87,6 +87,12 @@ func entryEqual(a, b entry) bool {
 	return true
 }
 
+// Hashable represents the key for an entry in a Map that cannot natively be hashed
+type Hashable interface {
+	Hash() uint64
+	Equal(other interface{}) bool
+}
+
 // Equal compares two Maps
 func (m *Map) Equal(other interface{}) bool {
 	o, ok := other.(*Map)
@@ -114,10 +120,14 @@ func (m *Map) Equal(other interface{}) bool {
 	return true
 }
 
-// Hashable represents the key for an entry in a Map that cannot natively be hashed
-type Hashable interface {
-	Hash() uint64
-	Equal(other interface{}) bool
+// Hash returns the hash value of this Map
+func (m *Map) Hash() uint64 {
+	var h uintptr
+	m.Iter(func(k, v interface{}) error {
+		h += hashInterface(k) + hashInterface(v)
+		return nil
+	})
+	return uint64(h)
 }
 
 // Set adds a key-value pair to the Map

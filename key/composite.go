@@ -12,6 +12,9 @@ import (
 )
 
 func hashInterface(v interface{}) uintptr {
+	if vv, ok := v.(Key); ok {
+		v = vv.Key()
+	}
 	switch v := v.(type) {
 	case map[string]interface{}:
 		return hashMapString(v)
@@ -29,9 +32,16 @@ func hashInterface(v interface{}) uintptr {
 		// as values in maps or slices (i.e
 		// not wrapped in a kay).
 		return hashSlice(pathToSlice(v))
+	case Hashable:
+		return uintptr(v.Hash())
 	default:
 		return _nilinterhash(v)
 	}
+}
+
+// HashInterface computes the hash of a Key
+func HashInterface(v interface{}) uintptr {
+	return hashInterface(v)
 }
 
 func hashMapString(m map[string]interface{}) uintptr {

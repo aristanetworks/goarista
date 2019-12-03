@@ -80,7 +80,6 @@ func StringifyInterface(key interface{}) (string, error) {
 		return "[" + key.String() + "]", nil
 	case value.Value:
 		return key.String(), nil
-
 	default:
 		panic(fmt.Errorf("Unable to stringify type %T: %#v", key, key))
 	}
