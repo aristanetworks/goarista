@@ -193,8 +193,13 @@ func parseValue(update *pb.Update) (interface{}, string, bool) {
 	case *any.Any:
 		return value.String(), "", true
 	case []interface{}:
+		var v = ""
+		if update.Val != nil {
+			v = gnmi.StrVal(update.Val)
+		}
+
 		// extract string represetation for now
-		return gnmi.StrVal(update.Val), "", false
+		return v, "", false
 	case map[string]interface{}:
 		if vIntf, ok := value["value"]; ok {
 			if num, ok := vIntf.(json.Number); ok {
