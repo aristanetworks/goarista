@@ -2,7 +2,8 @@ language: go
 go:
 - 1.12.x
 - 1.x
-- master
+# Master disabled while until key.composite is replaced
+# - master
 before_install:
 - go get -v golang.org/x/lint/golint
 - go get -v -t -d ./...
