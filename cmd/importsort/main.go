@@ -11,8 +11,10 @@ import (
 	"fmt"
 	"go/build"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -205,12 +207,18 @@ func vcsRootImportPath(f string) (string, error) {
 func main() {
 	writeFile := flag.Bool("w", false, "write result to file instead of stdout")
 	listDiffFiles := flag.Bool("l", false, "list files whose formatting differs from importsort")
+	pattern := flag.String("exclude", "", "exclude filenames matching these regex pattern")
 	var sections multistring
 	flag.Var(&sections, "s", "package `prefix` to define an import section,"+
 		` ex: "cvshub.com/company". May be specified multiple times.`+
 		" If not specified the repository root is used.")
 
 	flag.Parse()
+
+	var compiledPattern *regexp.Regexp
+	if len(*pattern) > 0 {
+		compiledPattern = regexp.MustCompile(*pattern)
+	}
 
 	checkVCSRoot := sections == nil
 	for _, f := range flag.Args() {
@@ -223,14 +231,70 @@ func main() {
 				sections = multistring{root}
 			}
 		}
-		diff, err := processFile(f, *writeFile, *listDiffFiles, sections)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error while proccessing file %q: %s", f, err)
+		// check if input argument is a directory
+		info, err := os.Stat(f)
+		if err == nil && info.IsDir() {
+			err := filepath.Walk(f, visit(writeFile, listDiffFiles, sections, compiledPattern))
+			if err != nil {
+				log.Println(err)
+			}
 			continue
 		}
-		if *listDiffFiles && diff {
-			fmt.Println(f)
+
+		if err := process(f,
+			info.Name(),
+			writeFile,
+			listDiffFiles,
+			sections,
+			compiledPattern); err != nil {
+			fmt.Fprintf(os.Stderr, "error while proccessing file %q: %s", f, err)
 		}
+	}
+}
+
+func process(filepath,
+	filename string,
+	writeFile *bool,
+	listDiffFiles *bool,
+	sections multistring,
+	pattern *regexp.Regexp) error {
+	if pattern != nil {
+		if match := pattern.MatchString(filename); match {
+			return nil
+		}
+	}
+
+	diff, err := processFile(filepath, *writeFile, *listDiffFiles, sections)
+	if err != nil {
+		return err
+	}
+	if *listDiffFiles && diff {
+		fmt.Println(filepath)
+	}
+	return nil
+}
+
+func visit(writeFile *bool,
+	listDiffFiles *bool,
+	sections multistring,
+	patterns *regexp.Regexp) func(path string, info os.FileInfo, err error) error {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// only visit go files
+		if filepath.Ext(path) != ".go" {
+			return nil
+		}
+		if err := process(path,
+			info.Name(),
+			writeFile,
+			listDiffFiles,
+			sections,
+			patterns); err != nil {
+			fmt.Fprintf(os.Stderr, "error while proccessing file %q: %s", path, err)
+		}
+		return nil
 	}
 }
 
