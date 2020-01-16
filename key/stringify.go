@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/aristanetworks/goarista/value"
 )
 
 // StringifyInterface transforms an arbitrary interface into its string
@@ -78,7 +76,7 @@ func StringifyInterface(key interface{}) (string, error) {
 		return "{" + key.Pointer().String() + "}", nil
 	case Path:
 		return "[" + key.String() + "]", nil
-	case value.Value:
+	case fmt.Stringer:
 		return key.String(), nil
 	default:
 		panic(fmt.Errorf("Unable to stringify type %T: %#v", key, key))
