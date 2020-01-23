@@ -15,9 +15,7 @@ import (
 // Each element may either be a key.Key or a value that can
 // be wrapped by a key.Key.
 func New(elements ...interface{}) key.Path {
-	result := make(key.Path, len(elements))
-	copyElements(result, elements...)
-	return result
+	return appendElements(nil, elements...)
 }
 
 // Append appends a variable number of elements to a path.
@@ -26,14 +24,7 @@ func New(elements ...interface{}) key.Path {
 // single path returns that same path, whereas in all other
 // cases a new path is returned.
 func Append(path key.Path, elements ...interface{}) key.Path {
-	if len(elements) == 0 {
-		return path
-	}
-	n := len(path)
-	result := make(key.Path, n+len(elements))
-	copy(result, path)
-	copyElements(result[n:], elements...)
-	return result
+	return appendElements(path, elements...)
 }
 
 // Join joins a variable number of paths together. Each path
@@ -140,15 +131,28 @@ func FromString(str string) key.Path {
 	return result
 }
 
-func copyElements(dest key.Path, elements ...interface{}) {
-	for i, element := range elements {
+func appendElements(dest key.Path, elements ...interface{}) key.Path {
+	for _, element := range elements {
 		switch val := element.(type) {
 		case key.Key:
-			dest[i] = val
+			dest = append(dest, val)
+		case []key.Key:
+			dest = append(dest, val...)
+		case key.Path:
+			dest = append(dest, val...)
+		case []string:
+			for i := range val {
+				dest = append(dest, key.New(val[i]))
+			}
+		case []key.Path:
+			for i := range val {
+				dest = append(dest, val[i]...)
+			}
 		default:
-			dest[i] = key.New(val)
+			dest = append(dest, key.New(val))
 		}
 	}
+	return dest
 }
 
 func hasPrefix(a, b key.Path) bool {
