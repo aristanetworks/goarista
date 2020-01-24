@@ -14,10 +14,13 @@ import (
 	"unicode/utf8"
 )
 
-// StringifyInterface transforms an arbitrary interface into its string
-// representation.  We need to do this because some entities use the string
-// representation of their keys as their names.
-// Note: this API is deprecated and will be removed.
+type keyStringer interface {
+	KeyString() string
+}
+
+// StringifyInterface transforms an arbitrary interface into a string
+// representation suitable to be used as a key, such as in a JSON
+// object, or as a path element.
 func StringifyInterface(key interface{}) (string, error) {
 	var str string
 	switch key := key.(type) {
@@ -76,6 +79,8 @@ func StringifyInterface(key interface{}) (string, error) {
 		return "{" + key.Pointer().String() + "}", nil
 	case Path:
 		return "[" + key.String() + "]", nil
+	case keyStringer:
+		return key.KeyString(), nil
 	case fmt.Stringer:
 		return key.String(), nil
 	default:
