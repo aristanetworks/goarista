@@ -131,7 +131,15 @@ func FromString(str string) key.Path {
 	return result
 }
 
+// appendElements makes a copy of dest when elements is non-empty and
+// then appends elements to the copy and returns it.
 func appendElements(dest key.Path, elements ...interface{}) key.Path {
+	if len(elements) == 0 {
+		return dest
+	}
+	clone := make(key.Path, len(dest), len(dest)+len(elements))
+	copy(clone, dest)
+	dest = clone
 	for _, element := range elements {
 		switch val := element.(type) {
 		case key.Key:

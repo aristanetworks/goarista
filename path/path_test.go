@@ -701,3 +701,14 @@ func BenchmarkHasElement(b *testing.B) {
 		})
 	}
 }
+
+func TestAppendShouldCopy(t *testing.T) {
+	p := New("a", "b")
+	p = Append(p, "c")
+	d := Append(p, "d")
+	e := Append(p, "e")
+
+	if Equal(d, e) {
+		t.Errorf("paths d and e should not be equal: %s", e)
+	}
+}
