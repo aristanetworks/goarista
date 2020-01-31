@@ -11,7 +11,8 @@
 #                lab1: val3
 #                lab2: val4
 
-# Subscriptions to OpenConfig paths.
+# Subscriptions to paths.
+# The paths can be optionally prefixed with origin followed by colon (eg. eos_native:/Smash/counters/ethIntf)
 subscriptions:
         - /Smash/counters/ethIntf
         - /Smash/interface/counter/lag/current/counter

@@ -108,6 +108,12 @@ metrics:
 							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
 					},
 				},
+				subsByOrigin: map[string][]string{
+					"": []string{
+						"/Sysdb/environment/cooling/status",
+						"/Sysdb/environment/power/status",
+					},
+				},
 			},
 		},
 		{
@@ -161,6 +167,12 @@ metrics:
 							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
 					},
 				},
+				subsByOrigin: map[string][]string{
+					"": []string{
+						"/Sysdb/environment/cooling/status",
+						"/Sysdb/environment/power/status",
+					},
+				},
 			},
 		},
 		{
@@ -170,7 +182,7 @@ devicelabels:
                 lab1: val1
                 lab2: val2
 subscriptions:
-        - /Sysdb/environment/cooling/status
+        - eos_native:/Sysdb/environment/cooling/status
         - /Sysdb/environment/power/status
 metrics:
         - name: intfCounter
@@ -187,7 +199,7 @@ metrics:
 					},
 				},
 				Subscriptions: []string{
-					"/Sysdb/environment/cooling/status",
+					"eos_native:/Sysdb/environment/cooling/status",
 					"/Sysdb/environment/power/status",
 				},
 				Metrics: []*MetricDef{
@@ -214,6 +226,14 @@ metrics:
 							"10.1.1.1": prometheus.NewDesc("fanSpeed", "Fan Speed", []string{},
 								prometheus.Labels{"lab1": "val1", "lab2": "val2"}),
 						},
+					},
+				},
+				subsByOrigin: map[string][]string{
+					"": []string{
+						"/Sysdb/environment/power/status",
+					},
+					"eos_native": []string{
+						"/Sysdb/environment/cooling/status",
 					},
 				},
 			},
@@ -257,6 +277,12 @@ metrics:
 						devDesc: map[string]*prometheus.Desc{},
 						desc: prometheus.NewDesc("fanSpeed", "Fan Speed", []string{},
 							prometheus.Labels{}),
+					},
+				},
+				subsByOrigin: map[string][]string{
+					"": []string{
+						"/Sysdb/environment/cooling/status",
+						"/Sysdb/environment/power/status",
 					},
 				},
 			},

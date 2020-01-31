@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
@@ -23,6 +24,9 @@ type Config struct {
 
 	// Metrics to collect and how to munge them.
 	Metrics []*MetricDef
+
+	// Subscribed paths by their origin
+	subsByOrigin map[string][]string
 }
 
 // MetricDef is the representation of a metric definiton in the config file.
@@ -73,6 +77,10 @@ func parseConfig(cfg []byte) (*Config, error) {
 	if err := yaml.Unmarshal(cfg, config); err != nil {
 		return nil, fmt.Errorf("Failed to parse config: %v", err)
 	}
+
+	config.subsByOrigin = make(map[string][]string)
+	config.addSubscriptions(config.Subscriptions)
+
 	for _, def := range config.Metrics {
 		def.re = regexp.MustCompile(def.Path)
 		// Extract label names
@@ -137,6 +145,18 @@ func (c *Config) getAllDescs(ch chan<- *prometheus.Desc) {
 
 		for _, desc := range def.devDesc {
 			ch <- desc
+		}
+	}
+}
+
+func (c *Config) addSubscriptions(subscriptions []string) {
+	for _, sub := range subscriptions {
+		parts := strings.SplitN(sub, ":", 2)
+		if len(parts) == 1 || len(parts[0]) == 0 || parts[0][0] == '/' {
+			c.subsByOrigin[""] = append(c.subsByOrigin[""], sub)
+		} else {
+			origin := parts[0]
+			c.subsByOrigin[origin] = append(c.subsByOrigin[origin], parts[1])
 		}
 	}
 }

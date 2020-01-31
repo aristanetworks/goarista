@@ -58,8 +58,8 @@ func main() {
 	if subscriptions[0] == "/" {
 		subscriptions = subscriptions[1:]
 	}
-	// Add the subscriptions from the config file.
-	subscriptions = append(subscriptions, config.Subscriptions...)
+	// Add to the subscriptions in the config file.
+	config.addSubscriptions(subscriptions)
 
 	coll := newCollector(config)
 	prometheus.MustRegister(coll)
@@ -70,12 +70,15 @@ func main() {
 	}
 
 	respChan := make(chan *pb.SubscribeResponse)
-	subscribeOptions := &gnmi.SubscribeOptions{
-		Mode:       "stream",
-		StreamMode: "target_defined",
-		Paths:      gnmi.SplitPaths(subscriptions),
+	for origin, paths := range config.subsByOrigin {
+		subscribeOptions := &gnmi.SubscribeOptions{
+			Mode:       "stream",
+			StreamMode: "target_defined",
+			Paths:      gnmi.SplitPaths(paths),
+			Origin:     origin,
+		}
+		go handleSubscription(ctx, client, subscribeOptions, respChan, coll, gNMIcfg.Addr)
 	}
-	go handleSubscription(ctx, client, subscribeOptions, respChan, coll, gNMIcfg.Addr)
 	http.Handle(*url, promhttp.Handler())
 	glog.Fatal(http.ListenAndServe(*listenaddr, nil))
 }
