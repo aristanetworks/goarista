@@ -27,6 +27,12 @@ func DeepEqual(a, b interface{}) bool {
 	return deepEqual(a, b, nil)
 }
 
+// DeepEqualer allows collection types to compare their values using a
+// given comparator.
+type DeepEqualer interface {
+	DeepEqual(other interface{}, comparer func(a, b interface{}) bool) bool
+}
+
 func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -115,6 +121,11 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			return errorStringFromError(a) == errorStringFromError(sb)
 		}
 		return false
+
+	case DeepEqualer:
+		return a.DeepEqual(b, func(x, y interface{}) bool {
+			return deepEqual(x, y, seen)
+		})
 
 	case key.Comparable:
 		return a.Equal(b)

@@ -73,6 +73,15 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		return ac.Diff(b.(diffable))
 	}
 
+	if ad, ok := a.(DeepEqualer); ok {
+		if ad.DeepEqual(b.(DeepEqualer), func(x, y interface{}) bool {
+			return deepEqual(x, y, seen)
+		}) {
+			return ""
+		}
+		return fmt.Sprintf("DeepEqualer types are different: %v vs %v", a, b)
+	}
+
 	if ac, ok := a.(key.Comparable); ok {
 		if ac.Equal(b.(key.Comparable)) {
 			return ""
