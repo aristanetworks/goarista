@@ -7,8 +7,27 @@ package key
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 )
+
+func (m *Map) debug() string {
+	var buf strings.Builder
+	for hash, entry := range m.custom {
+		fmt.Fprintf(&buf, "%d: ", hash)
+		first := true
+		_ = entryIter(entry, func(k, v interface{}) error {
+			if !first {
+				buf.WriteString(" -> ")
+			}
+			first = false
+			fmt.Fprintf(&buf, "{%v:%v}", k, v)
+			return nil
+		})
+		buf.WriteByte('\n')
+	}
+	return buf.String()
+}
 
 func TestMapEqual(t *testing.T) {
 	tests := []struct {
@@ -67,11 +86,11 @@ func TestMapEqual(t *testing.T) {
 		a:      NewMap(New(map[string]interface{}{"a": 1, "b": 2}), "c"),
 		b:      NewMap(New(map[string]interface{}{"a": 1, "b": 2}), "c"),
 		result: true,
-	}, { // maps with keys that hash to same buckets
-		a: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 1,
-				next: &entry{k: dumbHashable{dumb: "hashable2"}, v: 2,
-					next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 3}}}}},
+	}, { // maps with keys that hash to same buckets in different order
+		a: NewMap(
+			dumbHashable{dumb: "hashable1"}, 1,
+			dumbHashable{dumb: "hashable2"}, 2,
+			dumbHashable{dumb: "hashable3"}, 3),
 		b: NewMap(
 			dumbHashable{dumb: "hashable3"}, 3,
 			dumbHashable{dumb: "hashable2"}, 2,
@@ -107,72 +126,101 @@ func (d dumbHashable) Hash() uint64 {
 	return 1234567890
 }
 
-func TestMapSet(t *testing.T) {
-	tests := []struct {
-		m      *Map
-		k      interface{}
-		v      interface{}
-		result *Map
-	}{{
-		m:      &Map{},
-		k:      nil,
-		v:      nil,
-		result: &Map{},
-	}, {
-		m:      &Map{},
-		k:      "a",
-		v:      1,
-		result: &Map{normal: map[interface{}]interface{}{"a": 1}, length: 1},
-	}, {
-		m:      &Map{normal: map[interface{}]interface{}{"a": 1}, length: 1},
-		k:      "a",
-		v:      1,
-		result: &Map{normal: map[interface{}]interface{}{"a": 1}, length: 1},
-	}, {
-		m: &Map{},
-		k: dumbHashable{dumb: "hashable1"},
-		v: 42,
-		result: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
-	}, {
-		m: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
-		k: dumbHashable{dumb: "hashable1"},
-		v: 0,
-		result: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 0}}},
-	}, {
-		m: &Map{},
-		k: dumbHashable{dumb: "hashable2"},
-		v: 42,
-		result: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42}}},
-	}, {
-		m: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42}}},
-		k: dumbHashable{dumb: "hashable3"},
-		v: 42,
-		result: &Map{length: 2, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42}}}},
-	}, {
-		m: &Map{length: 2, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42}}}},
-		k: dumbHashable{dumb: "hashable4"},
-		v: 42,
-		result: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
-	}}
-
-	for _, tcase := range tests {
-		setmap := tcase.m
-		setmap.Set(tcase.k, tcase.v)
-		if !setmap.Equal(tcase.result) {
-			t.Errorf("set map %#v does not equal expected result %#v", setmap, tcase.result)
+func TestMapEntry(t *testing.T) {
+	m := NewMap()
+	verifyPresent := func(k, v interface{}) {
+		t.Helper()
+		if got, ok := m.Get(k); !ok || got != v {
+			t.Errorf("Get(%v): expected %v, got %v", k, v, got)
 		}
+	}
+	verifyAbsent := func(k interface{}) {
+		t.Helper()
+		if got, ok := m.Get(k); ok {
+			t.Errorf("Get(%v): expected not found, got %v", k, got)
+		}
+	}
+
+	// create entry list 1 -> 2 -> 3
+	for i := 1; i <= 3; i++ {
+		m.Set(dumbHashable{i}, 0)
+		if m.Len() != i {
+			t.Errorf("expected len %d, got %d", i, m.Len())
+		}
+		verifyPresent(dumbHashable{i}, 0)
+	}
+	if len(m.custom) != 1 {
+		t.Errorf("expected custom map to have 1 entry list, got %d", len(m.custom))
+	}
+	if m.Len() != 3 {
+		t.Errorf("expected len of 3, got %d", m.Len())
+	}
+
+	// overwrite list members
+	for i := 1; i <= 3; i++ {
+		m.Set(dumbHashable{i}, i)
+		verifyPresent(dumbHashable{i}, i)
+	}
+	if m.Len() != 3 {
+		t.Errorf("expected len of 3, got %d", m.Len())
+	}
+	t.Log(m.debug())
+
+	// delete nonexistant member
+	m.Del(dumbHashable{4})
+	if m.Len() != 3 {
+		t.Errorf("expected len of 3, got %d", m.Len())
+	}
+
+	// Check that iter works
+	i := 1
+	_ = m.Iter(func(k, v interface{}) error {
+		exp := dumbHashable{i}
+		if k != exp {
+			t.Errorf("expected key %v got %v", exp, k)
+		}
+		if v != i {
+			t.Errorf("expected val %d got %v", i, v)
+		}
+		i++
+		return nil
+	})
+
+	// delete middle of list
+	m.Del(dumbHashable{2})
+	verifyPresent(dumbHashable{1}, 1)
+	verifyAbsent(dumbHashable{2})
+	verifyPresent(dumbHashable{3}, 3)
+	if m.Len() != 2 {
+		t.Errorf("expected len of 2, got %d", m.Len())
+	}
+
+	// delete end of list
+	m.Del(dumbHashable{3})
+	verifyPresent(dumbHashable{1}, 1)
+	verifyAbsent(dumbHashable{3})
+	if m.Len() != 1 {
+		t.Errorf("expected len of 1, got %d", m.Len())
+	}
+
+	m.Set(dumbHashable{2}, 2)
+	// delete head of list with next member
+	m.Del(dumbHashable{1})
+	verifyAbsent(dumbHashable{1})
+	verifyPresent(dumbHashable{2}, 2)
+	if m.Len() != 1 {
+		t.Errorf("expected len of 1, got %d", m.Len())
+	}
+
+	// delete final list member
+	m.Del(dumbHashable{2})
+	verifyAbsent(dumbHashable{2})
+	if m.Len() != 0 {
+		t.Errorf("expected len of 0, got %d", m.Len())
+	}
+
+	if len(m.custom) != 0 {
+		t.Errorf("expected m.custom to be empty, but got len %d", len(m.custom))
 	}
 }
 
@@ -252,59 +300,21 @@ func TestMapDel(t *testing.T) {
 		del interface{}
 		exp *Map
 	}{{
-		m:   &Map{},
+		m:   NewMap(),
 		del: "a",
-		exp: &Map{},
+		exp: NewMap(),
 	}, {
-		m:   &Map{},
+		m:   NewMap(),
 		del: New(map[string]interface{}{"a": 1}),
-		exp: &Map{},
+		exp: NewMap(),
 	}, {
-		m:   &Map{normal: map[interface{}]interface{}{"a": true}, length: 1},
+		m:   NewMap("a", true),
 		del: "a",
-		exp: &Map{},
+		exp: NewMap(),
 	}, {
-		m: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
+		m:   NewMap(dumbHashable{dumb: "hashable1"}, 42),
 		del: dumbHashable{dumb: "hashable1"},
-		exp: &Map{},
-	}, {
-		m: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
-		del: dumbHashable{dumb: "hashable2"},
-		exp: &Map{length: 2, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}},
-	}, {
-		m: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
-		del: dumbHashable{dumb: "hashable3"},
-		exp: &Map{length: 2, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}},
-	}, {
-		m: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
-		del: dumbHashable{dumb: "hashable4"},
-		exp: &Map{length: 2, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42}}}},
-	}, {
-		m: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
-		del: dumbHashable{dumb: "hashable5"},
-		exp: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+		exp: NewMap(),
 	}}
 
 	for _, tcase := range tests {
@@ -330,24 +340,18 @@ func TestMapIter(t *testing.T) {
 		m     *Map
 		elems []interface{}
 	}{{
-		m:     &Map{},
+		m:     NewMap(),
 		elems: []interface{}{},
 	}, {
-		m:     &Map{normal: map[interface{}]interface{}{"a": true}, length: 1},
+		m:     NewMap("a", true),
 		elems: []interface{}{"a"},
 	}, {
-		m: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
+		m:     NewMap(dumbHashable{dumb: "hashable1"}, 42),
 		elems: []interface{}{dumbHashable{dumb: "hashable1"}},
 	}, {
-		m: &Map{length: 1, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable1"}, v: 42}}},
-		elems: []interface{}{dumbHashable{dumb: "hashable1"}},
-	}, {
-		m: &Map{length: 3, custom: map[uint64]entry{
-			1234567890: entry{k: dumbHashable{dumb: "hashable2"}, v: 42,
-				next: &entry{k: dumbHashable{dumb: "hashable3"}, v: 42,
-					next: &entry{k: dumbHashable{dumb: "hashable4"}, v: 42}}}}},
+		m: NewMap(dumbHashable{dumb: "hashable2"}, 42,
+			dumbHashable{dumb: "hashable3"}, 42,
+			dumbHashable{dumb: "hashable4"}, 42),
 		elems: []interface{}{dumbHashable{dumb: "hashable2"},
 			dumbHashable{dumb: "hashable3"}, dumbHashable{dumb: "hashable4"}},
 	}, {

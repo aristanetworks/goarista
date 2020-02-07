@@ -11,15 +11,6 @@ import (
 	"strings"
 )
 
-// An entry represents an entry in a map whose key is not normally hashable,
-// and is therefore of type Hashable
-// (that is, a Hash method has been defined for this entry's key, and we can index it)
-type entry struct {
-	k    Hashable
-	v    interface{}
-	next *entry
-}
-
 // Map allows the indexing of entries with arbitrary key types, so long as the keys are
 // either hashable natively or implement Hashable
 type Map struct {
@@ -80,6 +71,119 @@ func (m *Map) Len() int {
 	return m.length
 }
 
+// An entry represents an entry in a map whose key is not normally hashable,
+// and is therefore of type Hashable
+// (that is, a Hash method has been defined for this entry's key, and we can index it)
+//
+// Because hash collisions are possible (though unlikely), an entry is
+// actually a linked list. To save space, the valOrNext field serves
+// double-duty. It is either just the value associated with the
+// entry's key, indicating the end of the list, or it contains a
+// *chainedEntry. A chainedEntry holds the key's value and the next
+// entry (which may also contain a *chainedEntry).
+type entry struct {
+	k Hashable
+	// contains a value or *chainedEntry
+	valOrNext interface{}
+}
+
+type chainedEntry struct {
+	val interface{}
+	entry
+}
+
+// entrySearch searches entry for matching keys. It returns the
+// containing entry if found, and the last entry in the chain if not
+// found.
+func entrySearch(ent *entry, k Hashable) (containing *entry, found bool) {
+	for {
+		if k.Equal(ent.k) {
+			return ent, true
+		}
+		chEnt, ok := ent.valOrNext.(*chainedEntry)
+		if !ok {
+			return ent, false
+		}
+		ent = &chEnt.entry
+	}
+}
+
+func entryGetValue(ent *entry) interface{} {
+	if chEnt, ok := ent.valOrNext.(*chainedEntry); ok {
+		return chEnt.val
+	}
+	return ent.valOrNext
+}
+
+func entrySetValue(ent *entry, v interface{}) {
+	if chEnt, ok := ent.valOrNext.(*chainedEntry); ok {
+		chEnt.val = v
+		return
+	}
+	ent.valOrNext = v
+}
+
+// entryAppend appends a new entry to the end of ent.
+func entryAppend(ent *entry, k Hashable, v interface{}) {
+	if _, ok := ent.valOrNext.(*chainedEntry); ok {
+		panic("chained entry passed to entryAppend ")
+	}
+	ent.valOrNext = &chainedEntry{
+		val: ent.valOrNext,
+		entry: entry{
+			k:         k,
+			valOrNext: v,
+		},
+	}
+}
+
+// entryRemove removes an entry that has key k. The new head entry is
+// returned along with true if k is found and removed, and false if
+// not found.
+func entryRemove(head *entry, k Hashable) (*entry, bool) {
+	if k.Equal(head.k) {
+		// head of list matches
+		if chEnt, ok := head.valOrNext.(*chainedEntry); ok {
+			return &chEnt.entry, true
+		}
+		return nil, true
+	}
+	prev := head
+	for {
+		next, ok := prev.valOrNext.(*chainedEntry)
+		if !ok {
+			// reached end of chain, not found
+			return head, false
+		}
+		if k.Equal(next.entry.k) {
+			if nextNext, ok := next.entry.valOrNext.(*chainedEntry); ok {
+				// Remove next from entry list, but next contains
+				// prev's val, so move that into nextNext.
+				nextNext.val = next.val
+				prev.valOrNext = nextNext
+			} else {
+				// Remove end of the list
+				prev.valOrNext = next.val
+			}
+			return head, true
+		}
+		prev = &next.entry
+	}
+}
+
+func entryIter(ent entry, f func(k, v interface{}) error) error {
+	for {
+		if chEnt, ok := ent.valOrNext.(*chainedEntry); ok {
+			if err := f(ent.k, chEnt.val); err != nil {
+				return err
+			}
+			ent = chEnt.entry
+			continue
+		}
+		return f(ent.k, ent.valOrNext)
+	}
+}
+
 // Hashable represents the key for an entry in a Map that cannot natively be hashed
 type Hashable interface {
 	Hash() uint64
@@ -132,34 +236,29 @@ func (m *Map) Set(k, v interface{}) {
 		h := hkey.Hash()
 		rootentry, ok := m.custom[h]
 		if !ok {
-			rootentry = entry{k: hkey, v: v}
-		} else {
-			var prev *entry
-			curr := &rootentry
-			for curr != nil {
-				if curr.k.Equal(hkey) {
-					curr.v = v
-					m.custom[h] = rootentry
-					return
-				}
-				prev = curr
-				curr = prev.next
-			}
-			prev.next = &entry{k: hkey, v: v}
+			m.custom[h] = entry{k: hkey, valOrNext: v}
+			m.length++
+			return
 		}
-		// write the stack back
+		ent, found := entrySearch(&rootentry, hkey)
+		if found {
+			entrySetValue(ent, v)
+			m.custom[h] = rootentry
+			return
+		}
+		entryAppend(ent, hkey, v)
 		m.custom[h] = rootentry
+		m.length++
 	} else {
 		if m.normal == nil {
 			m.normal = make(map[interface{}]interface{})
 		}
 		l := len(m.normal)
 		m.normal[k] = v
-		if l == len(m.normal) { // len hasn't changed
-			return
+		if l != len(m.normal) { // len has changed
+			m.length++
 		}
 	}
-	m.length++
 }
 
 // Get retrieves the value stored with key k from the Map
@@ -170,14 +269,11 @@ func (m *Map) Get(k interface{}) (interface{}, bool) {
 		if !ok {
 			return nil, false
 		}
-		curr := &hentry
-		for curr != nil {
-			if curr.k.Equal(hkey) {
-				return curr.v, true
-			}
-			curr = curr.next
+		ent, found := entrySearch(&hentry, hkey)
+		if !found {
+			return nil, false
 		}
-		return nil, false
+		return entryGetValue(ent), true
 	}
 	v, ok := m.normal[k]
 	return v, ok
@@ -194,26 +290,15 @@ func (m *Map) Del(k interface{}) {
 		if !ok {
 			return
 		}
-		var prev *entry
-		curr := &hentry
-		for curr != nil {
-			if curr.k.Equal(hkey) { // del
-				if prev == nil { // delete the head
-					if curr.next == nil { // no more entries at this hash, remove it
-						delete(m.custom, h)
-					} else {
-						m.custom[h] = *curr.next
-					}
-				} else {
-					// delete a mid/tail entry node
-					prev.next = curr.next
-					m.custom[h] = hentry
-				}
-				m.length--
-				return
-			}
-			prev = curr
-			curr = curr.next
+		newEnt, found := entryRemove(&hentry, hkey)
+		if !found {
+			return
+		}
+		m.length--
+		if newEnt == nil {
+			delete(m.custom, h)
+		} else {
+			m.custom[h] = *newEnt
 		}
 		return
 	}
@@ -235,13 +320,9 @@ func (m *Map) Iter(f func(k, v interface{}) error) error {
 			return err
 		}
 	}
-	for _, e := range m.custom {
-		curr := &e
-		for curr != nil {
-			if err := f(curr.k, curr.v); err != nil {
-				return err
-			}
-			curr = curr.next
+	for _, ent := range m.custom {
+		if err := entryIter(ent, f); err != nil {
+			return err
 		}
 	}
 	return nil
