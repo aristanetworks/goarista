@@ -384,3 +384,35 @@ func TestMapIter(t *testing.T) {
 		}
 	}
 }
+
+func TestMapString(t *testing.T) {
+	for _, tc := range []struct {
+		m *Map
+		s string
+	}{{
+		m: NewMap(),
+		s: "key.Map[]",
+	}, {
+		m: NewMap("1", "2"),
+		s: "key.Map[1:2]",
+	}, {
+		m: NewMap(
+			"3", "4",
+			"1", "2",
+		),
+		s: "key.Map[1:2 3:4]",
+	}, {
+		m: NewMap(
+			New(map[string]interface{}{"key1": uint32(1), "key2": uint32(2)}), "foobar",
+			New(map[string]interface{}{"key1": uint32(3), "key2": uint32(4)}), "bazquux",
+		),
+		s: "key.Map[1_2:foobar 3_4:bazquux]",
+	}} {
+		t.Run(tc.s, func(t *testing.T) {
+			out := tc.m.String()
+			if out != tc.s {
+				t.Errorf("expected %q got %q", tc.s, out)
+			}
+		})
+	}
+}

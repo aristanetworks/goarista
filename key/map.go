@@ -4,6 +4,12 @@
 
 package key
 
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
 // An entry represents an entry in a map whose key is not normally hashable,
 // and is therefore of type Hashable
 // (that is, a Hash method has been defined for this entry's key, and we can index it)
@@ -35,10 +41,37 @@ func NewMap(keysAndVals ...interface{}) *Map {
 	return &m
 }
 
-// String will output the string representation of the map
+// String outputs the string representation of the map
 func (m *Map) String() string {
-	// TODO
-	return ""
+	stringify := func(v interface{}) string {
+		if s, ok := v.(fmt.Stringer); ok {
+			return s.String()
+		}
+		return fmt.Sprint(v)
+	}
+	type kv struct {
+		k string
+		v string
+	}
+	kvs := make([]kv, 0, m.Len())
+	_ = m.Iter(func(k, v interface{}) error {
+		kvs = append(kvs, kv{
+			k: stringify(k),
+			v: stringify(v),
+		})
+		return nil
+	})
+	sort.Slice(kvs, func(i, j int) bool { return kvs[i].k < kvs[j].k })
+	var buf strings.Builder
+	buf.WriteString("key.Map[")
+	for i, kv := range kvs {
+		if i != 0 {
+			buf.WriteByte(' ')
+		}
+		buf.WriteString(kv.k + ":" + kv.v)
+	}
+	buf.WriteString("]")
+	return buf.String()
 }
 
 // Len returns the length of the Map
