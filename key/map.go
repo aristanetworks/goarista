@@ -5,6 +5,7 @@
 package key
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -79,47 +80,6 @@ func (m *Map) Len() int {
 	return m.length
 }
 
-// true if two arbitrary maps are equal
-func mapEqual(a, b map[interface{}]interface{}) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k, av := range a {
-		bv, ok := b[k]
-		if !ok {
-			return false
-		}
-		if !keyEqual(av, bv) {
-			return false
-		}
-	}
-	return true
-}
-
-// true if entry a in entry list b
-func findEntry(a, b entry) bool {
-	bn := &b
-	for bn != nil {
-		if a.k.Equal(bn.k) {
-			return keyEqual(a.v, bn.v)
-		}
-		bn = bn.next
-	}
-	return false
-}
-
-// return true if all entries in list a can be found in b
-func entryEqual(a, b entry) bool {
-	an := &a
-	for an != nil {
-		if !findEntry(*an, b) {
-			return false
-		}
-		an = an.next
-	}
-	return true
-}
-
 // Hashable represents the key for an entry in a Map that cannot natively be hashed
 type Hashable interface {
 	Hash() uint64
@@ -135,22 +95,17 @@ func (m *Map) Equal(other interface{}) bool {
 	if m.length != o.length {
 		return false
 	}
-	if !mapEqual(m.normal, o.normal) {
-		return false
-	}
-	if len(m.custom) != len(o.custom) {
-		return false
-	}
-	for k, mv := range m.custom {
-		if ov, ok := o.custom[k]; ok {
-			if !entryEqual(mv, ov) {
-				return false
-			}
-		} else {
-			return false
+	err := m.Iter(func(k, v interface{}) error {
+		otherV, ok := o.Get(k)
+		if !ok {
+			return errors.New("notequal")
 		}
-	}
-	return true
+		if !keyEqual(v, otherV) {
+			return errors.New("notequal")
+		}
+		return nil
+	})
+	return err == nil
 }
 
 // Hash returns the hash value of this Map
