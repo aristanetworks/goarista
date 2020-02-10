@@ -153,8 +153,17 @@ func StrVal(val *pb.TypedValue) string {
 }
 
 func strJSON(inJSON []byte) string {
-	var out bytes.Buffer
-	err := json.Indent(&out, inJSON, "", "  ")
+	var (
+		out bytes.Buffer
+		err error
+	)
+	// Check for ',' as simple heuristic on whether to expand JSON
+	// onto multiple lines, or compact it to a single line.
+	if bytes.Contains(inJSON, []byte{','}) {
+		err = json.Indent(&out, inJSON, "", "  ")
+	} else {
+		err = json.Compact(&out, inJSON)
+	}
 	if err != nil {
 		return fmt.Sprintf("(error unmarshalling json: %s)\n", err) + string(inJSON)
 	}

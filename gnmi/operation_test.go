@@ -126,18 +126,14 @@ func TestStrUpdateVal(t *testing.T) {
 				Value: &pb.Value{
 					Value: []byte(`{"foo":"bar"}`),
 					Type:  pb.Encoding_JSON}},
-			exp: `{
-  "foo": "bar"
-}`,
+			exp: `{"foo":"bar"}`,
 		},
 		"JSON_IETF Value": {
 			update: &pb.Update{
 				Value: &pb.Value{
 					Value: []byte(`{"foo":"bar"}`),
 					Type:  pb.Encoding_JSON_IETF}},
-			exp: `{
-  "foo": "bar"
-}`,
+			exp: `{"foo":"bar"}`,
 		},
 		"BYTES Value": {
 			update: &pb.Update{
@@ -222,16 +218,20 @@ func TestStrUpdateVal(t *testing.T) {
 		"JsonVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
 				Value: &pb.TypedValue_JsonVal{JsonVal: []byte(`{"foo":"bar"}`)}}},
+			exp: `{"foo":"bar"}`,
+		},
+		"JsonVal_complex": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_JsonVal{JsonVal: []byte(`{"foo":"bar","baz":"qux"}`)}}},
 			exp: `{
-  "foo": "bar"
+  "foo": "bar",
+  "baz": "qux"
 }`,
 		},
 		"JsonIetfVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
 				Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte(`{"foo":"bar"}`)}}},
-			exp: `{
-  "foo": "bar"
-}`,
+			exp: `{"foo":"bar"}`,
 		},
 		"AsciiVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
