@@ -26,6 +26,7 @@ require (
 	github.com/xtaci/kcp-go v5.4.5+incompatible
 	github.com/xtaci/lossyconn v0.0.0-20190602105132-8df528c0c9ae // indirect
 	golang.org/x/net v0.0.0-20190912160710-24e19bdeb0f2
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20190912141932-bc967efca4b8
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	golang.org/x/tools v0.0.0-20190912185636-87d9f09c5d89
