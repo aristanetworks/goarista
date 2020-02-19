@@ -66,6 +66,8 @@ func main() {
 	arbitrationStr := flag.String("arbitration", "", "master arbitration identifier "+
 		"([<role_id>:]<election_id>)")
 
+	debug := flag.String("debug", "", "Enable a debug mode:\n"+
+		"  'proto' : prints SubscribeResponses in protobuf text format")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, help)
 		flag.PrintDefaults()
@@ -154,10 +156,19 @@ func main() {
 			g.Go(func() error {
 				return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan)
 			})
-			for resp := range respChan {
-				if err := gnmi.LogSubscribeResponse(resp); err != nil {
-					glog.Fatal(err)
+			switch *debug {
+			case "proto":
+				for resp := range respChan {
+					fmt.Println(resp)
 				}
+			case "":
+				for resp := range respChan {
+					if err := gnmi.LogSubscribeResponse(resp); err != nil {
+						glog.Fatal(err)
+					}
+				}
+			default:
+				usageAndExit(fmt.Sprintf("unknown debug option: %q", *debug))
 			}
 			if err := g.Wait(); err != nil {
 				glog.Fatal(err)
