@@ -1,0 +1,15 @@
+// Copyright (c) 2020 Arista Networks, Inc.
+// Use of this source code is governed by the Apache License 2.0
+// that can be found in the COPYING file.
+
+syntax = "proto3";
+
+import "github.com/openconfig/gnmi/proto/gnmi/gnmi.proto";
+
+package gnmireverse;
+
+service gNMIReverse {
+  rpc Publish(stream gnmi.SubscribeResponse) returns (Empty);
+}
+
+message Empty {}
