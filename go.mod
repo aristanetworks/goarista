@@ -19,7 +19,6 @@ require (
 	github.com/openconfig/reference v0.0.0-20190727015836-8dfd928c9696
 	github.com/prometheus/client_golang v1.1.0
 	github.com/satori/go.uuid v1.2.0 // indirect
-	github.com/stretchr/testify v1.3.0
 	github.com/templexxx/cpufeat v0.0.0-20180724012125-cef66df7f161 // indirect
 	github.com/templexxx/xor v0.0.0-20181023030647-4e92f724b73b // indirect
 	github.com/tjfoc/gmsm v1.0.1 // indirect
