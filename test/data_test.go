@@ -450,20 +450,21 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		b: map[key.Key]string{key.New(map[string]interface{}{"a": true}): "b"},
 	}, {
 		a: key.New(map[string]interface{}{
-			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 42}): true}}),
+			"a": key.NewMap(key.New(map[string]interface{}{"k": 42}), true)}),
 		b: key.New(map[string]interface{}{
-			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 42}): true}}),
+			"a": key.NewMap(key.New(map[string]interface{}{"k": 42}), true)}),
 	}, {
 		a: key.New(map[string]interface{}{
-			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 42}): true}}),
+			"a": key.NewMap(key.New(map[string]interface{}{"k": 42}), true)}),
 		b: key.New(map[string]interface{}{
-			"a": map[key.Key]interface{}{key.New(map[string]interface{}{"k": 51}): true}}),
+			"a": key.NewMap(key.New(map[string]interface{}{"k": 51}), true)}),
 		diff: `Comparable types are different: ` +
 			`key.compositeKey{sentinel:uintptr(18379810577513696751), m:map[string]interface {}` +
-			`{"a":map[key.Key]interface {}{<max_depth>:<max_depth>}}, s:[]interface {}{}}` +
-			` vs key.compositeKey{sentinel:uintptr(18379810577513696751), ` +
-			`m:map[string]interface {}{"a":map[key.Key]interface {}` +
-			`{<max_depth>:<max_depth>}}, s:[]interface {}{}}`,
+			`{"a":*key.Map{normal:<max_depth>, custom:<max_depth>, length:<max_depth>}}, ` +
+			`s:[]interface {}{}} vs ` +
+			`key.compositeKey{sentinel:uintptr(18379810577513696751), m:map[string]interface {}` +
+			`{"a":*key.Map{normal:<max_depth>, custom:<max_depth>, length:<max_depth>}}, ` +
+			`s:[]interface {}{}}`,
 	}, {
 		a: fmt.Errorf("This is a %d error", 42),
 		b: errors.New("This is a 42 error"),

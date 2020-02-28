@@ -2,10 +2,12 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-// +build go1.12
+// +build go1.12,!go1.14
 
 // Format testing depends on map sorting during print introduced in
 // go1.12.
+// Key used as map key for composite keys is disallowed in go1.14+,
+// so stop building when we get there
 
 package key
 

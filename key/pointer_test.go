@@ -114,12 +114,11 @@ func TestPointerEqual(t *testing.T) {
 
 func TestPointerAsKey(t *testing.T) {
 	a := key.NewPointer(path.New("foo", path.Wildcard, map[string]interface{}{
-		"bar": map[key.Key]interface{}{
+		"bar": key.NewMap(
 			// Should be able to embed pointer key.
-			key.New(key.NewPointer(path.New("baz"))):
+			key.New(key.NewPointer(path.New("baz"))),
 			// Should be able to embed pointer value.
-			key.NewPointer(path.New("baz")),
-		},
+			key.NewPointer(path.New("baz"))),
 	}))
 	m := map[key.Key]string{
 		key.New(a): "a",

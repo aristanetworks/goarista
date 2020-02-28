@@ -120,10 +120,9 @@ func TestPathEqual(t *testing.T) {
 
 func TestPathAsKey(t *testing.T) {
 	a := newPathKey("foo", path.Wildcard, map[string]interface{}{
-		"bar": map[key.Key]interface{}{
+		"bar": key.NewMap(
 			// Should be able to embed a path key and value
-			newPathKey("path", "to", "something"): path.New("else"),
-		},
+			newPathKey("path", "to", "something"), path.New("else")),
 	})
 	m := map[key.Key]string{
 		a: "thats a complex key!",

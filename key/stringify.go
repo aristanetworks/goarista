@@ -59,6 +59,19 @@ func StringifyInterface(key interface{}) (string, error) {
 		str = strings.Join(keys, "_")
 	case *map[string]interface{}:
 		return StringifyInterface(*key)
+	case Map:
+		m := make(map[string]interface{}, key.Len())
+		_ = key.Iter(func(k, v interface{}) error {
+			m[stringify(k)] = v
+			return nil
+		})
+		keys := SortedKeys(m)
+		for i, k := range keys {
+			keys[i] = stringify(k) + "=" + stringify(m[k])
+		}
+		str = strings.Join(keys, "_")
+	case *Map:
+		return StringifyInterface(*key)
 	case map[Key]interface{}:
 		m := make(map[string]interface{}, len(key))
 		for k, v := range key {
@@ -69,6 +82,8 @@ func StringifyInterface(key interface{}) (string, error) {
 			keys[i] = stringify(k) + "=" + stringify(m[k])
 		}
 		str = strings.Join(keys, "_")
+	case *map[Key]interface{}:
+		return StringifyInterface(*key)
 	case []interface{}:
 		elements := make([]string, len(key))
 		for i, element := range key {
@@ -173,6 +188,8 @@ func stringifyCollectionHelper(val interface{}) string {
 		return "{" + val.Pointer().String() + "}"
 	case Path:
 		return "[" + val.String() + "]"
+	case Key:
+		return stringifyCollectionHelper(val.Key())
 	}
 
 	return fmt.Sprint(val)

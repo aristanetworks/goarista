@@ -122,20 +122,20 @@ func TestKeyEqual(t *testing.T) {
 		b:      New(map[string]interface{}{"a": 3}),
 		result: true,
 	}, {
-		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 3}}),
-		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), 3)}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4, New("c"): 5}}),
-		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), 4, New("c"), 5)}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4, New("c"): 5}}),
-		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4, New("c"): 5}}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), 4, New("c"), 5)}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4, New("c"), 5)}),
 		result: true,
 	}, {
-		a:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
-		b:      New(map[string]interface{}{"a": map[Key]interface{}{New("b"): 4}}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
 		result: true,
 	}, {
 		a:      New(map[string]interface{}{"a": compareMe{i: 3}}),
@@ -224,130 +224,116 @@ func TestKeyEqual(t *testing.T) {
 func TestGetFromMap(t *testing.T) {
 	tests := []struct {
 		k     Key
-		m     map[Key]interface{}
+		m     *Map
 		v     interface{}
 		found bool
 	}{{
 		k:     New(nil),
-		m:     map[Key]interface{}{New(nil): nil},
+		m:     NewMap(New(nil), nil),
 		v:     nil,
 		found: true,
 	}, {
 		k:     New("a"),
-		m:     map[Key]interface{}{New("a"): "b"},
+		m:     NewMap(New("a"), "b"),
 		v:     "b",
 		found: true,
 	}, {
 		k:     New(uint32(35)),
-		m:     map[Key]interface{}{New(uint32(35)): "c"},
+		m:     NewMap(New(uint32(35)), "c"),
 		v:     "c",
 		found: true,
 	}, {
 		k:     New(uint32(37)),
-		m:     map[Key]interface{}{New(uint32(36)): "c"},
+		m:     NewMap(New(uint32(36)), "c"),
 		found: false,
 	}, {
 		k:     New(uint32(37)),
-		m:     map[Key]interface{}{},
+		m:     NewMap(),
 		found: false,
 	}, {
 		k: New([]interface{}{"a", "b"}),
-		m: map[Key]interface{}{
-			New([]interface{}{"a", "b"}): "foo",
-		},
+		m: NewMap(New([]interface{}{"a", "b"}), "foo"),
+
 		v:     "foo",
 		found: true,
 	}, {
 		k: New([]interface{}{"a", "b"}),
-		m: map[Key]interface{}{
-			New([]interface{}{"a", "b", "c"}): "foo",
-		},
+		m: NewMap(New([]interface{}{"a", "b", "c"}), "foo"),
+
 		found: false,
 	}, {
 		k: New([]interface{}{"a", map[string]interface{}{"b": "c"}}),
-		m: map[Key]interface{}{
-			New([]interface{}{"a", map[string]interface{}{"b": "c"}}): "foo",
-		},
+		m: NewMap(New([]interface{}{"a", map[string]interface{}{"b": "c"}}), "foo"),
+
 		v:     "foo",
 		found: true,
 	}, {
 		k: New([]interface{}{"a", map[string]interface{}{"b": "c"}}),
-		m: map[Key]interface{}{
-			New([]interface{}{"a", map[string]interface{}{"c": "b"}}): "foo",
-		},
+		m: NewMap(New([]interface{}{"a", map[string]interface{}{"c": "b"}}), "foo"),
+
 		found: false,
 	}, {
 		k: New(map[string]interface{}{"a": "b", "c": uint64(4)}),
-		m: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
-		},
+		m: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foo"),
+
 		v:     "foo",
 		found: true,
 	}, {
 		k: New(map[string]interface{}{"a": "b", "c": uint64(4)}),
-		m: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(5)}): "foo",
-		},
+		m: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(5)}), "foo"),
+
 		found: false,
 	}, {
 		k:     New(customKey{i: 42}),
-		m:     map[Key]interface{}{New(customKey{i: 42}): "c"},
+		m:     NewMap(New(customKey{i: 42}), "c"),
 		v:     "c",
 		found: true,
 	}, {
 		k:     New(customKey{i: 42}),
-		m:     map[Key]interface{}{New(customKey{i: 43}): "c"},
+		m:     NewMap(New(customKey{i: 43}), "c"),
 		found: false,
 	}, {
 		k: New(map[string]interface{}{
-			"damn": map[Key]interface{}{
-				New(map[string]interface{}{"a": uint32(42),
-					"b": uint32(51)}): true}}),
-		m: map[Key]interface{}{
-			New(map[string]interface{}{
-				"damn": map[Key]interface{}{
-					New(map[string]interface{}{"a": uint32(42),
-						"b": uint32(51)}): true}}): "foo",
-		},
+			"damn": NewMap(New(map[string]interface{}{"a": uint32(42),
+				"b": uint32(51)}), true)}),
+		m: NewMap(New(map[string]interface{}{
+			"damn": NewMap(New(map[string]interface{}{"a": uint32(42),
+				"b": uint32(51)}), true)}), "foo"),
+
 		v:     "foo",
 		found: true,
 	}, {
 		k: New(map[string]interface{}{
-			"damn": map[Key]interface{}{
-				New(map[string]interface{}{"a": uint32(42),
-					"b": uint32(52)}): true}}),
-		m: map[Key]interface{}{
-			New(map[string]interface{}{
-				"damn": map[Key]interface{}{
-					New(map[string]interface{}{"a": uint32(42),
-						"b": uint32(51)}): true}}): "foo",
-		},
+			"damn": NewMap(New(map[string]interface{}{"a": uint32(42),
+				"b": uint32(52)}), true)}),
+		m: NewMap(New(map[string]interface{}{
+			"damn": NewMap(New(map[string]interface{}{"a": uint32(42),
+				"b": uint32(51)}), true)}), "foo"),
+
 		found: false,
 	}, {
 		k: New(map[string]interface{}{
 			"nested": map[string]interface{}{
 				"a": uint32(42), "b": uint32(51)}}),
-		m: map[Key]interface{}{
-			New(map[string]interface{}{
-				"nested": map[string]interface{}{
-					"a": uint32(42), "b": uint32(51)}}): "foo",
-		},
+		m: NewMap(New(map[string]interface{}{
+			"nested": map[string]interface{}{
+				"a": uint32(42), "b": uint32(51)}}), "foo"),
+
 		v:     "foo",
 		found: true,
 	}, {
 		k: New(map[string]interface{}{
 			"nested": map[string]interface{}{
 				"a": uint32(42), "b": uint32(52)}}),
-		m: map[Key]interface{}{
-			New(map[string]interface{}{
-				"nested": map[string]interface{}{
-					"a": uint32(42), "b": uint32(51)}}): "foo",
-		},
+		m: NewMap(New(map[string]interface{}{
+			"nested": map[string]interface{}{
+				"a": uint32(42), "b": uint32(51)}}), "foo"),
+
 		found: false,
 	}}
 
 	for _, tcase := range tests {
-		v, ok := tcase.m[tcase.k]
+		v, ok := tcase.m.Get(tcase.k)
 		if tcase.found != ok {
 			t.Errorf("Wrong retrieval result for case:\nk: %#v\nm: %#v\nv: %#v",
 				tcase.k,
@@ -370,50 +356,49 @@ func TestGetFromMap(t *testing.T) {
 func TestDeleteFromMap(t *testing.T) {
 	tests := []struct {
 		k Key
-		m map[Key]interface{}
-		r map[Key]interface{}
+		m *Map
+		r *Map
 	}{{
 		k: New("a"),
-		m: map[Key]interface{}{New("a"): "b"},
-		r: map[Key]interface{}{},
+		m: NewMap(New("a"), "b"),
+		r: NewMap(),
 	}, {
 		k: New("b"),
-		m: map[Key]interface{}{New("a"): "b"},
-		r: map[Key]interface{}{New("a"): "b"},
+		m: NewMap(New("a"), "b"),
+		r: NewMap(New("a"), "b"),
 	}, {
 		k: New("a"),
-		m: map[Key]interface{}{},
-		r: map[Key]interface{}{},
+		m: NewMap(),
+		r: NewMap(),
 	}, {
 		k: New(uint32(35)),
-		m: map[Key]interface{}{New(uint32(35)): "c"},
-		r: map[Key]interface{}{},
+		m: NewMap(New(uint32(35)), "c"),
+		r: NewMap(),
 	}, {
 		k: New(uint32(36)),
-		m: map[Key]interface{}{New(uint32(35)): "c"},
-		r: map[Key]interface{}{New(uint32(35)): "c"},
+		m: NewMap(New(uint32(35)), "c"),
+		r: NewMap(New(uint32(35)), "c"),
 	}, {
 		k: New(uint32(37)),
-		m: map[Key]interface{}{},
-		r: map[Key]interface{}{},
+		m: NewMap(),
+		r: NewMap(),
 	}, {
 		k: New(map[string]interface{}{"a": "b", "c": uint64(4)}),
-		m: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
-		},
-		r: map[Key]interface{}{},
+		m: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foo"),
+
+		r: NewMap(),
 	}, {
 		k: New(customKey{i: 42}),
-		m: map[Key]interface{}{New(customKey{i: 42}): "c"},
-		r: map[Key]interface{}{},
+		m: NewMap(New(customKey{i: 42}), "c"),
+		r: NewMap(),
 	}, {
 		k: New([]byte{0x1, 0x2}),
-		m: map[Key]interface{}{New([]byte{0x1, 0x2}): "a", New([]byte{0x1}): "b"},
-		r: map[Key]interface{}{New([]byte{0x1}): "b"},
+		m: NewMap(New([]byte{0x1, 0x2}), "a", New([]byte{0x1}), "b"),
+		r: NewMap(New([]byte{0x1}), "b"),
 	}}
 
 	for _, tcase := range tests {
-		delete(tcase.m, tcase.k)
+		tcase.m.Del(tcase.k)
 		if !test.DeepEqual(tcase.m, tcase.r) {
 			t.Errorf("Wrong result for case:\nk: %#v\nm: %#v\nr: %#v",
 				tcase.k,
@@ -427,90 +412,75 @@ func TestSetToMap(t *testing.T) {
 	tests := []struct {
 		k Key
 		v interface{}
-		m map[Key]interface{}
-		r map[Key]interface{}
+		m *Map
+		r *Map
 	}{{
 		k: New("a"),
 		v: "c",
-		m: map[Key]interface{}{New("a"): "b"},
-		r: map[Key]interface{}{New("a"): "c"},
+		m: NewMap(New("a"), "b"),
+		r: NewMap(New("a"), "c"),
 	}, {
 		k: New("b"),
 		v: uint64(56),
-		m: map[Key]interface{}{New("a"): "b"},
-		r: map[Key]interface{}{
-			New("a"): "b",
-			New("b"): uint64(56),
-		},
+		m: NewMap(New("a"), "b"),
+		r: NewMap(New("a"), "b",
+			New("b"), uint64(56)),
 	}, {
 		k: New("a"),
 		v: "foo",
-		m: map[Key]interface{}{},
-		r: map[Key]interface{}{New("a"): "foo"},
+		m: NewMap(),
+		r: NewMap(New("a"), "foo"),
 	}, {
 		k: New(uint32(35)),
 		v: "d",
-		m: map[Key]interface{}{New(uint32(35)): "c"},
-		r: map[Key]interface{}{New(uint32(35)): "d"},
+		m: NewMap(New(uint32(35)), "c"),
+		r: NewMap(New(uint32(35)), "d"),
 	}, {
 		k: New(uint32(36)),
 		v: true,
-		m: map[Key]interface{}{New(uint32(35)): "c"},
-		r: map[Key]interface{}{
-			New(uint32(35)): "c",
-			New(uint32(36)): true,
-		},
+		m: NewMap(New(uint32(35)), "c"),
+		r: NewMap(New(uint32(35)), "c",
+			New(uint32(36)), true),
 	}, {
 		k: New(uint32(37)),
 		v: false,
-		m: map[Key]interface{}{New(uint32(36)): "c"},
-		r: map[Key]interface{}{
-			New(uint32(36)): "c",
-			New(uint32(37)): false,
-		},
+		m: NewMap(New(uint32(36)), "c"),
+		r: NewMap(New(uint32(36)), "c",
+			New(uint32(37)), false),
 	}, {
 		k: New(uint32(37)),
 		v: "foobar",
-		m: map[Key]interface{}{},
-		r: map[Key]interface{}{New(uint32(37)): "foobar"},
+		m: NewMap(),
+		r: NewMap(New(uint32(37)), "foobar"),
 	}, {
 		k: New(map[string]interface{}{"a": "b", "c": uint64(4)}),
 		v: "foobar",
-		m: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
-		},
-		r: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foobar",
-		},
+		m: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foo"),
+
+		r: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foobar"),
 	}, {
 		k: New(map[string]interface{}{"a": "b", "c": uint64(7)}),
 		v: "foobar",
-		m: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
-		},
-		r: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
-			New(map[string]interface{}{"a": "b", "c": uint64(7)}): "foobar",
-		},
+		m: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foo"),
+
+		r: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foo",
+			New(map[string]interface{}{"a": "b", "c": uint64(7)}), "foobar"),
 	}, {
 		k: New(map[string]interface{}{"a": "b", "d": uint64(6)}),
 		v: "barfoo",
-		m: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
-		},
-		r: map[Key]interface{}{
-			New(map[string]interface{}{"a": "b", "c": uint64(4)}): "foo",
-			New(map[string]interface{}{"a": "b", "d": uint64(6)}): "barfoo",
-		},
+		m: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foo"),
+
+		r: NewMap(New(map[string]interface{}{"a": "b", "c": uint64(4)}), "foo",
+			New(map[string]interface{}{"a": "b", "d": uint64(6)}), "barfoo"),
 	}, {
 		k: New(customKey{i: 42}),
 		v: "foo",
-		m: map[Key]interface{}{},
-		r: map[Key]interface{}{New(customKey{i: 42}): "foo"},
+		m: NewMap(),
+		r: NewMap(New(customKey{i: 42}), "foo"),
 	}}
 
 	for i, tcase := range tests {
-		tcase.m[tcase.k] = tcase.v
+		tcase.m.Set(tcase.k, tcase.v)
 		if !test.DeepEqual(tcase.m, tcase.r) {
 			t.Errorf("Wrong result for case %d:\nk: %#v\nm: %#v\nr: %#v",
 				i,
@@ -589,90 +559,87 @@ func TestMisc(t *testing.T) {
 }
 
 func BenchmarkSetToMapWithStringKey(b *testing.B) {
-	m := map[Key]interface{}{
-		New("a"):   true,
-		New("a1"):  true,
-		New("a2"):  true,
-		New("a3"):  true,
-		New("a4"):  true,
-		New("a5"):  true,
-		New("a6"):  true,
-		New("a7"):  true,
-		New("a8"):  true,
-		New("a9"):  true,
-		New("a10"): true,
-		New("a11"): true,
-		New("a12"): true,
-		New("a13"): true,
-		New("a14"): true,
-		New("a15"): true,
-		New("a16"): true,
-		New("a17"): true,
-		New("a18"): true,
-	}
+	m := NewMap(New("a"), true,
+		New("a1"), true,
+		New("a2"), true,
+		New("a3"), true,
+		New("a4"), true,
+		New("a5"), true,
+		New("a6"), true,
+		New("a7"), true,
+		New("a8"), true,
+		New("a9"), true,
+		New("a10"), true,
+		New("a11"), true,
+		New("a12"), true,
+		New("a13"), true,
+		New("a14"), true,
+		New("a15"), true,
+		New("a16"), true,
+		New("a17"), true,
+		New("a18"), true)
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m[New(strconv.Itoa(i))] = true
+		m.Set(New(strconv.Itoa(i)), true)
 	}
 }
 
 func BenchmarkSetToMapWithUint64Key(b *testing.B) {
-	m := map[Key]interface{}{
-		New(uint64(1)):  true,
-		New(uint64(2)):  true,
-		New(uint64(3)):  true,
-		New(uint64(4)):  true,
-		New(uint64(5)):  true,
-		New(uint64(6)):  true,
-		New(uint64(7)):  true,
-		New(uint64(8)):  true,
-		New(uint64(9)):  true,
-		New(uint64(10)): true,
-		New(uint64(11)): true,
-		New(uint64(12)): true,
-		New(uint64(13)): true,
-		New(uint64(14)): true,
-		New(uint64(15)): true,
-		New(uint64(16)): true,
-		New(uint64(17)): true,
-		New(uint64(18)): true,
-		New(uint64(19)): true,
-	}
+	m := NewMap(New(uint64(1)), true,
+		New(uint64(2)), true,
+		New(uint64(3)), true,
+		New(uint64(4)), true,
+		New(uint64(5)), true,
+		New(uint64(6)), true,
+		New(uint64(7)), true,
+		New(uint64(8)), true,
+		New(uint64(9)), true,
+		New(uint64(10)), true,
+		New(uint64(11)), true,
+		New(uint64(12)), true,
+		New(uint64(13)), true,
+		New(uint64(14)), true,
+		New(uint64(15)), true,
+		New(uint64(16)), true,
+		New(uint64(17)), true,
+		New(uint64(18)), true,
+		New(uint64(19)), true)
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m[New(uint64(i))] = true
+		m.Set(New(uint64(i)), true)
 	}
 }
 
 func BenchmarkGetFromMapWithMapKey(b *testing.B) {
-	m := map[Key]interface{}{
-		New(map[string]interface{}{"a": true}): true,
-		New(map[string]interface{}{"b": true}): true,
-		New(map[string]interface{}{"c": true}): true,
-		New(map[string]interface{}{"d": true}): true,
-		New(map[string]interface{}{"e": true}): true,
-		New(map[string]interface{}{"f": true}): true,
-		New(map[string]interface{}{"g": true}): true,
-		New(map[string]interface{}{"h": true}): true,
-		New(map[string]interface{}{"i": true}): true,
-		New(map[string]interface{}{"j": true}): true,
-		New(map[string]interface{}{"k": true}): true,
-		New(map[string]interface{}{"l": true}): true,
-		New(map[string]interface{}{"m": true}): true,
-		New(map[string]interface{}{"n": true}): true,
-		New(map[string]interface{}{"o": true}): true,
-		New(map[string]interface{}{"p": true}): true,
-		New(map[string]interface{}{"q": true}): true,
-		New(map[string]interface{}{"r": true}): true,
-		New(map[string]interface{}{"s": true}): true,
-	}
+	m := NewMap(New(map[string]interface{}{"a": true}), true,
+		New(map[string]interface{}{"b": true}), true,
+		New(map[string]interface{}{"c": true}), true,
+		New(map[string]interface{}{"d": true}), true,
+		New(map[string]interface{}{"e": true}), true,
+		New(map[string]interface{}{"f": true}), true,
+		New(map[string]interface{}{"g": true}), true,
+		New(map[string]interface{}{"h": true}), true,
+		New(map[string]interface{}{"i": true}), true,
+		New(map[string]interface{}{"j": true}), true,
+		New(map[string]interface{}{"k": true}), true,
+		New(map[string]interface{}{"l": true}), true,
+		New(map[string]interface{}{"m": true}), true,
+		New(map[string]interface{}{"n": true}), true,
+		New(map[string]interface{}{"o": true}), true,
+		New(map[string]interface{}{"p": true}), true,
+		New(map[string]interface{}{"q": true}), true,
+		New(map[string]interface{}{"r": true}), true,
+		New(map[string]interface{}{"s": true}), true)
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := New(map[string]interface{}{string('a' + i%19): true})
-		_, found := m[key]
+		_, found := m.Get(key)
 		if !found {
 			b.Fatalf("WTF: %#v", key)
 		}
@@ -694,16 +661,16 @@ func mkKey(i int) Key {
 
 func BenchmarkBigMapWithCompositeKeys(b *testing.B) {
 	const size = 10000
-	m := make(map[Key]interface{}, size)
+	m := NewMap()
 	for i := 0; i < size; i++ {
-		m[mkKey(i)] = true
+		m.Set(mkKey(i), true)
 	}
 	k := mkKey(0)
 	submap := k.Key().(map[string]interface{})["foo"].(map[string]interface{})
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		submap["aaaa3"] = uint32(i)
-		_, found := m[k]
+		_, found := m.Get(k)
 		if found != (i < size) {
 			b.Fatalf("WTF: %#v", k)
 		}

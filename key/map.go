@@ -6,7 +6,6 @@ package key
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"strings"
 )
@@ -36,25 +35,26 @@ func NewMap(keysAndVals ...interface{}) *Map {
 // String outputs the string representation of the map
 func (m *Map) String() string {
 	stringify := func(v interface{}) string {
-		if s, ok := v.(fmt.Stringer); ok {
-			return s.String()
-		}
-		return fmt.Sprint(v)
+		return stringifyCollectionHelper(v)
 	}
 	type kv struct {
 		k string
 		v string
 	}
+	var length int
 	kvs := make([]kv, 0, m.Len())
 	_ = m.Iter(func(k, v interface{}) error {
-		kvs = append(kvs, kv{
+		element := kv{
 			k: stringify(k),
 			v: stringify(v),
-		})
+		}
+		kvs = append(kvs, element)
+		length += len(element.k) + len(element.v)
 		return nil
 	})
 	sort.Slice(kvs, func(i, j int) bool { return kvs[i].k < kvs[j].k })
 	var buf strings.Builder
+	buf.Grow(length + len("key.Map[]") + 2*len(kvs) /* room for seperators: ", :" */)
 	buf.WriteString("key.Map[")
 	for i, kv := range kvs {
 		if i != 0 {
