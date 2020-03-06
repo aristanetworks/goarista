@@ -148,7 +148,7 @@ func main() {
 func publish(ctx context.Context, destConn *grpc.ClientConn,
 	c <-chan *gnmi.SubscribeResponse) error {
 	client := gnmireverse.NewGNMIReverseClient(destConn)
-	stream, err := client.Publish(ctx)
+	stream, err := client.Publish(ctx, grpc.WaitForReady(true))
 	if err != nil {
 		return fmt.Errorf("error from Publish: %s", err)
 	}
@@ -192,7 +192,7 @@ func subscribe(ctx context.Context, targetConn *grpc.ClientConn,
 				"password", password),
 		)
 	}
-	stream, err := client.Subscribe(ctx)
+	stream, err := client.Subscribe(ctx, grpc.WaitForReady(true))
 	if err != nil {
 		return fmt.Errorf("error from Subscribe: %s", err)
 	}
