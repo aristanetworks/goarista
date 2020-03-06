@@ -454,13 +454,19 @@ func LogSubscribeResponse(response *pb.SubscribeResponse) error {
 	case *pb.SubscribeResponse_Update:
 		t := time.Unix(0, resp.Update.Timestamp).UTC()
 		prefix := StrPath(resp.Update.Prefix)
+		var target string
+		if t := resp.Update.Prefix.GetTarget(); t != "" {
+			target = "(" + t + ") "
+		}
 		for _, update := range resp.Update.Update {
-			fmt.Printf("[%s] %s = %s\n", t.Format(time.RFC3339Nano),
+			fmt.Printf("[%s] %s%s = %s\n", t.Format(time.RFC3339Nano),
+				target,
 				path.Join(prefix, StrPath(update.Path)),
 				StrUpdateVal(update))
 		}
 		for _, del := range resp.Update.Delete {
-			fmt.Printf("[%s] Deleted %s\n", t.Format(time.RFC3339Nano),
+			fmt.Printf("[%s] %sDeleted %s\n", t.Format(time.RFC3339Nano),
+				target,
 				path.Join(prefix, StrPath(del)))
 		}
 	}
