@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"strconv"
 	"strings"
 
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
@@ -128,7 +129,7 @@ func main() {
 	}
 }
 
-// TODO: handle sourceAddr, DSCP
+// TODO: handle DSCP
 func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 	var dialOptions []grpc.DialOption
 
@@ -149,9 +150,12 @@ func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("error parsing address: %s", err)
 	}
 
-	var d net.Dialer
-	dialOptions = append(dialOptions, grpc.WithContextDialer(newVRFDialer(&d, nsName)))
+	dialer, err := newDialer(cfg)
+	if err != nil {
+		return nil, err
+	}
 
+	dialOptions = append(dialOptions, grpc.WithContextDialer(newVRFDialer(dialer, nsName)))
 	return grpc.Dial(addr, dialOptions...)
 }
 
@@ -198,6 +202,34 @@ func newTLSConfig(skipVerify bool, certFile, keyFile, caFile string) (*tls.Confi
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
 	return &tlsConfig, nil
+}
+
+func newDialer(cfg *config) (*net.Dialer, error) {
+	var d net.Dialer
+	if cfg.sourceAddr != "" {
+		var localAddr net.TCPAddr
+		sourceIP, sourcePort, _ := net.SplitHostPort(cfg.sourceAddr)
+		if sourceIP == "" {
+			// This can happend if cfg.sourceAddr doesn't have a port
+			sourceIP = cfg.sourceAddr
+		}
+		ip := net.ParseIP(sourceIP)
+		if ip == nil {
+			return nil, fmt.Errorf("failed to parse IP in source address: %q", sourceIP)
+		}
+		localAddr.IP = ip
+
+		if sourcePort != "" {
+			port, err := strconv.Atoi(sourcePort)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse port in source address: %q", sourcePort)
+			}
+			localAddr.Port = port
+		}
+
+		d.LocalAddr = &localAddr
+	}
+	return &d, nil
 }
 
 func dialTarget(cfg *config) (*grpc.ClientConn, error) {
