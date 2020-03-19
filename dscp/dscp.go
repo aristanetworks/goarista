@@ -21,7 +21,7 @@ import (
 func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) {
 	cfg := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
-			return setTOS(network, c, tos)
+			return SetTOS(network, c, tos)
 		},
 	}
 
@@ -33,7 +33,9 @@ func ListenTCPWithTOS(address *net.TCPAddr, tos byte) (*net.TCPListener, error) 
 	return lsnr.(*net.TCPListener), err
 }
 
-func setTOS(network string, c syscall.RawConn, tos byte) error {
+// SetTOS will set the TOS byte on a unix system. It's intended to be
+// used in a net.Dialer's Control function.
+func SetTOS(network string, c syscall.RawConn, tos byte) error {
 	return c.Control(func(fd uintptr) {
 		// Configure ipv4 TOS for both IPv4 and IPv6 networks because
 		// v4 connections can still come over v6 networks.

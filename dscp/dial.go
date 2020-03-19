@@ -18,7 +18,7 @@ func DialTCPWithTOS(laddr, raddr *net.TCPAddr, tos byte) (*net.TCPConn, error) {
 	d := net.Dialer{
 		LocalAddr: laddr,
 		Control: func(network, address string, c syscall.RawConn) error {
-			return setTOS(network, c, tos)
+			return SetTOS(network, c, tos)
 		},
 	}
 	conn, err := d.Dial("tcp", raddr.String())
@@ -36,7 +36,7 @@ func DialTimeoutWithTOS(network, address string, timeout time.Duration, tos byte
 	d := net.Dialer{
 		Timeout: timeout,
 		Control: func(network, address string, c syscall.RawConn) error {
-			return setTOS(network, c, tos)
+			return SetTOS(network, c, tos)
 		},
 	}
 	conn, err := d.Dial(network, address)
@@ -54,7 +54,7 @@ func DialTCPTimeoutWithTOS(laddr, raddr *net.TCPAddr, tos byte, timeout time.Dur
 		Timeout:   timeout,
 		LocalAddr: laddr,
 		Control: func(network, address string, c syscall.RawConn) error {
-			return setTOS(network, c, tos)
+			return SetTOS(network, c, tos)
 		},
 	}
 	conn, err := d.Dial("tcp", raddr.String())
