@@ -11,10 +11,12 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"strings"
 
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/gnmireverse"
+	"github.com/aristanetworks/goarista/netns"
 
 	"github.com/aristanetworks/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
@@ -125,7 +127,7 @@ func main() {
 	}
 }
 
-// TODO: handle VRF, sourceAddr, DSCP
+// TODO: handle sourceAddr, DSCP
 func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 	var dialOptions []grpc.DialOption
 
@@ -141,7 +143,29 @@ func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 		dialOptions = append(dialOptions, grpc.WithInsecure())
 	}
 
-	return grpc.Dial(cfg.collectorAddr, dialOptions...)
+	nsName, addr, err := netns.ParseAddress(cfg.collectorAddr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing address: %s", err)
+	}
+
+	dialOptions = append(dialOptions,
+		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			var conn net.Conn
+			err := netns.Do(nsName, func() error {
+				var d net.Dialer
+				c, err := d.DialContext(ctx, "tcp", addr)
+				if err != nil {
+					return err
+				}
+				conn = c
+				return nil
+			})
+
+			return conn, err
+		}),
+	)
+
+	return grpc.Dial(addr, dialOptions...)
 }
 
 func newTLSConfig(skipVerify bool, certFile, keyFile, caFile string) (*tls.Config,
