@@ -49,38 +49,6 @@ func (m *multiPath) Set(s string) error {
 	return nil
 }
 
-func newTLSConfig(useTLS bool, skipVerify bool, certFile, keyFile, caFile string) (grpc.DialOption,
-	error) {
-	if !useTLS {
-		return grpc.WithInsecure(), nil
-	}
-	tlsConfig := tls.Config{}
-	if skipVerify {
-		tlsConfig.InsecureSkipVerify = true
-	} else if caFile != "" {
-		b, err := ioutil.ReadFile(caFile)
-		if err != nil {
-			return nil, err
-		}
-		cp := x509.NewCertPool()
-		if !cp.AppendCertsFromPEM(b) {
-			return nil, fmt.Errorf("credentials: failed to append certificates")
-		}
-		tlsConfig.RootCAs = cp
-	}
-	if certFile != "" {
-		if keyFile == "" {
-			return nil, fmt.Errorf("please provide both -collector_certfile and -collector_keyfile")
-		}
-		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-		if err != nil {
-			return nil, err
-		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
-	}
-	return grpc.WithTransportCredentials(credentials.NewTLS(&tlsConfig)), nil
-}
-
 type config struct {
 	// target config
 	targetAddr string
@@ -127,14 +95,7 @@ func main() {
 
 	flag.Parse()
 
-	tlsDialOption, err := newTLSConfig(cfg.collectorTLS, cfg.collectorSkipVerify, cfg.collectorCert,
-		cfg.collectorKey, cfg.collectorCA)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	// TODO: handle vrf, sourceAddr
-	destConn, err := grpc.Dial(cfg.collectorAddr, tlsDialOption)
+	destConn, err := dialCollector(&cfg)
 	if err != nil {
 		glog.Fatalf("error dialing destination %q: %s", cfg.collectorAddr, err)
 	}
@@ -162,6 +123,54 @@ func main() {
 			glog.Errorf("encountered error, retrying: %s", err)
 		}
 	}
+}
+
+// TODO: handle VRF, sourceAddr, DSCP
+func dialCollector(cfg *config) (*grpc.ClientConn, error) {
+	var dialOptions []grpc.DialOption
+
+	if cfg.collectorTLS {
+		tlsConfig, err := newTLSConfig(cfg.collectorSkipVerify,
+			cfg.collectorCert, cfg.collectorKey, cfg.collectorCA)
+		if err != nil {
+			glog.Fatalf("error creating TLS config for collector: %s", err)
+		}
+		dialOptions = append(dialOptions,
+			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	} else {
+		dialOptions = append(dialOptions, grpc.WithInsecure())
+	}
+
+	return grpc.Dial(cfg.collectorAddr, dialOptions...)
+}
+
+func newTLSConfig(skipVerify bool, certFile, keyFile, caFile string) (*tls.Config,
+	error) {
+	var tlsConfig tls.Config
+	if skipVerify {
+		tlsConfig.InsecureSkipVerify = true
+	} else if caFile != "" {
+		b, err := ioutil.ReadFile(caFile)
+		if err != nil {
+			return nil, err
+		}
+		cp := x509.NewCertPool()
+		if !cp.AppendCertsFromPEM(b) {
+			return nil, fmt.Errorf("credentials: failed to append certificates")
+		}
+		tlsConfig.RootCAs = cp
+	}
+	if certFile != "" {
+		if keyFile == "" {
+			return nil, fmt.Errorf("please provide both -collector_certfile and -collector_keyfile")
+		}
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+	return &tlsConfig, nil
 }
 
 func publish(ctx context.Context, destConn *grpc.ClientConn,
