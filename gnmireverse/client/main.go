@@ -81,47 +81,66 @@ func newTLSConfig(useTLS bool, skipVerify bool, certFile, keyFile, caFile string
 	return grpc.WithTransportCredentials(credentials.NewTLS(&tlsConfig)), nil
 }
 
+type config struct {
+	// target config
+	targetAddr string
+	username   string
+	password   string
+
+	targetVal string
+	paths     multiPath
+
+	// collector config
+	collectorAddr       string
+	sourceAddr          string
+	collectorTLS        bool
+	collectorSkipVerify bool
+	collectorCert       string
+	collectorKey        string
+	collectorCA         string
+}
+
 func main() {
-	targetAddr := flag.String("target_addr", "127.0.0.1:6030", "address of the gNMI target")
-	destAddr := flag.String("collector_addr", "",
-		"address of collector in the form of [<vrf-name>/]address:port")
-	target := flag.String("target_value", "",
+	var cfg config
+	flag.StringVar(&cfg.targetAddr, "target_addr", "127.0.0.1:6030", "address of the gNMI target")
+	flag.StringVar(&cfg.username, "username", "", "username to authenticate with target")
+	flag.StringVar(&cfg.password, "password", "", "password to authenticate with target")
+	flag.StringVar(&cfg.targetVal, "target_value", "",
 		"value to use in the target field of the Subscribe")
-	paths := multiPath{}
-	flag.Var(&paths, "subscribe",
+	flag.Var(&cfg.paths, "subscribe",
 		"Path to subscribe to. This option can be repeated multiple times.")
 
-	username := flag.String("username", "", "username to authenticate with target")
-	password := flag.String("password", "", "password to authenticate with target")
-	sourceAddr := flag.String("source_addr", "", "addr to use as source in connection to collector")
+	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
+		"address of collector in the form of [<vrf-name>/]address:port")
+	flag.StringVar(&cfg.sourceAddr, "source_addr", "",
+		"addr to use as source in connection to collector")
 
-	_ = sourceAddr
-
-	clientCert := flag.String("collector_certfile", "",
-		"path to TLS certificate file to authenticate with collector")
-	clientKey := flag.String("collector_keyfile", "",
-		"path to TLS key file to authenticate with collector")
-	caFile := flag.String("collector_cafile", "",
-		"path to TLS CA file to verify collector (leave empty to use host's root CA set)")
-	useTlS := flag.Bool("collector_tls", true, "use TLS in connection with collector")
-	skipVerify := flag.Bool("collector_tls_skipverify", false,
+	flag.BoolVar(&cfg.collectorTLS, "collector_tls", true, "use TLS in connection with collector")
+	flag.BoolVar(&cfg.collectorSkipVerify, "collector_tls_skipverify", false,
 		"don't verify collector's certificate (insecure)")
+	flag.StringVar(&cfg.collectorCert, "collector_certfile", "",
+		"path to TLS certificate file to authenticate with collector")
+	flag.StringVar(&cfg.collectorKey, "collector_keyfile", "",
+		"path to TLS key file to authenticate with collector")
+	flag.StringVar(&cfg.collectorCA, "collector_cafile", "",
+		"path to TLS CA file to verify collector (leave empty to use host's root CA set)")
 
 	flag.Parse()
 
-	tlsDialOption, err := newTLSConfig(*useTlS, *skipVerify, *clientCert, *clientKey, *caFile)
+	tlsDialOption, err := newTLSConfig(cfg.collectorTLS, cfg.collectorSkipVerify, cfg.collectorCert,
+		cfg.collectorKey, cfg.collectorCA)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
 	// TODO: handle vrf, sourceAddr
-	destConn, err := grpc.Dial(*destAddr, tlsDialOption)
+	destConn, err := grpc.Dial(cfg.collectorAddr, tlsDialOption)
 	if err != nil {
-		glog.Fatalf("error dialing destination %q: %s", *destAddr, err)
+		glog.Fatalf("error dialing destination %q: %s", cfg.collectorAddr, err)
 	}
-	targetConn, err := grpc.Dial(*targetAddr, grpc.WithInsecure())
+	targetConn, err := grpc.Dial(cfg.targetAddr, grpc.WithInsecure())
 	if err != nil {
-		glog.Fatalf("error dialing target %q: %s", *targetAddr, err)
+		glog.Fatalf("error dialing target %q: %s", cfg.targetAddr, err)
 	}
 
 	for {
@@ -136,7 +155,7 @@ func main() {
 			return publish(ctx, destConn, c)
 		})
 		eg.Go(func() error {
-			return subscribe(ctx, targetConn, c, *username, *password, *target, paths.p)
+			return subscribe(ctx, &cfg, targetConn, c)
 		})
 		err := eg.Wait()
 		if err != nil {
@@ -164,14 +183,14 @@ func publish(ctx context.Context, destConn *grpc.ClientConn,
 	}
 }
 
-func subscribe(ctx context.Context, targetConn *grpc.ClientConn,
-	c chan<- *gnmi.SubscribeResponse, username, password, target string, paths []*gnmi.Path) error {
+func subscribe(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
+	c chan<- *gnmi.SubscribeResponse) error {
 	client := gnmi.NewGNMIClient(targetConn)
 	subList := &gnmi.SubscriptionList{
-		Prefix: &gnmi.Path{Target: target},
+		Prefix: &gnmi.Path{Target: cfg.targetVal},
 	}
 
-	for _, p := range paths {
+	for _, p := range cfg.paths.p {
 		subList.Subscription = append(subList.Subscription,
 			&gnmi.Subscription{
 				Path: p,
@@ -185,11 +204,11 @@ func subscribe(ctx context.Context, targetConn *grpc.ClientConn,
 		},
 	}
 
-	if username != "" {
+	if cfg.username != "" {
 		ctx = metadata.NewOutgoingContext(ctx,
 			metadata.Pairs(
-				"username", username,
-				"password", password),
+				"username", cfg.username,
+				"password", cfg.password),
 		)
 	}
 	stream, err := client.Subscribe(ctx, grpc.WaitForReady(true))
