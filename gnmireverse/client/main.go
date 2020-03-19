@@ -86,9 +86,14 @@ func main() {
 		"Path to subscribe to. This option can be repeated multiple times.")
 
 	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
-		"address of collector in the form of [<vrf-name>/]address:port")
+		"Address of collector in the form of [<vrf-name>/]host:port.\n"+
+			"The host portion must be enclosed in square brackets "+
+			"if it is a literal IPv6 address.\n"+
+			"For example, -collector_addr mgmt/[::1]:1234")
 	flag.StringVar(&cfg.sourceAddr, "source_addr", "",
-		"addr to use as source in connection to collector")
+		"Address to use as source in connection to collectorin the form of ip[:port], or :port.\n"+
+			"An IPv6 address must be enclosed in square brackets when specified with a port.\n"+
+			"For example, [::1]:1234")
 	flag.IntVar(&cfg.dscp, "collector_dscp", 0,
 		"DSCP used on connection to collector, valid values 0-63")
 
