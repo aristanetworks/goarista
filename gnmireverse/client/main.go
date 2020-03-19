@@ -14,7 +14,9 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"syscall"
 
+	"github.com/aristanetworks/goarista/dscp"
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/gnmireverse"
 	"github.com/aristanetworks/goarista/netns"
@@ -64,6 +66,7 @@ type config struct {
 	// collector config
 	collectorAddr       string
 	sourceAddr          string
+	dscp                int
 	collectorTLS        bool
 	collectorSkipVerify bool
 	collectorCert       string
@@ -86,6 +89,8 @@ func main() {
 		"address of collector in the form of [<vrf-name>/]address:port")
 	flag.StringVar(&cfg.sourceAddr, "source_addr", "",
 		"addr to use as source in connection to collector")
+	flag.IntVar(&cfg.dscp, "collector_dscp", 0,
+		"DSCP used on connection to collector, valid values 0-63")
 
 	flag.BoolVar(&cfg.collectorTLS, "collector_tls", true, "use TLS in connection with collector")
 	flag.BoolVar(&cfg.collectorSkipVerify, "collector_tls_skipverify", false,
@@ -129,7 +134,6 @@ func main() {
 	}
 }
 
-// TODO: handle DSCP
 func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 	var dialOptions []grpc.DialOption
 
@@ -229,6 +233,18 @@ func newDialer(cfg *config) (*net.Dialer, error) {
 
 		d.LocalAddr = &localAddr
 	}
+
+	if cfg.dscp != 0 {
+		if cfg.dscp < 0 || cfg.dscp >= 64 {
+			return nil, fmt.Errorf("DSCP value must be a value in the range 0-63, got %d", cfg.dscp)
+		}
+		// DSCP is the top 6 bits of the TOS byte
+		tos := byte(cfg.dscp << 2)
+		d.Control = func(network, address string, c syscall.RawConn) error {
+			return dscp.SetTOS(network, c, tos)
+		}
+	}
+
 	return &d, nil
 }
 
