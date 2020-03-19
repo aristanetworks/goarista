@@ -15,6 +15,7 @@ import (
 	"github.com/aristanetworks/goarista/gnmi"
 
 	"github.com/aristanetworks/glog"
+	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/gnmi/proto/gnmi_ext"
 	"golang.org/x/sync/errgroup"
@@ -67,7 +68,9 @@ func main() {
 		"([<role_id>:]<election_id>)")
 
 	debug := flag.String("debug", "", "Enable a debug mode:\n"+
-		"  'proto' : prints SubscribeResponses in protobuf text format")
+		"  'proto' : prints SubscribeResponses in protobuf text format\n"+
+		"  'latency' : print timing numbers to help debug latency")
+
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, help)
 		flag.PrintDefaults()
@@ -161,6 +164,10 @@ func main() {
 				for resp := range respChan {
 					fmt.Println(resp)
 				}
+			case "latency":
+				for resp := range respChan {
+					printLatencyStats(resp)
+				}
 			case "":
 				for resp := range respChan {
 					if err := gnmi.LogSubscribeResponse(resp); err != nil {
@@ -236,4 +243,24 @@ func parseOrigin(s string) (string, bool) {
 
 func parseTarget(s string) (string, bool) {
 	return parseStringOpt(s, "target")
+}
+
+func printLatencyStats(s *pb.SubscribeResponse) {
+	switch resp := s.Response.(type) {
+	case *pb.SubscribeResponse_SyncResponse:
+		fmt.Printf("now=%d sync_response=%t\n",
+			time.Now().UnixNano(), resp.SyncResponse)
+	case *pb.SubscribeResponse_Update:
+		notif := resp.Update
+		now := time.Now().UnixNano()
+		fmt.Printf("now=%d timestamp=%d latency=%s prefix=%s size=%d updates=%d deletes=%d\n",
+			now,
+			notif.Timestamp,
+			time.Duration(now-notif.Timestamp),
+			gnmi.StrPath(notif.Prefix),
+			proto.Size(s),
+			len(notif.Update),
+			len(notif.Delete),
+		)
+	}
 }
