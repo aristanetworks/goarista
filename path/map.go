@@ -19,7 +19,7 @@ type Map struct {
 	val      interface{}
 	ok       bool
 	wildcard *Map
-	children map[key.Key]*Map
+	children *key.Map
 }
 
 // VisitorFunc is a function that handles the value associated
@@ -71,11 +71,11 @@ func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
 				return err
 			}
 		}
-		next, ok := m.children[element]
+		next, ok := m.children.Get(element)
 		if !ok {
 			return nil
 		}
-		m = next
+		m = next.(*Map)
 	}
 	if typ == suffix {
 		return m.visitSubtree(fn)
@@ -97,17 +97,14 @@ func (m *Map) visitSubtree(fn VisitorFunc) error {
 			return err
 		}
 	}
-	for _, next := range m.children {
-		if err := next.visitSubtree(fn); err != nil {
-			return err
-		}
-	}
-	return nil
+	return m.children.Iter(func(_, next interface{}) error {
+		return next.(*Map).visitSubtree(fn)
+	})
 }
 
 // IsEmpty returns true if no paths have been registered, false otherwise.
 func (m *Map) IsEmpty() bool {
-	return m.wildcard == nil && len(m.children) == 0 && !m.ok
+	return m.wildcard == nil && m.children.Len() == 0 && !m.ok
 }
 
 // Get returns the value registered with an exact match of a
@@ -123,11 +120,11 @@ func (m *Map) Get(p key.Path) (interface{}, bool) {
 			m = m.wildcard
 			continue
 		}
-		next, ok := m.children[element]
+		next, ok := m.children.Get(element)
 		if !ok {
 			return nil, false
 		}
-		m = next
+		m = next.(*Map)
 	}
 	return m.val, m.ok
 }
@@ -144,14 +141,14 @@ func (m *Map) Set(p key.Path, v interface{}) bool {
 			continue
 		}
 		if m.children == nil {
-			m.children = map[key.Key]*Map{}
+			m.children = key.NewMap()
 		}
-		next, ok := m.children[element]
+		next, ok := m.children.Get(element)
 		if !ok {
 			next = &Map{}
-			m.children[element] = next
+			m.children.Set(element, next)
 		}
-		m = next
+		m = next.(*Map)
 	}
 	set := !m.ok
 	m.val, m.ok = v, true
@@ -171,11 +168,11 @@ func (m *Map) Delete(p key.Path) bool {
 			m = m.wildcard
 			continue
 		}
-		next, ok := m.children[element]
+		next, ok := m.children.Get(element)
 		if !ok {
 			return false
 		}
-		m = next
+		m = next.(*Map)
 	}
 	deleted := m.ok
 	m.val, m.ok = nil, false
@@ -184,7 +181,7 @@ func (m *Map) Delete(p key.Path) bool {
 	// Remove any empty maps.
 	for i := len(p); i > 0; i-- {
 		m = maps[i]
-		if m.ok || m.wildcard != nil || len(m.children) > 0 {
+		if m.ok || m.wildcard != nil || m.children.Len() > 0 {
 			break
 		}
 		parent := maps[i-1]
@@ -192,7 +189,7 @@ func (m *Map) Delete(p key.Path) bool {
 		if element.Equal(Wildcard) {
 			parent.wildcard = nil
 		} else {
-			delete(parent.children, element)
+			parent.children.Del(element)
 		}
 	}
 	return deleted
@@ -215,18 +212,19 @@ func (m *Map) write(b *strings.Builder, indent string) {
 		fmt.Fprintf(b, "Child %q:\n", Wildcard)
 		m.wildcard.write(b, indent+"  ")
 	}
-	children := make([]key.Key, 0, len(m.children))
-	for key := range m.children {
-		children = append(children, key)
-	}
+	children := make([]key.Key, 0, m.children.Len())
+	_ = m.children.Iter(func(k, v interface{}) error {
+		children = append(children, k.(key.Key))
+		return nil
+	})
 	sort.Slice(children, func(i, j int) bool {
 		return children[i].String() < children[j].String()
 	})
 
 	for _, key := range children {
-		child := m.children[key]
+		child, _ := m.children.Get(key)
 		b.WriteString(indent)
 		fmt.Fprintf(b, "Child %q:\n", key.String())
-		child.write(b, indent+"  ")
+		child.(*Map).write(b, indent+"  ")
 	}
 }
