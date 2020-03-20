@@ -28,54 +28,27 @@ type Map struct {
 // if needed.
 type VisitorFunc func(v interface{}) error
 
+type visitType int
+
+const (
+	match visitType = iota
+	prefix
+	suffix
+)
+
 // Visit calls a function fn for every value in the Map
 // that is registered with a match of a path p. In the
 // general case, time complexity is linear with respect
 // to the length of p but it can be as bad as O(2^len(p))
 // if there are a lot of paths with wildcards registered.
 func (m *Map) Visit(p key.Path, fn VisitorFunc) error {
-	for i, element := range p {
-		if m.wildcard != nil {
-			if err := m.wildcard.Visit(p[i+1:], fn); err != nil {
-				return err
-			}
-		}
-		next, ok := m.children[element]
-		if !ok {
-			return nil
-		}
-		m = next
-	}
-	if !m.ok {
-		return nil
-	}
-	return fn(m.val)
+	return m.visit(match, p, fn)
 }
 
 // VisitPrefixes calls a function fn for every value in the
 // Map that is registered with a prefix of a path p.
 func (m *Map) VisitPrefixes(p key.Path, fn VisitorFunc) error {
-	for i, element := range p {
-		if m.ok {
-			if err := fn(m.val); err != nil {
-				return err
-			}
-		}
-		if m.wildcard != nil {
-			if err := m.wildcard.VisitPrefixes(p[i+1:], fn); err != nil {
-				return err
-			}
-		}
-		next, ok := m.children[element]
-		if !ok {
-			return nil
-		}
-		m = next
-	}
-	if !m.ok {
-		return nil
-	}
-	return fn(m.val)
+	return m.visit(prefix, p, fn)
 }
 
 // VisitPrefixed calls fn for every value in the map that is
@@ -83,9 +56,18 @@ func (m *Map) VisitPrefixes(p key.Path, fn VisitorFunc) error {
 // can be used to visit every registered path if p is the
 // empty path (or root path) which prefixes all paths.
 func (m *Map) VisitPrefixed(p key.Path, fn VisitorFunc) error {
+	return m.visit(suffix, p, fn)
+}
+
+func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
+		if m.ok && typ == prefix {
+			if err := fn(m.val); err != nil {
+				return err
+			}
+		}
 		if m.wildcard != nil {
-			if err := m.wildcard.VisitPrefixed(p[i+1:], fn); err != nil {
+			if err := m.wildcard.visit(typ, p[i+1:], fn); err != nil {
 				return err
 			}
 		}
@@ -95,7 +77,13 @@ func (m *Map) VisitPrefixed(p key.Path, fn VisitorFunc) error {
 		}
 		m = next
 	}
-	return m.visitSubtree(fn)
+	if typ == suffix {
+		return m.visitSubtree(fn)
+	}
+	if !m.ok {
+		return nil
+	}
+	return fn(m.val)
 }
 
 func (m *Map) visitSubtree(fn VisitorFunc) error {
