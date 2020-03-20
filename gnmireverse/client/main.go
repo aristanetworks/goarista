@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/aristanetworks/goarista/dscp"
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
@@ -29,28 +30,74 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type multiPath struct {
-	p []*gnmi.Path
+type subscriptionList struct {
+	subs []subscription
 }
 
-func (m *multiPath) String() string {
-	if m == nil {
-		return ""
-	}
-	s := make([]string, len(m.p))
-	for i, p := range m.p {
-		s[i] = gnmilib.StrPath(p)
+type sampleList struct {
+	subs []subscription
+}
+
+type subscription struct {
+	p        *gnmi.Path
+	interval time.Duration
+}
+
+func str(subs []subscription) string {
+	s := make([]string, len(subs))
+	for i, sub := range subs {
+		s[i] = gnmilib.StrPath(sub.p)
+		if sub.interval > 0 {
+			s[i] += "@" + sub.interval.String()
+		}
 	}
 	return strings.Join(s, ", ")
 }
 
+func (l *subscriptionList) String() string {
+	if l == nil {
+		return ""
+	}
+	return str(l.subs)
+}
+
+func (l *sampleList) String() string {
+	if l == nil {
+		return ""
+	}
+	return str(l.subs)
+}
+
 // Set implements flag.Value interface
-func (m *multiPath) Set(s string) error {
+func (l *subscriptionList) Set(s string) error {
 	gnmiPath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(s))
 	if err != nil {
 		return err
 	}
-	m.p = append(m.p, gnmiPath)
+	sub := subscription{p: gnmiPath}
+	l.subs = append(l.subs, sub)
+	return nil
+}
+
+// Set implements flag.Value interface
+func (l *sampleList) Set(s string) error {
+	i := strings.LastIndexByte(s, '@')
+	if i == -1 {
+		return fmt.Errorf("SAMPLE subscription is missing interval: %q", s)
+	}
+	interval, err := time.ParseDuration(s[i+1:])
+	if err != nil {
+		return fmt.Errorf("error parsing interval in %q: %s", s, err)
+	}
+	if interval < 0 {
+		return fmt.Errorf("negative interval not allowed: %q", s)
+	}
+	gnmiPath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(s[:i]))
+	if err != nil {
+		return err
+	}
+	sub := subscription{p: gnmiPath, interval: interval}
+	l.subs = append(l.subs, sub)
 	return nil
 }
 
@@ -60,8 +107,9 @@ type config struct {
 	username   string
 	password   string
 
-	targetVal string
-	paths     multiPath
+	targetVal        string
+	subTargetDefined subscriptionList
+	subSample        sampleList
 
 	// collector config
 	collectorAddr       string
@@ -82,8 +130,16 @@ func main() {
 	flag.StringVar(&cfg.password, "password", "", "password to authenticate with target")
 	flag.StringVar(&cfg.targetVal, "target_value", "",
 		"value to use in the target field of the Subscribe")
-	flag.Var(&cfg.paths, "subscribe",
-		"Path to subscribe to. This option can be repeated multiple times.")
+	flag.Var(&cfg.subTargetDefined, "subscribe",
+		"Path to subscribe with TARGET_DEFINED subscription mode.\n"+
+			"This option can be repeated multiple times.")
+	flag.Var(&cfg.subSample, "sample",
+		"Path to subscribe with SAMPLE subscription mode.\n"+
+			"Paths must have suffix of @<sample interval>.\n"+
+			"The interval should include a unit, such as 's' for seconds or 'm' for minutes.\n"+
+			"For example to subscribe to interface counters with a 30 second sample interval:\n"+
+			"  -sample /interfaces/interface/state/counters@30s\n"+
+			"This option can be repeated multiple times.")
 
 	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
 		"Address of collector in the form of [<vrf-name>/]host:port.\n"+
@@ -294,11 +350,20 @@ func subscribe(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
 		Prefix: &gnmi.Path{Target: cfg.targetVal},
 	}
 
-	for _, p := range cfg.paths.p {
+	for _, sub := range cfg.subTargetDefined.subs {
 		subList.Subscription = append(subList.Subscription,
 			&gnmi.Subscription{
-				Path: p,
+				Path: sub.p,
 				Mode: gnmi.SubscriptionMode_TARGET_DEFINED,
+			},
+		)
+	}
+	for _, sub := range cfg.subSample.subs {
+		subList.Subscription = append(subList.Subscription,
+			&gnmi.Subscription{
+				Path:           sub.p,
+				Mode:           gnmi.SubscriptionMode_SAMPLE,
+				SampleInterval: uint64(sub.interval),
 			},
 		)
 	}
