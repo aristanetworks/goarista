@@ -34,6 +34,9 @@ func NewMap(keysAndVals ...interface{}) *Map {
 
 // String outputs the string representation of the map
 func (m *Map) String() string {
+	if m == nil {
+		return "key.Map(nil)"
+	}
 	stringify := func(v interface{}) string {
 		return stringifyCollectionHelper(v)
 	}
@@ -68,6 +71,9 @@ func (m *Map) String() string {
 
 // Len returns the length of the Map
 func (m *Map) Len() int {
+	if m == nil {
+		return 0
+	}
 	return m.length
 }
 
@@ -192,6 +198,9 @@ type Hashable interface {
 
 // Equal compares two Maps
 func (m *Map) Equal(other interface{}) bool {
+	if (m == nil) != (other == nil) {
+		return false
+	}
 	o, ok := other.(*Map)
 	if !ok {
 		return false
@@ -214,6 +223,9 @@ func (m *Map) Equal(other interface{}) bool {
 
 // Hash returns the hash value of this Map
 func (m *Map) Hash() uint64 {
+	if m == nil {
+		return 0
+	}
 	var h uintptr
 	m.Iter(func(k, v interface{}) error {
 		h += hashInterface(k) + hashInterface(v)
@@ -263,6 +275,9 @@ func (m *Map) Set(k, v interface{}) {
 
 // Get retrieves the value stored with key k from the Map
 func (m *Map) Get(k interface{}) (interface{}, bool) {
+	if m == nil {
+		return nil, false
+	}
 	if hkey, ok := k.(Hashable); ok {
 		h := hkey.Hash()
 		hentry, ok := m.custom[h]
@@ -281,6 +296,9 @@ func (m *Map) Get(k interface{}) (interface{}, bool) {
 
 // Del removes an entry with key k from the Map
 func (m *Map) Del(k interface{}) {
+	if m == nil {
+		return
+	}
 	if hkey, ok := k.(Hashable); ok {
 		if m.custom == nil {
 			return
@@ -315,6 +333,9 @@ func (m *Map) Del(k interface{}) {
 
 // Iter applies func f to every key-value pair in the Map
 func (m *Map) Iter(f func(k, v interface{}) error) error {
+	if m == nil {
+		return nil
+	}
 	for k, v := range m.normal {
 		if err := f(k, v); err != nil {
 			return err
