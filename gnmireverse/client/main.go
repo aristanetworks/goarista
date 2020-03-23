@@ -72,7 +72,8 @@ type config struct {
 
 func main() {
 	var cfg config
-	flag.StringVar(&cfg.targetAddr, "target_addr", "127.0.0.1:6030", "address of the gNMI target")
+	flag.StringVar(&cfg.targetAddr, "target_addr", "127.0.0.1:6030",
+		"address of the gNMI target in the form of [<vrf-name>/]address:port")
 	flag.StringVar(&cfg.username, "username", "", "username to authenticate with target")
 	flag.StringVar(&cfg.password, "password", "", "password to authenticate with target")
 	flag.StringVar(&cfg.targetVal, "target_value", "",
@@ -101,7 +102,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("error dialing destination %q: %s", cfg.collectorAddr, err)
 	}
-	targetConn, err := grpc.Dial(cfg.targetAddr, grpc.WithInsecure())
+	targetConn, err := dialTarget(&cfg)
 	if err != nil {
 		glog.Fatalf("error dialing target %q: %s", cfg.targetAddr, err)
 	}
@@ -148,24 +149,26 @@ func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("error parsing address: %s", err)
 	}
 
-	dialOptions = append(dialOptions,
-		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
-			var conn net.Conn
-			err := netns.Do(nsName, func() error {
-				var d net.Dialer
-				c, err := d.DialContext(ctx, "tcp", addr)
-				if err != nil {
-					return err
-				}
-				conn = c
-				return nil
-			})
-
-			return conn, err
-		}),
-	)
+	var d net.Dialer
+	dialOptions = append(dialOptions, grpc.WithContextDialer(newVRFDialer(&d, nsName)))
 
 	return grpc.Dial(addr, dialOptions...)
+}
+
+func newVRFDialer(d *net.Dialer, nsName string) func(context.Context, string) (net.Conn, error) {
+	return func(ctx context.Context, addr string) (net.Conn, error) {
+		var conn net.Conn
+		err := netns.Do(nsName, func() error {
+			c, err := d.DialContext(ctx, "tcp", addr)
+			if err != nil {
+				return err
+			}
+			conn = c
+			return nil
+		})
+
+		return conn, err
+	}
 }
 
 func newTLSConfig(skipVerify bool, certFile, keyFile, caFile string) (*tls.Config,
@@ -195,6 +198,21 @@ func newTLSConfig(skipVerify bool, certFile, keyFile, caFile string) (*tls.Confi
 		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
 	return &tlsConfig, nil
+}
+
+func dialTarget(cfg *config) (*grpc.ClientConn, error) {
+	nsName, addr, err := netns.ParseAddress(cfg.targetAddr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing address: %s", err)
+	}
+
+	var d net.Dialer
+	dialOptions := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithContextDialer(newVRFDialer(&d, nsName)),
+	}
+
+	return grpc.Dial(addr, dialOptions...)
 }
 
 func publish(ctx context.Context, destConn *grpc.ClientConn,
