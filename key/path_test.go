@@ -124,10 +124,8 @@ func TestPathAsKey(t *testing.T) {
 			// Should be able to embed a path key and value
 			newPathKey("path", "to", "something"), path.New("else")),
 	})
-	m := map[key.Key]string{
-		a: "thats a complex key!",
-	}
-	if s, ok := m[a]; !ok {
+	m := key.NewMap(a, "thats a complex key!")
+	if s, ok := m.Get(a); !ok {
 		t.Error("complex key not found in map")
 	} else if s != "thats a complex key!" {
 		t.Errorf("incorrect value in map: %s", s)

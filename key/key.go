@@ -66,9 +66,13 @@ type float64Key float64
 
 type boolKey bool
 
-type pointerKey compositeKey
+type pointerKey struct {
+	compositeKey
+}
 
-type pathKey compositeKey
+type pathKey struct {
+	compositeKey
+}
 
 type nilKey struct{}
 
@@ -134,11 +138,11 @@ func New(intf interface{}) Key {
 	case value.Value:
 		return interfaceKey{key: intf}
 	case Pointer:
-		return pointerKey{sentinel: sentinel, s: pointerToSlice(t)}
+		return pointerKey{compositeKey{sentinel: sentinel, s: pointerToSlice(t)}}
 	case []byte:
 		return bytesKey(t)
 	case Path:
-		return pathKey{sentinel: sentinel, s: pathToSlice(t)}
+		return pathKey{compositeKey{sentinel: sentinel, s: pathToSlice(t)}}
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}

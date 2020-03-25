@@ -327,8 +327,12 @@ func TestMapDel(t *testing.T) {
 }
 
 func contains(elementlist []interface{}, element interface{}) bool {
+	equal := func(v interface{}) bool { return element == v }
+	if comp, ok := element.(Comparable); ok {
+		equal = func(v interface{}) bool { return comp.Equal(v) }
+	}
 	for _, el := range elementlist {
-		if el == element {
+		if equal(el) {
 			return true
 		}
 	}

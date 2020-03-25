@@ -120,10 +120,8 @@ func TestPointerAsKey(t *testing.T) {
 			// Should be able to embed pointer value.
 			key.NewPointer(path.New("baz"))),
 	}))
-	m := map[key.Key]string{
-		key.New(a): "a",
-	}
-	if s, ok := m[key.New(a)]; !ok {
+	m := key.NewMap(key.New(a), "a")
+	if s, ok := m.Get(key.New(a)); !ok {
 		t.Error("pointer to path not keyed in map")
 	} else if s != "a" {
 		t.Errorf("pointer to path not mapped to correct value in map: %s", s)
