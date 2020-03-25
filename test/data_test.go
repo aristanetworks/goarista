@@ -443,11 +443,11 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a: key.New("a"),
 		b: key.New("a"),
 	}, {
-		a: map[key.Key]string{key.New("a"): "b"},
-		b: map[key.Key]string{key.New("a"): "b"},
+		a: key.NewMap(key.New("a"), "b"),
+		b: key.NewMap(key.New("a"), "b"),
 	}, {
-		a: map[key.Key]string{key.New(map[string]interface{}{"a": true}): "b"},
-		b: map[key.Key]string{key.New(map[string]interface{}{"a": true}): "b"},
+		a: key.NewMap(key.New(map[string]interface{}{"a": true}), "b"),
+		b: key.NewMap(key.New(map[string]interface{}{"a": true}), "b"),
 	}, {
 		a: key.New(map[string]interface{}{
 			"a": key.NewMap(key.New(map[string]interface{}{"k": 42}), true)}),
