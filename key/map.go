@@ -196,6 +196,46 @@ type Hashable interface {
 	Equal(other interface{}) bool
 }
 
+var errNotEqual = errors.New("notequal")
+
+func (m *Map) compare(o *Map) error {
+	return m.Iter(func(k, v interface{}) error {
+		otherV, ok := o.Get(k)
+		if !ok {
+			return errNotEqual
+		}
+		if !keyEqual(v, otherV) {
+			return errNotEqual
+		}
+		return nil
+	})
+}
+
+func (m *Map) subset(other interface{}, strict bool) bool {
+	if (m == nil) != (other == nil) {
+		return false
+	}
+	o, ok := other.(*Map)
+	if !ok {
+		return false
+	}
+	// strict subsets must be smaller than the containg set
+	if m.length > o.length || (strict && m.length == o.length) {
+		return false
+	}
+	return m.compare(o) == nil
+}
+
+// Subset checks to see if the current Map is a subset of the other Map
+func (m *Map) Subset(other interface{}) bool {
+	return m.subset(other, false)
+}
+
+// StrictSubset checks to see if the current Map is a strict subset of the other Map
+func (m *Map) StrictSubset(other interface{}) bool {
+	return m.subset(other, true)
+}
+
 // Equal compares two Maps
 func (m *Map) Equal(other interface{}) bool {
 	if (m == nil) != (other == nil) {
@@ -208,17 +248,7 @@ func (m *Map) Equal(other interface{}) bool {
 	if m.length != o.length {
 		return false
 	}
-	err := m.Iter(func(k, v interface{}) error {
-		otherV, ok := o.Get(k)
-		if !ok {
-			return errors.New("notequal")
-		}
-		if !keyEqual(v, otherV) {
-			return errors.New("notequal")
-		}
-		return nil
-	})
-	return err == nil
+	return m.compare(o) == nil
 }
 
 // Hash returns the hash value of this Map
