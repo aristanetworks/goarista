@@ -6,6 +6,8 @@ go:
 # - master
 env:
 - GO111MODULE=on
+# go 1.12 doesn't set this automatically
+- GOSUMDB=sum.golang.org
 before_install:
 - go get -v golang.org/x/lint/golint
 - go get -v -t -d ./...
