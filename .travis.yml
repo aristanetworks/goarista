@@ -5,8 +5,8 @@ go:
 # Master disabled while until key.composite is replaced
 # - master
 env:
-# GOSUMDB is to make go1.12 behave like go1.13
-- GO111MODULE=on GOSUMDB=sum.golang.org
+# GOPROXY is set for the benefit of go1.12, make it behave like go1.13 (without the direct, since it doesn't like ,)
+- GO111MODULE="on" GOPROXY="https://proxy.golang.org"
 before_install:
 - go get -v golang.org/x/lint/golint
 - go get -v -t -d ./...
