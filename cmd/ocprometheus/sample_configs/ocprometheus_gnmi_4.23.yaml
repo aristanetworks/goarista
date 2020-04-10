@@ -1,0 +1,46 @@
+#Tested on 4.22+
+
+
+# Subscriptions to OpenConfig paths.
+subscriptions:
+        - /network-instances/network-instance[name=default]/protocols/protocol[identifier=BGP][name=BGP]/bgp
+        - /system/processes
+        - /interfaces/interface
+# Prometheus metrics configuration.
+# If you use named capture groups in the path, they will be extracted into labels with the same name.
+# All fields are mandatory.
+metrics:
+        - name: BgpPfxReceived
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=openconfig-bgp-types:IPV4_UNICAST\]/state/prefixes/received
+        - name: BgpPfxInstalled
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=openconfig-bgp-types:IPV4_UNICAST\]/state/prefixes/installed
+        - name: BgpPfxSent
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=openconfig-bgp-types:IPV4_UNICAST\]/state/prefixes/sent
+        - name: BGPCPU
+          path: /system/processes/process\[pid=2794\]/state/cpu-utilization
+        - name: BgpPfxReceived2
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=IPV4_UNICAST\]/state/prefixes/received
+        - name: BgpPfxInstalled2
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=IPV4_UNICAST\]/state/prefixes/installed
+        - name: BgpPfxSent2
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=IPV4_UNICAST\]/state/prefixes/sent
+        - name: intfCounter
+          path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/state/counters/(?P<countertype>.+)
+        - name: intfAdminState
+          path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/state/admin-status
+          valuelabel: adminState
+          defaultvalue: 1
+        - name: intfOperState
+          path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/state/oper-status
+          valuelabel: operState
+          defaultvalue: 2
+        - name: subIntfCounter
+          path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/subinterfaces/subinterface\[index=(?P<subintf>[^\]]+)\]/state/counters/(?P<countertype>.+)
+        - name: subIntfOperState
+          path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/subinterfaces/subinterface\[index=(?P<subintf>[^\]]+)\]/state/oper-status
+          valuelabel: subOperState
+          defaultvalue: 3
+        - name: subIntfAdminState
+          path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/subinterfaces/subinterface\[index=(?P<subintf>[^\]]+)\]/state/admin-status
+          valuelabel: subAdminState
+          defaultvalue: 4

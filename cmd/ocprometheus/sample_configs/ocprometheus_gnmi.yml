@@ -1,0 +1,32 @@
+# Per-device labels. Optional
+# Exactly the same set of labels must be specified for each device.
+# If device address is *, the labels apply to all devices not listed explicitly.
+# If any explicit device if listed below, then you need to specify all devices you're subscribed to,
+# or have a wildcard entry. Otherwise, updates from non-listed devices will be ignored.
+#deviceLabels:
+#        10.1.1.1:
+#                lab1: val1
+#                lab2: val2
+#        '*':
+#                lab1: val3
+#                lab2: val4
+
+# Subscriptions to OpenConfig paths.
+subscriptions:
+        - /network-instances/network-instance[name=default]/protocols/protocol[identifier=BGP][name=BGP]/bgp
+        - /system/processes
+# Prometheus metrics configuration.
+# If you use named capture groups in the path, they will be extracted into labels with the same name.
+# All fields are mandatory.
+metrics:
+        - name: BgpPfxReceived
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name
+=IPV4_UNICAST\]/state/prefixes/received
+        - name: BgpPfxInstalled
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name
+=IPV4_UNICAST\]/state/prefixes/installed
+        - name: BgpPfxSent
+          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name
+=IPV4_UNICAST\]/state/prefixes/sent
+        - name: BGPCPU 
+          path: /system/processes/process\[pid=937\]/state/cpu-utilization
