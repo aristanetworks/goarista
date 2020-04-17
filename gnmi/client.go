@@ -77,6 +77,7 @@ type SubscribeOptions struct {
 	HeartbeatInterval uint64
 	Paths             [][]string
 	Origin            string
+	Target            string
 }
 
 // ParseFlags reads arguments from stdin and returns a populated Config object and a list of
@@ -268,6 +269,12 @@ func NewSubscribeRequest(subscribeOptions *SubscribeOptions) (*pb.SubscribeReque
 		Mode:         mode,
 		UpdatesOnly:  subscribeOptions.UpdatesOnly,
 		Prefix:       prefixPath,
+	}
+	if subscribeOptions.Target != "" {
+		if subList.Prefix == nil {
+			subList.Prefix = &pb.Path{}
+		}
+		subList.Prefix.Target = subscribeOptions.Target
 	}
 	for i, p := range subscribeOptions.Paths {
 		gnmiPath, err := ParseGNMIElements(p)

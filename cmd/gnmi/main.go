@@ -24,9 +24,10 @@ import (
 var help = `Usage of gnmi:
 gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
-  get (origin=ORIGIN) PATH+
-  subscribe (origin=ORIGIN) PATH+
-  ((update|replace (origin=ORIGIN) PATH JSON|FILE)|(delete (origin=ORIGIN) PATH))+
+  get (origin=ORIGIN) (target=TARGET) PATH+
+  subscribe (origin=ORIGIN) (target=TARGET) PATH+
+  ((update|replace (origin=ORIGIN) (target=TARGET) PATH JSON|FILE) |
+   (delete (origin=ORIGIN) (target=TARGET) PATH))+
 `
 
 func usageAndExit(s string) {
@@ -113,7 +114,22 @@ func main() {
 			if ok {
 				i++
 			}
-			err := gnmi.Get(ctx, client, gnmi.SplitPaths(args[i+1:]), origin)
+			target, ok := parseTarget(args[i+1])
+			if ok {
+				i++
+			}
+			req, err := gnmi.NewGetRequest(gnmi.SplitPaths(args[i+1:]), origin)
+			if err != nil {
+				glog.Fatal(err)
+			}
+			if target != "" {
+				if req.Prefix == nil {
+					req.Prefix = &pb.Path{}
+				}
+				req.Prefix.Target = target
+			}
+
+			err = gnmi.GetWithRequest(ctx, client, req)
 			if err != nil {
 				glog.Fatal(err)
 			}
@@ -126,8 +142,13 @@ func main() {
 			if ok {
 				i++
 			}
+			target, ok := parseTarget(args[i+1])
+			if ok {
+				i++
+			}
 			respChan := make(chan *pb.SubscribeResponse)
 			subscribeOptions.Origin = origin
+			subscribeOptions.Target = target
 			subscribeOptions.Paths = gnmi.SplitPaths(args[i+1:])
 			var g errgroup.Group
 			g.Go(func() error {
@@ -159,6 +180,10 @@ func main() {
 			if ok {
 				i++
 			}
+			op.Target, ok = parseTarget(args[i])
+			if ok {
+				i++
+			}
 			op.Path = gnmi.SplitPath(args[i])
 			if op.Type != "delete" {
 				if len(args) == i+1 {
@@ -187,9 +212,17 @@ func main() {
 
 }
 
-func parseOrigin(s string) (string, bool) {
-	if strings.HasPrefix(s, "origin=") {
-		return strings.TrimPrefix(s, "origin="), true
+func parseStringOpt(s, prefix string) (string, bool) {
+	if strings.HasPrefix(s, prefix+"=") {
+		return strings.TrimPrefix(s, prefix+"="), true
 	}
 	return "", false
+}
+
+func parseOrigin(s string) (string, bool) {
+	return parseStringOpt(s, "origin")
+}
+
+func parseTarget(s string) (string, bool) {
+	return parseStringOpt(s, "target")
 }

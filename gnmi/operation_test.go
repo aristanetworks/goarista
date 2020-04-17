@@ -94,6 +94,18 @@ func TestNewSetRequest(t *testing.T) {
 				}},
 			},
 		},
+		"target": {
+			setOps: []*Operation{{Type: "replace", Target: "JPE1234567",
+				Path: []string{"foo"}, Val: "true"}},
+			exp: pb.SetRequest{
+				Prefix: &pb.Path{Target: "JPE1234567"},
+				Replace: []*pb.Update{{
+					Path: pathFoo,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte("true")}},
+				}},
+			},
+		},
 	}
 
 	for name, tc := range testCases {

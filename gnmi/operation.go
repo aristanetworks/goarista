@@ -26,12 +26,10 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// Get sents a GetRequest to the given client.
-func Get(ctx context.Context, client pb.GNMIClient, paths [][]string, origin string) error {
-	req, err := NewGetRequest(paths, origin)
-	if err != nil {
-		return err
-	}
+// GetWithRequest takes a fully formed GetRequest, performs the Get,
+// and displays any response.
+func GetWithRequest(ctx context.Context, client pb.GNMIClient,
+	req *pb.GetRequest) error {
 	resp, err := client.Get(ctx, req)
 	if err != nil {
 		return err
@@ -44,6 +42,16 @@ func Get(ctx context.Context, client pb.GNMIClient, paths [][]string, origin str
 		}
 	}
 	return nil
+}
+
+// Get sends a GetRequest to the given client.
+func Get(ctx context.Context, client pb.GNMIClient, paths [][]string,
+	origin string) error {
+	req, err := NewGetRequest(paths, origin)
+	if err != nil {
+		return err
+	}
+	return GetWithRequest(ctx, client, req)
 }
 
 // Capabilities retuns the capabilities of the client.
@@ -329,6 +337,7 @@ func update(p *pb.Path, val string) (*pb.Update, error) {
 type Operation struct {
 	Type   string
 	Origin string
+	Target string
 	Path   []string
 	Val    string
 }
@@ -341,6 +350,13 @@ func newSetRequest(setOps []*Operation, exts ...*gnmi_ext.Extension) (*pb.SetReq
 			return nil, err
 		}
 		p.Origin = op.Origin
+
+		// Target must apply to the entire SetRequest.
+		if op.Target != "" {
+			req.Prefix = &pb.Path{
+				Target: op.Target,
+			}
+		}
 
 		switch op.Type {
 		case "delete":
