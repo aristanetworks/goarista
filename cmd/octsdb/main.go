@@ -205,9 +205,13 @@ func parseValue(update *pb.Update) []interface{} {
 				value[i] = v
 			case json.Number:
 				value[i] = parseNumber(val, update)
+			case map[string]interface{}:
+				if num, ok := val["value"].(json.Number); ok && len(val) == 1 {
+					value[i] = parseNumber(num, update)
+				}
 			default:
 				// If any value is not a number, skip it.
-				glog.Infof("Element %d: %v is %T, not json.Number", i, val, val)
+				glog.V(3).Infof("Element %d: %v is %T, not json.Number", i, val, val)
 				continue
 			}
 		}

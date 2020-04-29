@@ -32,6 +32,7 @@ func TestParseValue(t *testing.T) { // Because parsing JSON sucks.
 			int64(0),
 			int64(math.MinInt64)},
 		},
+		{`[1,{"value":9},5,7,9]`, []interface{}{int64(1), int64(9), int64(5), int64(7), int64(9)}},
 	}
 	for i, tcase := range testcases {
 		actual := parseValue(&pb.Update{
