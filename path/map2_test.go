@@ -5,10 +5,12 @@
 package path
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/aristanetworks/goarista/key"
+	"github.com/aristanetworks/goarista/test"
 )
 
 func TestMap2IsEmpty(t *testing.T) {
@@ -58,6 +60,89 @@ func TestMap2Set(t *testing.T) {
 	b := m.Set(key.Path{key.New("foo")}, 1)
 	if !a || b {
 		t.Fatal("Map.Set not working properly")
+	}
+}
+
+func TestMap2Visit(t *testing.T) {
+	m := map2{}
+	m.Set(key.Path{key.New("foo"), key.New("bar"), key.New("baz")}, 1)
+	m.Set(key.Path{Wildcard, key.New("bar"), key.New("baz")}, 2)
+	m.Set(key.Path{Wildcard, Wildcard, key.New("baz")}, 3)
+	m.Set(key.Path{Wildcard, Wildcard, Wildcard}, 4)
+	m.Set(key.Path{key.New("foo"), Wildcard, Wildcard}, 5)
+	m.Set(key.Path{key.New("foo"), key.New("bar"), Wildcard}, 6)
+	m.Set(key.Path{key.New("foo"), Wildcard, key.New("baz")}, 7)
+	m.Set(key.Path{Wildcard, key.New("bar"), Wildcard}, 8)
+
+	m.Set(key.Path{}, 10)
+
+	m.Set(key.Path{Wildcard}, 20)
+	m.Set(key.Path{key.New("foo")}, 21)
+
+	m.Set(key.Path{key.New("zap"), key.New("zip")}, 30)
+	m.Set(key.Path{key.New("zap"), key.New("zip")}, 31)
+
+	m.Set(key.Path{key.New("zip"), Wildcard}, 40)
+	m.Set(key.Path{key.New("zip"), Wildcard}, 41)
+
+	testCases := []struct {
+		path     key.Path
+		expected map[int]int
+	}{{
+		path:     key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
+		expected: map[int]int{1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1},
+	}, {
+		path:     key.Path{key.New("qux"), key.New("bar"), key.New("baz")},
+		expected: map[int]int{2: 1, 3: 1, 4: 1, 8: 1},
+	}, {
+		path:     key.Path{key.New("foo"), key.New("qux"), key.New("baz")},
+		expected: map[int]int{3: 1, 4: 1, 5: 1, 7: 1},
+	}, {
+		path:     key.Path{key.New("foo"), key.New("bar"), key.New("qux")},
+		expected: map[int]int{4: 1, 5: 1, 6: 1, 8: 1},
+	}, {
+		path:     key.Path{},
+		expected: map[int]int{10: 1},
+	}, {
+		path:     key.Path{key.New("foo")},
+		expected: map[int]int{20: 1, 21: 1},
+	}, {
+		path:     key.Path{key.New("foo"), key.New("bar")},
+		expected: map[int]int{},
+	}, {
+		path:     key.Path{key.New("zap"), key.New("zip")},
+		expected: map[int]int{31: 1},
+	}, {
+		path:     key.Path{key.New("zip"), key.New("zap")},
+		expected: map[int]int{41: 1},
+	}}
+
+	for _, tc := range testCases {
+		result := make(map[int]int, len(tc.expected))
+		m.Visit(tc.path, accumulator(result))
+		if diff := test.Diff(tc.expected, result); diff != "" {
+			t.Errorf("Test case %v: %s", tc.path, diff)
+			t.Logf("m:\n%s", &m)
+		}
+	}
+}
+
+func TestMap2VisitError(t *testing.T) {
+	m := map2{}
+	m.Set(key.Path{key.New("foo"), key.New("bar")}, 1)
+	m.Set(key.Path{Wildcard, key.New("bar")}, 2)
+
+	errTest := errors.New("Test")
+
+	err := m.Visit(key.Path{key.New("foo"), key.New("bar")},
+		func(v interface{}) error { return errTest })
+	if err != errTest {
+		t.Errorf("Unexpected error. Expected: %v, Got: %v", errTest, err)
+	}
+	err = m.VisitPrefixes(key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
+		func(v interface{}) error { return errTest })
+	if err != errTest {
+		t.Errorf("Unexpected error. Expected: %v, Got: %v", errTest, err)
 	}
 }
 
@@ -151,3 +236,117 @@ func TestMap2String(t *testing.T) {
 		t.Errorf("Unexpected string. Expected:\n\n%s\n\nGot:\n\n%s", expected, got)
 	}
 }
+
+func TestMap2VisitPrefixes(t *testing.T) {
+	m := map2{}
+	m.Set(key.Path{}, 0)
+	m.Set(key.Path{key.New("foo")}, 1)
+	m.Set(key.Path{key.New("foo"), key.New("bar")}, 2)
+	m.Set(key.Path{key.New("foo"), key.New("bar"), key.New("baz")}, 3)
+	m.Set(key.Path{key.New("foo"), key.New("bar"), key.New("baz"), key.New("quux")}, 4)
+	m.Set(key.Path{key.New("quux"), key.New("bar")}, 5)
+	m.Set(key.Path{key.New("foo"), key.New("quux")}, 6)
+	m.Set(key.Path{Wildcard}, 7)
+	m.Set(key.Path{key.New("foo"), Wildcard}, 8)
+	m.Set(key.Path{Wildcard, key.New("bar")}, 9)
+	m.Set(key.Path{Wildcard, key.New("quux")}, 10)
+	m.Set(key.Path{key.New("quux"), key.New("quux"), key.New("quux"), key.New("quux")}, 11)
+
+	testCases := []struct {
+		path     key.Path
+		expected map[int]int
+	}{{
+		path:     key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
+		expected: map[int]int{0: 1, 1: 1, 2: 1, 3: 1, 7: 1, 8: 1, 9: 1},
+	}, {
+		path:     key.Path{key.New("zip"), key.New("zap")},
+		expected: map[int]int{0: 1, 7: 1},
+	}, {
+		path:     key.Path{key.New("foo"), key.New("zap")},
+		expected: map[int]int{0: 1, 1: 1, 8: 1, 7: 1},
+	}, {
+		path:     key.Path{key.New("quux"), key.New("quux"), key.New("quux")},
+		expected: map[int]int{0: 1, 7: 1, 10: 1},
+	}}
+
+	for _, tc := range testCases {
+		result := make(map[int]int, len(tc.expected))
+		m.VisitPrefixes(tc.path, accumulator(result))
+		if diff := test.Diff(tc.expected, result); diff != "" {
+			t.Errorf("Test case %v: %s", tc.path, diff)
+		}
+	}
+}
+
+func TestMap2VisitPrefixed(t *testing.T) {
+	m := map2{}
+	m.Set(key.Path{}, 0)
+	m.Set(key.Path{key.New("qux")}, 1)
+	m.Set(key.Path{key.New("foo")}, 2)
+	m.Set(key.Path{key.New("foo"), key.New("qux")}, 3)
+	m.Set(key.Path{key.New("foo"), key.New("bar")}, 4)
+	m.Set(key.Path{Wildcard, key.New("bar")}, 5)
+	m.Set(key.Path{key.New("foo"), Wildcard}, 6)
+	m.Set(key.Path{key.New("qux"), key.New("foo"), key.New("bar")}, 7)
+
+	testCases := []struct {
+		in  key.Path
+		out map[int]int
+	}{{
+		in:  key.Path{},
+		out: map[int]int{0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1},
+	}, {
+		in:  key.Path{key.New("qux")},
+		out: map[int]int{1: 1, 5: 1, 7: 1},
+	}, {
+		in:  key.Path{key.New("foo")},
+		out: map[int]int{2: 1, 3: 1, 4: 1, 5: 1, 6: 1},
+	}, {
+		in:  key.Path{key.New("foo"), key.New("qux")},
+		out: map[int]int{3: 1, 6: 1},
+	}, {
+		in:  key.Path{key.New("foo"), key.New("bar")},
+		out: map[int]int{4: 1, 5: 1, 6: 1},
+	}, {
+		in:  key.Path{key.New(int64(0))},
+		out: map[int]int{5: 1},
+	}, {
+		in:  key.Path{Wildcard},
+		out: map[int]int{5: 1},
+	}, {
+		in:  key.Path{Wildcard, Wildcard},
+		out: map[int]int{},
+	}}
+
+	for _, tc := range testCases {
+		out := make(map[int]int, len(tc.out))
+		m.VisitPrefixed(tc.in, accumulator(out))
+		if diff := test.Diff(tc.out, out); diff != "" {
+			t.Errorf("Test case %v: %s", tc.out, diff)
+		}
+	}
+}
+
+func benchmarkPathMap2(pathLength, pathDepth int, b *testing.B) {
+	// Push pathDepth paths, each of length pathLength
+	path := genWords(pathLength, 10)
+	words := genWords(pathDepth, 10)
+	m := map2{}
+	n := &m.n
+	for _, element := range path {
+		n.children = key.NewMap()
+		for _, word := range words {
+			n.children.Set(word, &node{p: key.Path{word}})
+		}
+		next, _ := n.children.Get(element)
+		n = next.(*node)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Visit(path, func(v interface{}) error { return nil })
+	}
+}
+
+func BenchmarkPathMap2_1x25(b *testing.B)  { benchmarkPathMap2(1, 25, b) }
+func BenchmarkPathMap2_10x50(b *testing.B) { benchmarkPathMap2(10, 25, b) }
+func BenchmarkPathMap2_20x50(b *testing.B) { benchmarkPathMap2(20, 25, b) }

@@ -74,6 +74,14 @@ func commonPrefix(a, b key.Path) int {
 	return len(a)
 }
 
+func commonPrefixFuzzy(pattern, p key.Path) int {
+	var i int
+	for ; i < len(pattern) && i < len(p) &&
+		(pattern[i].Equal(Wildcard) || pattern[i].Equal(p[i])); i++ {
+	}
+	return i
+}
+
 func (n *node) set(val interface{}) bool {
 	set := !n.ok
 	n.val, n.ok = val, true
@@ -260,6 +268,92 @@ func (n *node) remove(p key.Path) bool {
 
 func (n *node) isEmpty() bool {
 	return !n.ok && n.wildcard == nil && n.children.Len() == 0
+}
+
+// Visit calls a function fn for every value in the Map
+// that is registered with a match of a path p. In the
+// general case, time complexity is linear with respect
+// to the length of p but it can be as bad as O(2^len(p))
+// if there are a lot of paths with wildcards registered.
+func (m *map2) Visit(p key.Path, fn VisitorFunc) error {
+	return m.n.visit(match, p, fn)
+}
+
+// VisitPrefixes calls a function fn for every value in the
+// Map that is registered with a prefix of a path p.
+func (m *map2) VisitPrefixes(p key.Path, fn VisitorFunc) error {
+	return m.n.visit(prefix, p, fn)
+}
+
+// VisitPrefixed calls fn for every value in the map that is
+// registerd with a path that is prefixed by p. This method
+// can be used to visit every registered path if p is the
+// empty path (or root path) which prefixes all paths.
+func (m *map2) VisitPrefixed(p key.Path, fn VisitorFunc) error {
+	return m.n.visit(suffix, p, fn)
+}
+
+func (n *node) visit(typ visitType, p key.Path, fn VisitorFunc) error {
+	var c int
+	if len(n.p) > 0 {
+		// We know that the first element matches, because find
+		// recursively calls find on nodes where the first element is
+		// a match. This is only not true for find called on the root
+		// node, which has an empty path.
+		c = commonPrefixFuzzy(n.p[1:], p[1:]) + 1
+	}
+
+	// Consume matched portion of p
+	p = p[c:]
+	if len(p) == 0 {
+		if typ == suffix {
+			return n.visitAll(fn)
+		}
+
+		if c == len(n.p) && n.ok {
+			return fn(n.val)
+		}
+		// Didn't match all of n or n doesn't hold a value
+		return nil
+	}
+	if c < len(n.p) {
+		return nil
+	}
+
+	// Matched all of n
+	if typ == prefix && n.ok {
+		if err := fn(n.val); err != nil {
+			return err
+		}
+	}
+
+	if n.wildcard != nil {
+		if err := n.wildcard.visit(typ, p, fn); err != nil {
+			return err
+		}
+	}
+	child, ok := n.children.Get(p[0])
+	if !ok {
+		return nil
+	}
+	return child.(*node).visit(typ, p, fn)
+}
+
+func (n *node) visitAll(fn VisitorFunc) error {
+	if n.ok {
+		if err := fn(n.val); err != nil {
+			return err
+		}
+	}
+	if n.wildcard != nil {
+		if err := n.wildcard.visitAll(fn); err != nil {
+			return err
+		}
+	}
+
+	return n.children.Iter(func(_, child interface{}) error {
+		return child.(*node).visitAll(fn)
+	})
 }
 
 func (m *map2) String() string {
