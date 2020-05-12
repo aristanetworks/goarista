@@ -402,6 +402,7 @@ func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation,
 // Deprecated: Use SubscribeErr instead.
 func Subscribe(ctx context.Context, client pb.GNMIClient, subscribeOptions *SubscribeOptions,
 	respChan chan<- *pb.SubscribeResponse, errChan chan<- error) {
+	defer close(errChan)
 	if err := SubscribeErr(ctx, client, subscribeOptions, respChan); err != nil {
 		errChan <- err
 	}
