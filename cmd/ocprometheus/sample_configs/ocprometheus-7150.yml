@@ -98,4 +98,4 @@ metrics:
           valuelabel: command
           defaultvalue: 1
         - name: connectivityMonitor        
-          path: /Sysdb/connectivityMonitor/status/hostStatus/(?P<originhost>.+)/defaultStats/(?P<traceType>(?jitter|latency|packetLoss|httpResponseTime))
+          path: /Sysdb/connectivityMonitor/status/hostStatus/(?P<originhost>.+)/defaultStats/(?P<traceType>(?:jitter|latency|packetLoss|httpResponseTime))
