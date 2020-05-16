@@ -489,7 +489,8 @@ func benchmarkPathMap(pathLength, pathDepth int, b *testing.B) {
 	// Push pathDepth paths, each of length pathLength
 	path := genWords(pathLength, 10)
 	words := genWords(pathDepth, 10)
-	m := &Map{}
+	root := &Map{}
+	m := root
 	for _, element := range path {
 		m.children = key.NewMap()
 		for _, word := range words {
@@ -500,7 +501,7 @@ func benchmarkPathMap(pathLength, pathDepth int, b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Visit(path, func(v interface{}) error { return nil })
+		root.Visit(path, func(v interface{}) error { return nil })
 	}
 }
 
