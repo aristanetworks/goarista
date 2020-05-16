@@ -190,7 +190,6 @@ func (n *node) split(index int) {
 	} else {
 		n.children = key.NewMap(next, child)
 	}
-
 }
 
 func (n *node) join(child *node) {

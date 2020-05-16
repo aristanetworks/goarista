@@ -6,6 +6,7 @@ package path
 
 import (
 	"errors"
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -350,3 +351,112 @@ func benchmarkPathMap2(pathLength, pathDepth int, b *testing.B) {
 func BenchmarkPathMap2_1x25(b *testing.B)  { benchmarkPathMap2(1, 25, b) }
 func BenchmarkPathMap2_10x50(b *testing.B) { benchmarkPathMap2(10, 25, b) }
 func BenchmarkPathMap2_20x50(b *testing.B) { benchmarkPathMap2(20, 25, b) }
+
+var paths []key.Path
+
+func buildPaths() {
+	if paths != nil {
+		return
+	}
+	// 5 x 1 x 7 x 1 x 3 x 1 x 8 x 1
+	paths = make([]key.Path, 0, 5*7*3*8)
+	path := make(key.Path, 0, 8)
+	for i := 0; i < 5; i++ {
+		char := string(rune('a' + i))
+		element := key.New(strings.Repeat(char, 6))
+		path1 := append(path, element, element)
+		for j := 0; j < 7; j++ {
+			char := string(rune('a' + j))
+			element := key.New(strings.Repeat(char, 6))
+			path2 := append(path1, element, element)
+			for k := 0; k < 3; k++ {
+				char := string(rune('a' + k))
+				element := key.New(strings.Repeat(char, 6))
+				path3 := append(path2, element, element)
+				for l := 0; l < 8; l++ {
+					char := string(rune('a' + l))
+					element := key.New(strings.Repeat(char, 6))
+					path4 := append(path3, element, element)
+
+					paths = append(paths, Clone(path4))
+				}
+			}
+		}
+
+	}
+
+	r := rand.New(rand.NewSource(1234))
+	r.Shuffle(len(paths), func(i, j int) {
+		paths[i], paths[j] = paths[j], paths[i]
+	})
+}
+
+func TestBuildPaths(t *testing.T) {
+	buildPaths()
+	var m map2
+	for _, p := range paths {
+		m.Set(p, nil)
+	}
+
+	t.Log(m.String())
+}
+
+func BenchmarkMapGrow(b *testing.B) {
+	buildPaths()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var m Map
+		for _, p := range paths {
+			m.Set(p, nil)
+		}
+	}
+}
+
+func BenchmarkMap2Grow(b *testing.B) {
+	buildPaths()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var m map2
+		for _, p := range paths {
+			m.Set(p, nil)
+		}
+	}
+}
+
+func BenchmarkMapGet(b *testing.B) {
+	buildPaths()
+	var m Map
+	for _, p := range paths {
+		m.Set(p, nil)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, p := range paths {
+			_, ok := m.Get(p)
+			if !ok {
+				b.Fatalf("couldn't find %s", p)
+			}
+		}
+	}
+}
+
+func BenchmarkMap2Get(b *testing.B) {
+	buildPaths()
+	var m map2
+	for _, p := range paths {
+		m.Set(p, nil)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, p := range paths {
+			_, ok := m.Get(p)
+			if !ok {
+				b.Fatalf("couldn't find %s", p)
+			}
+		}
+	}
+}
