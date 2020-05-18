@@ -47,6 +47,19 @@ For example, using the above metrics path applied to an update for the path
 `/Sysdb/environment/temperature/status/tempSensor/TempSensor1/temperature`
 will lead to the metric name `environment.temperature` and tags `sensor=TempSensor1`.
 
+You can optionally rewrite values of type string with integer values using StaticValueMap.
+``` "metrics":{
+      "operStatus":{
+         "path":"/Sysdb/interface/status/eth/phy/slice/1/intfStatus/(?P<intf>.+)/operStatus$",
+         "StaticValueMap":{
+             "intfOperUp": 1,
+             "intfOperDown": 0,
+             "intfOperNotPresent": 0,
+             "default": 0
+         }
+      }
+   }
+```
 ## Usage
 
 See the `-help` output, but here's an example to push all the metrics defined
