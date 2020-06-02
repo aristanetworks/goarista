@@ -110,6 +110,7 @@ type config struct {
 	targetVal        string
 	subTargetDefined subscriptionList
 	subSample        sampleList
+	origin           string
 
 	// collector config
 	collectorAddr       string
@@ -140,6 +141,7 @@ func main() {
 			"For example to subscribe to interface counters with a 30 second sample interval:\n"+
 			"  -sample /interfaces/interface/state/counters@30s\n"+
 			"This option can be repeated multiple times.")
+	flag.StringVar(&cfg.origin, "origin", "", "value for the origin field of the Subscribe")
 
 	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
 		"Address of collector in the form of [<vrf-name>/]host:port.\n"+
@@ -164,6 +166,17 @@ func main() {
 		"path to TLS CA file to verify collector (leave empty to use host's root CA set)")
 
 	flag.Parse()
+
+	if cfg.origin != "" {
+		// Workaround for EOS BUG479731: set origin on paths, rather
+		// than on the prefix.
+		for _, sub := range cfg.subTargetDefined.subs {
+			sub.p.Origin = cfg.origin
+		}
+		for _, sub := range cfg.subSample.subs {
+			sub.p.Origin = cfg.origin
+		}
+	}
 
 	destConn, err := dialCollector(&cfg)
 	if err != nil {
