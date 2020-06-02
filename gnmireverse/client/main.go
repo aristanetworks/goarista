@@ -147,7 +147,7 @@ func main() {
 			"if it is a literal IPv6 address.\n"+
 			"For example, -collector_addr mgmt/[::1]:1234")
 	flag.StringVar(&cfg.sourceAddr, "source_addr", "",
-		"Address to use as source in connection to collectorin the form of ip[:port], or :port.\n"+
+		"Address to use as source in connection to collector in the form of ip[:port], or :port.\n"+
 			"An IPv6 address must be enclosed in square brackets when specified with a port.\n"+
 			"For example, [::1]:1234")
 	flag.IntVar(&cfg.dscp, "collector_dscp", 0,
