@@ -68,37 +68,55 @@ func (l *sampleList) String() string {
 	return str(l.subs)
 }
 
-// Set implements flag.Value interface
-func (l *subscriptionList) Set(s string) error {
+func parseInterval(s string) (time.Duration, int, error) {
+	i := strings.LastIndexByte(s, '@')
+	if i == -1 {
+		return -1, -1, fmt.Errorf("SAMPLE subscription is missing interval: %q", s)
+	}
+	interval, err := time.ParseDuration(s[i+1:])
+	if err != nil {
+		return -1, i, fmt.Errorf("error parsing interval in %q: %s", s, err)
+	}
+	if interval < 0 {
+		return -1, i, fmt.Errorf("negative interval not allowed: %q", s)
+	}
+	return interval, i, nil
+}
+
+func setSubscriptions(subs *[]subscription, s string, interval time.Duration) error {
 	gnmiPath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(s))
 	if err != nil {
 		return err
 	}
-	sub := subscription{p: gnmiPath}
-	l.subs = append(l.subs, sub)
+	sub := subscription{p: gnmiPath, interval: interval}
+	*subs = append(*subs, sub)
 	return nil
 }
 
 // Set implements flag.Value interface
+func (l *subscriptionList) Set(s string) error {
+	interval, i, err := parseInterval(s)
+	if err != nil {
+		if i == -1 {
+			// for subscription list, if there is no intervals, it's ok
+			interval = 0
+			i = len(s)
+		} else {
+			// invalid interval is found
+			return err
+		}
+	}
+	return setSubscriptions(&l.subs, s[:i], interval)
+}
+
+// Set implements flag.Value interface
 func (l *sampleList) Set(s string) error {
-	i := strings.LastIndexByte(s, '@')
-	if i == -1 {
-		return fmt.Errorf("SAMPLE subscription is missing interval: %q", s)
-	}
-	interval, err := time.ParseDuration(s[i+1:])
+	interval, i, err := parseInterval(s)
 	if err != nil {
-		return fmt.Errorf("error parsing interval in %q: %s", s, err)
-	}
-	if interval < 0 {
-		return fmt.Errorf("negative interval not allowed: %q", s)
-	}
-	gnmiPath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(s[:i]))
-	if err != nil {
+		// sample list must come with intervals
 		return err
 	}
-	sub := subscription{p: gnmiPath, interval: interval}
-	l.subs = append(l.subs, sub)
-	return nil
+	return setSubscriptions(&l.subs, s[:i], interval)
 }
 
 type config struct {
@@ -133,6 +151,8 @@ func main() {
 		"value to use in the target field of the Subscribe")
 	flag.Var(&cfg.subTargetDefined, "subscribe",
 		"Path to subscribe with TARGET_DEFINED subscription mode.\n"+
+			"To set a heartbeat interval include a suffix of @<heartbeat interval>.\n"+
+			"The interval should include a unit, such as 's' for seconds or 'm' for minutes.\n"+
 			"This option can be repeated multiple times.")
 	flag.Var(&cfg.subSample, "sample",
 		"Path to subscribe with SAMPLE subscription mode.\n"+
@@ -366,8 +386,9 @@ func subscribe(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
 	for _, sub := range cfg.subTargetDefined.subs {
 		subList.Subscription = append(subList.Subscription,
 			&gnmi.Subscription{
-				Path: sub.p,
-				Mode: gnmi.SubscriptionMode_TARGET_DEFINED,
+				Path:              sub.p,
+				Mode:              gnmi.SubscriptionMode_TARGET_DEFINED,
+				HeartbeatInterval: uint64(sub.interval),
 			},
 		)
 	}
