@@ -394,6 +394,29 @@ func TestMapIter(t *testing.T) {
 	}
 }
 
+func TestMapIterDel(t *testing.T) {
+	// Deleting from standard go maps while iterating is safe. Since a Map contains maps,
+	// deleting from a Map while iterating is also safe.
+	m := NewMap(
+		"1", "2",
+		New("1"), "keyVal",
+		New(map[string]interface{}{"key1": "val1", "key2": 2}), "mapVal",
+		dumbHashable{dumb: "dumbkey"}, "dumbHashVal",
+	)
+	if err := m.Iter(func(k, v interface{}) error {
+		m.Del(k)
+		if _, ok := m.Get(k); ok {
+			t.Errorf("key %v should not exist", k)
+		}
+		return nil
+	}); err != nil {
+		t.Error(err)
+	}
+	if m.Len() != 0 {
+		t.Errorf("map elements should all be deleted, but found %d elements", m.Len())
+	}
+}
+
 func TestMapString(t *testing.T) {
 	for _, tc := range []struct {
 		m *Map
