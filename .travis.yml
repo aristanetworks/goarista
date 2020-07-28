@@ -1,9 +1,8 @@
 language: go
 go:
-- 1.12.x
 - 1.13.x
-# Master disabled while until key.composite is replaced
-# - master
+- 1.14.x
+- master
 env:
 # GOSUMDB is to make go1.12 behave like go1.13
 - GO111MODULE=on GOSUMDB=sum.golang.org

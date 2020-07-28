@@ -638,7 +638,7 @@ func BenchmarkGetFromMapWithMapKey(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		key := New(map[string]interface{}{string('a' + i%19): true})
+		key := New(map[string]interface{}{fmt.Sprint('a' + i%19): true})
 		_, found := m.Get(key)
 		if !found {
 			b.Fatalf("WTF: %#v", key)
