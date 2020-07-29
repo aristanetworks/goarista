@@ -105,6 +105,7 @@ subscriptions:
         - /Sysdb/environment/cooling/status
         - /Sysdb/environment/power/status
         - /Sysdb/bridging/igmpsnooping/forwarding/forwarding/status
+        - /Sysdb/l2discovery/lldp/status
 metrics:
         - name: fanName
           path: /Sysdb/environment/cooling/status/fan/name
@@ -119,7 +120,13 @@ metrics:
           help: Fan Speed
         - name: igmpSnoopingInf
           path: /Sysdb/igmpsnooping/vlanStatus/(?P<vlan>.+)/ethGroup/(?P<mac>.+)/intf/(?P<intf>.+)
-          help: IGMP snooping status`)
+          help: IGMP snooping status
+        - name: lldpNeighborInfo
+          path: /Sysdb/l2discovery/lldp/status/local/(?P<localIndex>.+)/` +
+		`portStatus/(?P<intf>.+)/remoteSystem/(?P<remoteSystemIndex>.+)/sysName/value
+          help: LLDP metric info
+          valuelabel: neighborName
+          defaultvalue: 1`)
 	cfg, err := parseConfig(config)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -153,6 +160,13 @@ metrics:
 					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("\"Fan1.1\"")},
 				},
 			},
+			{
+				Path: makePath("l2discovery/lldp/status/local/1/portStatus/" +
+					"Ethernet24/remoteSystem/17/sysName/value"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("{\"value\": \"testName\"}")},
+				},
+			},
 		},
 	}
 	expValues := map[source]float64{
@@ -172,8 +186,12 @@ metrics:
 			addr: "10.1.1.1",
 			path: "/Sysdb/environment/cooling/status/fan/name",
 		}: 2.5,
+		{
+			addr: "10.1.1.1",
+			path: "/Sysdb/l2discovery/lldp/status/local/1/portStatus/Ethernet24/" +
+				"remoteSystem/17/sysName/value/value",
+		}: 1,
 	}
-
 	coll.update("10.1.1.1:6042", makeResponse(notif))
 	expMetrics := makeMetrics(cfg, expValues, notif, nil)
 	if !test.DeepEqual(expMetrics, coll.metrics) {

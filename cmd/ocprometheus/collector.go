@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -161,15 +162,7 @@ func (c *collector) update(addr string, message proto.Message) {
 	}
 }
 
-// parseValue takes in an update and parses a value and suffix
-// Returns an interface that contains either a string or a float64 as well as a suffix
-// Unparseable updates return (0, empty string, false)
-func parseValue(update *pb.Update) (interface{}, string, bool) {
-	intf, err := gnmi.ExtractValue(update)
-	if err != nil {
-		return 0, "", false
-	}
-
+func getValue(intf interface{}) (interface{}, string, bool) {
 	switch value := intf.(type) {
 	// float64 or string expected as the return value
 	case int64:
@@ -196,13 +189,11 @@ func parseValue(update *pb.Update) (interface{}, string, bool) {
 		glog.V(9).Infof("skipping array value")
 	case map[string]interface{}:
 		if vIntf, ok := value["value"]; ok {
-			if num, ok := vIntf.(json.Number); ok {
-				valFloat, err := num.Float64()
-				if err != nil {
-					return num, "value", true
-				}
-				return valFloat, "value", true
+			res, suffix, ok := getValue(vIntf)
+			if suffix != "" {
+				return res, fmt.Sprintf("value/%s", suffix), ok
 			}
+			return res, "value", ok
 		}
 	case bool:
 		if value {
@@ -216,6 +207,17 @@ func parseValue(update *pb.Update) (interface{}, string, bool) {
 	}
 
 	return 0, "", false
+}
+
+// parseValue takes in an update and parses a value and suffix
+// Returns an interface that contains either a string or a float64 as well as a suffix
+// Unparseable updates return (0, empty string, false)
+func parseValue(update *pb.Update) (interface{}, string, bool) {
+	intf, err := gnmi.ExtractValue(update)
+	if err != nil {
+		return 0, "", false
+	}
+	return getValue(intf)
 }
 
 // Describe implements prometheus.Collector interface
