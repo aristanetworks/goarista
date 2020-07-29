@@ -74,6 +74,7 @@ type SubscribeOptions struct {
 	Mode              string
 	StreamMode        string
 	SampleInterval    uint64
+	SuppressRedundant bool
 	HeartbeatInterval uint64
 	Paths             [][]string
 	Origin            string
@@ -286,6 +287,7 @@ func NewSubscribeRequest(subscribeOptions *SubscribeOptions) (*pb.SubscribeReque
 			Path:              gnmiPath,
 			Mode:              streamMode,
 			SampleInterval:    subscribeOptions.SampleInterval,
+			SuppressRedundant: subscribeOptions.SuppressRedundant,
 			HeartbeatInterval: subscribeOptions.HeartbeatInterval,
 		}
 	}
