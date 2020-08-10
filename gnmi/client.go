@@ -13,7 +13,6 @@ import (
 	"math"
 	"net"
 	"os"
-	"time"
 
 	"io/ioutil"
 	"strings"
@@ -130,8 +129,8 @@ func ParseFlags() (*Config, []string) {
 
 }
 
-// Dial connects to a gnmi service and returns a client
-func Dial(cfg *Config) (pb.GNMIClient, error) {
+// DialContext connects to a gnmi service and returns a client
+func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
 	opts := append([]grpc.DialOption(nil), cfg.DialOptions...)
 
 	switch cfg.Compression {
@@ -176,7 +175,7 @@ func Dial(cfg *Config) (pb.GNMIClient, error) {
 		cfg.Addr += ":" + defaultPort
 	}
 
-	dial := func(addrIn string, time time.Duration) (net.Conn, error) {
+	dial := func(ctx context.Context, addrIn string) (net.Conn, error) {
 		var conn net.Conn
 		nsName, addr, err := netns.ParseAddress(addrIn)
 		if err != nil {
@@ -185,23 +184,30 @@ func Dial(cfg *Config) (pb.GNMIClient, error) {
 
 		err = netns.Do(nsName, func() error {
 			var err error
-			conn, err = net.Dial("tcp", addr)
+			conn, err = (&net.Dialer{}).DialContext(ctx, "tcp", addr)
 			return err
 		})
 		return conn, err
 	}
 
 	opts = append(opts,
-		grpc.WithDialer(dial),
+		grpc.WithContextDialer(dial),
 
 		// Allows received protobuf messages to be larger than 4MB
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 	)
-	grpcconn, err := grpc.Dial(cfg.Addr, opts...)
+
+	grpcconn, err := grpc.DialContext(ctx, cfg.Addr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %s", err)
 	}
+
 	return pb.NewGNMIClient(grpcconn), nil
+}
+
+// Dial connects to a gnmi service and returns a client
+func Dial(cfg *Config) (pb.GNMIClient, error) {
+	return DialContext(context.Background(), cfg)
 }
 
 // NewContext returns a new context with username and password
