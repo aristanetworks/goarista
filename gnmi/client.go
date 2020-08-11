@@ -171,23 +171,34 @@ func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
 		opts = append(opts, grpc.WithInsecure())
 	}
 
-	if !strings.ContainsRune(cfg.Addr, ':') {
-		cfg.Addr += ":" + defaultPort
-	}
+	dial := func(ctx context.Context, addrIn string) (conn net.Conn, err error) {
+		var network, nsName, addr string
 
-	dial := func(ctx context.Context, addrIn string) (net.Conn, error) {
-		var conn net.Conn
-		nsName, addr, err := netns.ParseAddress(addrIn)
-		if err != nil {
-			return nil, err
+		split := strings.Split(addrIn, "://")
+		if l := len(split); l == 2 {
+			network = split[0]
+			addr = split[1]
+		} else {
+			network = "tcp"
+			addr = split[0]
 		}
 
-		err = netns.Do(nsName, func() error {
-			var err error
-			conn, err = (&net.Dialer{}).DialContext(ctx, "tcp", addr)
-			return err
+		if !strings.HasPrefix(network, "unix") {
+			if !strings.ContainsRune(addr, ':') {
+				addr += ":" + defaultPort
+			}
+
+			nsName, addr, err = netns.ParseAddress(addr)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		err = netns.Do(nsName, func() (err error) {
+			conn, err = (&net.Dialer{}).DialContext(ctx, network, addr)
+			return
 		})
-		return conn, err
+		return
 	}
 
 	opts = append(opts,
