@@ -265,6 +265,50 @@ func TestStrUpdateVal(t *testing.T) {
 	}
 }
 
+func TestTypedValue(t *testing.T) {
+	for tname, tcase := range map[string]struct {
+		in  interface{}
+		exp *pb.TypedValue
+	}{
+		"string": {
+			in:  "foo",
+			exp: &pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: "foo"}},
+		},
+		"int": {
+			in:  42,
+			exp: &pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: 42}},
+		},
+		"int64": {
+			in:  int64(42),
+			exp: &pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: 42}},
+		},
+		"uint": {
+			in:  uint(42),
+			exp: &pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: 42}},
+		},
+		"bool": {
+			in:  true,
+			exp: &pb.TypedValue{Value: &pb.TypedValue_BoolVal{BoolVal: true}},
+		},
+		"slice": {
+			in: []interface{}{"foo", 1, uint(2), true},
+			exp: &pb.TypedValue{Value: &pb.TypedValue_LeaflistVal{LeaflistVal: &pb.ScalarArray{
+				Element: []*pb.TypedValue{
+					&pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: "foo"}},
+					&pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: 1}},
+					&pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: 2}},
+					&pb.TypedValue{Value: &pb.TypedValue_BoolVal{BoolVal: true}},
+				}}}},
+		},
+	} {
+		t.Run(tname, func(t *testing.T) {
+			if got := TypedValue(tcase.in); !test.DeepEqual(got, tcase.exp) {
+				t.Errorf("Expected: %q Got: %q", tcase.exp, got)
+			}
+		})
+	}
+}
+
 func TestExtractJSON(t *testing.T) {
 	jsonFile, err := ioutil.TempFile("", "extractJSON")
 	if err != nil {

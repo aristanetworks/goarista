@@ -214,6 +214,56 @@ func strLeaflist(v *pb.ScalarArray) string {
 	return b.String()
 }
 
+// TypedValue marshals an interface into a gNMI TypedValue value
+func TypedValue(val interface{}) *pb.TypedValue {
+	// TODO: handle more types:
+	// float64
+	// maps
+	// key.Key
+	// key.Map
+	// ... etc
+	switch v := val.(type) {
+	case string:
+		return &pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: v}}
+	case int:
+		return &pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: int64(v)}}
+	case int8:
+		return &pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: int64(v)}}
+	case int16:
+		return &pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: int64(v)}}
+	case int32:
+		return &pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: int64(v)}}
+	case int64:
+		return &pb.TypedValue{Value: &pb.TypedValue_IntVal{IntVal: v}}
+	case uint:
+		return &pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: uint64(v)}}
+	case uint8:
+		return &pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: uint64(v)}}
+	case uint16:
+		return &pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: uint64(v)}}
+	case uint32:
+		return &pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: uint64(v)}}
+	case uint64:
+		return &pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: v}}
+	case bool:
+		return &pb.TypedValue{Value: &pb.TypedValue_BoolVal{BoolVal: v}}
+	case float32:
+		return &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: v}}
+	case []interface{}:
+		gnmiElems := make([]*pb.TypedValue, len(v))
+		for i, elem := range v {
+			gnmiElems[i] = TypedValue(elem)
+		}
+		return &pb.TypedValue{
+			Value: &pb.TypedValue_LeaflistVal{
+				LeaflistVal: &pb.ScalarArray{
+					Element: gnmiElems,
+				}}}
+	default:
+		panic(fmt.Sprintf("unexpected type %T for value %v", val, val))
+	}
+}
+
 // ExtractValue pulls a value out of a gNMI Update, parsing JSON if present.
 // Possible return types:
 //  string
