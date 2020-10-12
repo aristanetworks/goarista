@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	aflag "github.com/aristanetworks/goarista/flag"
@@ -73,8 +74,9 @@ func main() {
 		"key=value gRPC metadata fields, can be used repeatedly")
 
 	debug := flag.String("debug", "", "Enable a debug mode:\n"+
-		"  'proto' : prints SubscribeResponses in protobuf text format\n"+
-		"  'latency' : print timing numbers to help debug latency")
+		"  'proto' : print SubscribeResponses in protobuf text format\n"+
+		"  'latency' : print timing numbers to help debug latency\n"+
+		"  'throughput' : print number of notifications sent in a second")
 
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, help)
@@ -161,6 +163,8 @@ func main() {
 				for resp := range respChan {
 					printLatencyStats(resp)
 				}
+			case "throughput":
+				handleThroughput(respChan)
 			case "":
 				for resp := range respChan {
 					if err := gnmi.LogSubscribeResponse(resp); err != nil {
@@ -272,4 +276,40 @@ func printLatencyStats(s *pb.SubscribeResponse) {
 			len(notif.Delete),
 		)
 	}
+}
+
+func handleThroughput(respChan <-chan *pb.SubscribeResponse) {
+	var notifs uint64
+	var updates uint64
+	go func() {
+		var (
+			lastNotifs  uint64
+			lastUpdates uint64
+			lastTime    = time.Now()
+		)
+		ticker := time.NewTicker(10 * time.Second)
+		for t := range ticker.C {
+			newNotifs := atomic.LoadUint64(&notifs)
+			newUpdates := atomic.LoadUint64(&updates)
+			dNotifs := newNotifs - lastNotifs
+			dUpdates := newUpdates - lastUpdates
+			since := t.Sub(lastTime).Seconds()
+			lastNotifs = newNotifs
+			lastUpdates = newUpdates
+			lastTime = t
+			fmt.Printf("%s: %f notifs/s %f updates/s\n",
+				t, float64(dNotifs)/since, float64(dUpdates)/since)
+		}
+	}()
+
+	for resp := range respChan {
+		r, ok := resp.Response.(*pb.SubscribeResponse_Update)
+		if !ok {
+			continue
+		}
+		notif := r.Update
+		atomic.AddUint64(&notifs, 1)
+		atomic.AddUint64(&updates, uint64(len(notif.Update)+len(notif.Delete)))
+	}
+	return
 }
