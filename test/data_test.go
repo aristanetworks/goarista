@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aristanetworks/goarista/key"
+	pb "github.com/golang/protobuf/ptypes/duration"
 )
 
 type builtinCompare struct {
@@ -514,5 +515,20 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a: embedder{builtinCompare: builtinCompare{}},
 		b: embedder{builtinCompare: builtinCompare{}},
+	}, {
+		a: pb.Duration{Seconds: 1},
+		b: pb.Duration{Seconds: 1},
+	}, {
+		a:    pb.Duration{Seconds: 1},
+		b:    pb.Duration{Seconds: 2},
+		diff: "attributes \"Seconds\" are different: int64(1) != int64(2)",
+	}, {
+		a:    []interface{}{"foo", uint32(42)},
+		b:    pb.Duration{Seconds: 1},
+		diff: "expected a []interface {} but got a duration.Duration",
+	}, {
+		a:    pb.Duration{Seconds: 1},
+		b:    []interface{}{"foo", uint32(42)},
+		diff: "expected a duration.Duration but got a []interface {}",
 	}}
 }

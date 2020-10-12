@@ -12,6 +12,7 @@ import (
 
 	"github.com/aristanetworks/goarista/areflect"
 	"github.com/aristanetworks/goarista/key"
+	"github.com/golang/protobuf/proto" // nolint:staticcheck
 )
 
 var comparableType = reflect.TypeOf((*key.Comparable)(nil)).Elem()
@@ -134,6 +135,12 @@ func deepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 		bt, ok := b.(time.Time)
 		return ok && a.Equal(bt)
 
+	case proto.Message:
+		bMsg, ok := b.(proto.Message)
+		if !ok || a == nil || bMsg == nil {
+			return ok && a == bMsg
+		}
+		return proto.Equal(a, bMsg)
 	case []uint32:
 		v, ok := b.([]uint32)
 		if !ok || len(a) != len(v) {
