@@ -66,6 +66,7 @@ func main() {
 		"interval, only applies for on-change subscriptions (400ms, 2.5s, 1m, etc.)")
 	arbitrationStr := flag.String("arbitration", "", "master arbitration identifier "+
 		"([<role_id>:]<election_id>)")
+	flag.StringVar(&cfg.Token, "token", "", "Authentication token")
 
 	debug := flag.String("debug", "", "Enable a debug mode:\n"+
 		"  'proto' : prints SubscribeResponses in protobuf text format\n"+

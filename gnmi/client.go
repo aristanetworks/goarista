@@ -64,6 +64,7 @@ type Config struct {
 	TLS         bool
 	Compression string
 	DialOptions []grpc.DialOption
+	Token       string
 }
 
 // SubscribeOptions is the gNMI subscription request options
@@ -112,6 +113,9 @@ func ParseFlags() (*Config, []string) {
 
 		subscribeFlag = flag.String("subscribe", "",
 			"Comma-separated list of paths to subscribe to upon connecting to the server")
+
+		token = flag.String("token", "",
+			"Authentication token")
 	)
 	flag.Parse()
 	cfg := &Config{
@@ -123,11 +127,35 @@ func ParseFlags() (*Config, []string) {
 		Username:    *usernameFlag,
 		TLS:         *tlsFlag,
 		Compression: *compressionFlag,
+		Token:       *token,
 	}
 	subscriptions := strings.Split(*subscribeFlag, ",")
 	return cfg, subscriptions
 
 }
+
+// accessTokenCred implements credentials.PerRPCCredentials, the gRPC
+// interface for credentials that need to attach security information
+// to every RPC.
+type accessTokenCred struct {
+	bearerToken string
+}
+
+// newAccessTokenCredential constructs a new per-RPC credential from a token.
+func newAccessTokenCredential(token string) credentials.PerRPCCredentials {
+	bearerFmt := "Bearer %s"
+	return &accessTokenCred{bearerToken: fmt.Sprintf(bearerFmt, token)}
+}
+
+func (a *accessTokenCred) GetRequestMetadata(ctx context.Context,
+	uri ...string) (map[string]string, error) {
+	authHeader := "Authorization"
+	return map[string]string{
+		authHeader: a.bearerToken,
+	}, nil
+}
+
+func (a *accessTokenCred) RequireTransportSecurity() bool { return true }
 
 // DialContext connects to a gnmi service and returns a client
 func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
@@ -141,7 +169,7 @@ func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
 		return nil, fmt.Errorf("unsupported compression option: %q", cfg.Compression)
 	}
 
-	if cfg.TLS || cfg.CAFile != "" || cfg.CertFile != "" {
+	if cfg.TLS || cfg.CAFile != "" || cfg.CertFile != "" || cfg.Token != "" {
 		tlsConfig := &tls.Config{}
 		if cfg.CAFile != "" {
 			b, err := ioutil.ReadFile(cfg.CAFile)
@@ -165,6 +193,10 @@ func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
 				return nil, err
 			}
 			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+		if cfg.Token != "" {
+			opts = append(opts,
+				grpc.WithPerRPCCredentials(newAccessTokenCredential(cfg.Token)))
 		}
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
