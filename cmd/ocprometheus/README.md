@@ -35,3 +35,29 @@ in the sample config file:
 ```
 ocprometheus -addr <switch-hostname>:6042 -config sampleconfig.json
 ```
+
+## Deployment
+
+This can be packaged as a swix package to ease the deployment on the devices.
+For this a sample ocprometheus.spec file is proposed.
+
+Here are some instructions, that were tested on OpenSUSE, which you should
+adapt for your environment and the version you wish to use.
+
+Build the rpm:
+
+```
+rpmbuild --undefine=_disable_source_fetch -ba ocprometheus.spec
+rpmbuild --target i686 -ba ocprometheus.spec
+```
+
+Package it as a swix package using a cEOS-lab Docker image:
+
+```
+docker run --rm -ti -v $HOME/rpmbuild:/vol --entrypoint=swix ceosimage:4.24.3 \
+  create /vol/ocprometheus-0.0.2-1.i686.swix /vol/RPMS/i686/ocprometheus-0.0.2-1.i686.rpm --force
+```
+
+You can now install the swix as a normal extension.
+
+
