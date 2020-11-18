@@ -29,6 +29,9 @@ func TestNewSetRequest(t *testing.T) {
 	pathP4 := &pb.Path{
 		Origin: "p4_config",
 	}
+	pathOC := &pb.Path{
+		Origin: "openconfig",
+	}
 
 	p4FileContent := "p4_config test"
 	p4TestFile, err := ioutil.TempFile("", "p4TestFile")
@@ -103,6 +106,20 @@ func TestNewSetRequest(t *testing.T) {
 					Path: pathFoo,
 					Val: &pb.TypedValue{
 						Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte("true")}},
+				}},
+			},
+		},
+		"openconfig origin": {
+			setOps: []*Operation{{Type: "replace", Origin: "openconfig",
+				Val: "true"}},
+			exp: pb.SetRequest{
+				Replace: []*pb.Update{{
+					Path: pathOC,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_JsonIetfVal{
+							JsonIetfVal: []byte("true"),
+						},
+					},
 				}},
 			},
 		},

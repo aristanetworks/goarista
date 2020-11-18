@@ -525,10 +525,10 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	}, {
 		a:    []interface{}{"foo", uint32(42)},
 		b:    pb.Duration{Seconds: 1},
-		diff: "expected a []interface {} but got a duration.Duration",
+		diff: "expected a []interface {} but got a durationpb.Duration",
 	}, {
 		a:    pb.Duration{Seconds: 1},
 		b:    []interface{}{"foo", uint32(42)},
-		diff: "expected a duration.Duration but got a []interface {}",
+		diff: "expected a durationpb.Duration but got a []interface {}",
 	}}
 }

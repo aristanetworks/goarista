@@ -8,7 +8,7 @@ require (
 	github.com/aristanetworks/glog v0.0.0-20191112221043-67e8567f59f3
 	github.com/aristanetworks/splunk-hec-go v0.3.3
 	github.com/garyburd/redigo v1.6.0 // indirect
-	github.com/golang/protobuf v1.3.3
+	github.com/golang/protobuf v1.4.1
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/klauspost/compress v1.10.1 // indirect
 	github.com/klauspost/cpuid v1.2.3 // indirect
@@ -33,8 +33,8 @@ require (
 	golang.org/x/sys v0.0.0-20200219091948-cb0a6d8edb6c
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20200221224223-e1da425f72fd
-	google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5 // indirect
 	google.golang.org/grpc v1.27.1
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
 	gopkg.in/redis.v4 v4.2.4
 	gopkg.in/yaml.v2 v2.2.8

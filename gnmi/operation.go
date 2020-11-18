@@ -360,7 +360,7 @@ func DecimalToFloat(dec *pb.Decimal64) float64 {
 func update(p *pb.Path, val string) (*pb.Update, error) {
 	var v *pb.TypedValue
 	switch p.Origin {
-	case "":
+	case "", "openconfig":
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: extractJSON(val)}}
 	case "eos_native":
