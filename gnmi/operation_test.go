@@ -127,7 +127,6 @@ func TestStrUpdateVal(t *testing.T) {
 		t.Fatal(err)
 	}
 	anyMessage := &any.Any{TypeUrl: "gnmi/ModelData", Value: anyBytes}
-	anyString := proto.CompactTextString(anyMessage)
 
 	for name, tc := range map[string]struct {
 		update *pb.Update
@@ -225,7 +224,7 @@ func TestStrUpdateVal(t *testing.T) {
 		"AnyVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
 				Value: &pb.TypedValue_AnyVal{AnyVal: anyMessage}}},
-			exp: anyString,
+			exp: anyMessage.String(),
 		},
 		"JsonVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
