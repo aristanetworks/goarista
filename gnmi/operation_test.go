@@ -302,6 +302,17 @@ func TestTypedValue(t *testing.T) {
 			in:  uint(42),
 			exp: &pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: 42}},
 		},
+		"float32": {
+			in:  float32(42.234123),
+			exp: &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: 42.234123}},
+		},
+		"float64": {
+			// The last decimal point truncation can be odd. The TypedValue ends up as
+			// 42.234123 if checked. The test case uses disparate numbers to help demonstrate this
+			// behavior (the 42.234122 expected value ends up as 42.234123, as does the input value)
+			in:  float64(42.234124222222),
+			exp: &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: 42.234122}},
+		},
 		"bool": {
 			in:  true,
 			exp: &pb.TypedValue{Value: &pb.TypedValue_BoolVal{BoolVal: true}},

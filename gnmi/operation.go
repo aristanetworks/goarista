@@ -217,7 +217,6 @@ func strLeaflist(v *pb.ScalarArray) string {
 // TypedValue marshals an interface into a gNMI TypedValue value
 func TypedValue(val interface{}) *pb.TypedValue {
 	// TODO: handle more types:
-	// float64
 	// maps
 	// key.Key
 	// key.Map
@@ -249,6 +248,10 @@ func TypedValue(val interface{}) *pb.TypedValue {
 		return &pb.TypedValue{Value: &pb.TypedValue_BoolVal{BoolVal: v}}
 	case float32:
 		return &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: v}}
+	case float64:
+		// There are no plans as of 12/2020 to support float64 in gNMI so just
+		// cast to float 32. See https://github.com/openconfig/gnmi/issues/54
+		return &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: float32(v)}}
 	case []interface{}:
 		gnmiElems := make([]*pb.TypedValue, len(v))
 		for i, elem := range v {
