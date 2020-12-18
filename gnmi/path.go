@@ -203,17 +203,11 @@ func parseKey(s string) (string, string, string, error) {
 	if iEq < 0 {
 		return "", "", "", fmt.Errorf("failed to find '=' in %q", s)
 	}
-	if k == "" {
-		return "", "", "", fmt.Errorf("failed to find key name in %q", s)
-	}
 
 	rhs := s[1+iEq+1:]
 	v, iClosBr := findUnescaped(rhs, ']')
 	if iClosBr < 0 {
 		return "", "", "", fmt.Errorf("failed to find ']' in %q", s)
-	}
-	if v == "" {
-		return "", "", "", fmt.Errorf("failed to find key value in %q", s)
 	}
 
 	next := rhs[iClosBr+1:]

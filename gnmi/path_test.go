@@ -140,13 +140,15 @@ func TestParseElement(t *testing.T) {
 		in:            "hello[there]",
 		expectedError: fmt.Errorf("failed to find '=' in %q", "[there]"),
 	}, {
-		name:          "no_left_side",
-		in:            "hello[=there]",
-		expectedError: fmt.Errorf("failed to find key name in %q", "[=there]"),
+		name:      "no_left_side",
+		in:        "hello[=there]",
+		fieldName: "hello",
+		keys:      map[string]string{"": "there"},
 	}, {
-		name:          "no_right_side",
-		in:            "hello[there=]",
-		expectedError: fmt.Errorf("failed to find key value in %q", "[there=]"),
+		name:      "no_right_side",
+		in:        "hello[there=]",
+		fieldName: "hello",
+		keys:      map[string]string{"there": ""},
 	}, {
 		name:          "hanging_escape",
 		in:            "hello[there\\",
@@ -184,13 +186,15 @@ func TestParseElement(t *testing.T) {
 		in:            "hello[there=where][somename]",
 		expectedError: fmt.Errorf("failed to find '=' in %q", "[somename]"),
 	}, {
-		name:          "no_left_side",
-		in:            "hello[there=where][=somevalue]",
-		expectedError: fmt.Errorf("failed to find key name in %q", "[=somevalue]"),
+		name:      "no_left_side",
+		in:        "hello[there=where][=somevalue]",
+		fieldName: "hello",
+		keys:      map[string]string{"there": "where", "": "somevalue"},
 	}, {
-		name:          "no_right_side",
-		in:            "hello[there=where][somename=]",
-		expectedError: fmt.Errorf("failed to find key value in %q", "[somename=]"),
+		name:      "no_right_side",
+		in:        "hello[there=where][somename=]",
+		fieldName: "hello",
+		keys:      map[string]string{"there": "where", "somename": ""},
 	}, {
 		name:      "two_name_values",
 		in:        "hello[there=where][somename=somevalue]",
