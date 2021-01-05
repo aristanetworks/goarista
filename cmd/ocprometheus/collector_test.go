@@ -69,7 +69,12 @@ func makeMetrics(cfg *Config, expValues map[source]float64, notification *pb.Not
 func findUpdate(notif *pb.Notification, path string) (*pb.Update, error) {
 	prefix := notif.Prefix
 	for _, v := range notif.Update {
-		fullPath := gnmi.StrPath(gnmi.JoinPaths(prefix, v.Path))
+		var fullPath string
+		if prefix != nil {
+			fullPath = gnmi.StrPath(gnmi.JoinPaths(prefix, v.Path))
+		} else {
+			fullPath = gnmi.StrPath(v.Path)
+		}
 		if strings.Contains(path, fullPath) || path == fullPath {
 			return v, nil
 		}
@@ -264,6 +269,14 @@ metrics:
 	delete(expValues, src)
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
+	// Delete a path
+	notif = &pb.Notification{
+		Prefix: nil,
+		Delete: []*pb.Path{makePath("Sysdb/environment/cooling/status/fan/name")},
+	}
+	src.path = "/Sysdb/environment/cooling/status/fan/name"
+	delete(expValues, src)
+	coll.update("10.1.1.1:6042", makeResponse(notif))
 	expMetrics = makeMetrics(cfg, expValues, notif, expMetrics)
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
@@ -284,6 +297,27 @@ metrics:
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
 	// Don't make new metrics as it should have no effect
+	if !test.DeepEqual(expMetrics, coll.metrics) {
+		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
+	}
+	notif = &pb.Notification{
+		Prefix: nil,
+		Update: []*pb.Update{
+			{
+				Path: makePath("/Sysdb/lag/intfCounterDir/Ethernet1/intfCounter"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_JsonVal{JsonVal: []byte("62")},
+				},
+			},
+		},
+	}
+	src = source{
+		addr: "10.1.1.1",
+		path: "/Sysdb/lag/intfCounterDir/Ethernet1/intfCounter",
+	}
+	expValues[src] = 62
+	coll.update("10.1.1.1:6042", makeResponse(notif))
+	expMetrics = makeMetrics(cfg, expValues, notif, expMetrics)
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"path"
 	"strings"
 	"sync"
 
@@ -66,7 +67,7 @@ func (c *collector) update(addr string, message proto.Message) {
 	prefix := gnmi.StrPath(notif.Prefix)
 	// Process deletes first
 	for _, del := range notif.Delete {
-		path := prefix + gnmi.StrPath(del)
+		path := path.Join(prefix, gnmi.StrPath(del))
 		key := source{addr: device, path: path}
 		c.m.Lock()
 		if _, ok := c.metrics[key]; ok {
@@ -85,7 +86,7 @@ func (c *collector) update(addr string, message proto.Message) {
 
 	// Process updates next
 	for _, update := range notif.Update {
-		path := prefix + gnmi.StrPath(update.Path)
+		path := path.Join(prefix, gnmi.StrPath(update.Path))
 		value, suffix, ok := parseValue(update)
 		if !ok {
 			continue
