@@ -85,7 +85,8 @@ func main() {
 	debug := flag.String("debug", "", "Enable a debug mode:\n"+
 		"  'proto' : print SubscribeResponses in protobuf text format\n"+
 		"  'latency' : print timing numbers to help debug latency\n"+
-		"  'throughput' : print number of notifications sent in a second")
+		"  'throughput' : print number of notifications sent in a second\n"+
+		"  'clog' : start a subscribe and then don't read any of the responses")
 
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, help)
@@ -213,6 +214,9 @@ func main() {
 				}
 			case "throughput":
 				handleThroughput(respChan)
+			case "clog":
+				// Don't read any subscription updates
+				g.Wait()
 			case "":
 				for resp := range respChan {
 					if err := gnmi.LogSubscribeResponse(resp); err != nil {
