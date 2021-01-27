@@ -348,3 +348,27 @@ func (m *Map) Iter(f func(k, v interface{}) error) error {
 	}
 	return nil
 }
+
+// Keys returns a list of all keys in the Map
+func (m *Map) Keys() []interface{} {
+	keys := make([]interface{}, m.Len())
+	i := 0
+	m.Iter(func(k, v interface{}) error {
+		keys[i] = k
+		i++
+		return nil
+	})
+	return keys
+}
+
+// Values returns a list of all values in the Map
+func (m *Map) Values() []interface{} {
+	values := make([]interface{}, m.Len())
+	i := 0
+	m.Iter(func(k, v interface{}) error {
+		values[i] = v
+		i++
+		return nil
+	})
+	return values
+}

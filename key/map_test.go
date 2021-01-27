@@ -5,6 +5,7 @@
 package key
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -414,6 +415,52 @@ func TestMapIterDel(t *testing.T) {
 	}
 	if m.Len() != 0 {
 		t.Errorf("map elements should all be deleted, but found %d elements", m.Len())
+	}
+}
+
+func TestMapKeys(t *testing.T) {
+	m := NewMap(
+		"1", "2",
+		New("1"), "keyVal",
+		New(map[string]interface{}{"key1": "val1", "key2": 2}), "mapVal",
+		dumbHashable{dumb: "dumbkey"}, "dumbHashVal",
+	)
+	if len(m.Keys()) != m.Len() {
+		t.Errorf("len(m.Keys()) %d != expected len(m) %d", len(m.Keys()), m.Len())
+	}
+	for _, key := range m.Keys() {
+		if _, ok := m.Get(key); !ok {
+			t.Errorf("could not find key %s in map m %s", key, m)
+		}
+	}
+}
+
+func TestMapValues(t *testing.T) {
+	m := NewMap(
+		"1", "2",
+		New("1"), "keyVal",
+		New(map[string]interface{}{"key1": "val1", "key2": 2}), "mapVal",
+		dumbHashable{dumb: "dumbkey"}, "dumbHashVal",
+	)
+	if len(m.Values()) != m.Len() {
+		t.Errorf("len(m.Values()) %d != expected len(m) %d", len(m.Values()), m.Len())
+	}
+	for _, value := range m.Values() {
+		found := false
+		if err := m.Iter(func(k, v interface{}) error {
+			if v == value {
+				found = true
+				return errors.New("found")
+			}
+			return nil
+		}); err != nil {
+			if err.Error() == "found" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("could not find value %s in map m %s", value, m)
+		}
 	}
 }
 
