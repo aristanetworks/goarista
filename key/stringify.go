@@ -60,18 +60,9 @@ func StringifyInterface(key interface{}) (string, error) {
 	case *map[string]interface{}:
 		return StringifyInterface(*key)
 	case Map:
-		m := make(map[string]interface{}, key.Len())
-		_ = key.Iter(func(k, v interface{}) error {
-			m[stringify(k)] = v
-			return nil
-		})
-		keys := SortedKeys(m)
-		for i, k := range keys {
-			keys[i] = stringify(k) + "=" + stringify(m[k])
-		}
-		str = strings.Join(keys, "_")
+		return key.KeyString(), nil
 	case *Map:
-		return StringifyInterface(*key)
+		return key.KeyString(), nil
 	case map[Key]interface{}:
 		m := make(map[string]interface{}, len(key))
 		for k, v := range key {
@@ -79,7 +70,7 @@ func StringifyInterface(key interface{}) (string, error) {
 		}
 		keys := SortedKeys(m)
 		for i, k := range keys {
-			keys[i] = stringify(k) + "=" + stringify(m[k])
+			keys[i] = escape(k) + "=" + stringify(m[k])
 		}
 		str = strings.Join(keys, "_")
 	case *map[Key]interface{}:

@@ -69,6 +69,21 @@ func (m *Map) String() string {
 	return buf.String()
 }
 
+// KeyString returns a string that is suitable to be used as a key in
+// an index of strings.
+func (m *Map) KeyString() string {
+	s := make(map[string]interface{}, m.Len())
+	_ = m.Iter(func(k, v interface{}) error {
+		s[stringify(k)] = v
+		return nil
+	})
+	keys := SortedKeys(s)
+	for i, k := range keys {
+		keys[i] = k + "=" + stringify(s[k])
+	}
+	return strings.Join(keys, "_")
+}
+
 // Len returns the length of the Map
 func (m *Map) Len() int {
 	if m == nil {

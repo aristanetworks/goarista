@@ -496,6 +496,28 @@ func TestMapString(t *testing.T) {
 	}
 }
 
+func TestMapKeyString(t *testing.T) {
+	for _, tc := range []struct {
+		m *Map
+		s string
+	}{{
+		m: NewMap(
+			New(uint32(42)), true,
+			New("foo"), "bar",
+			New(map[string]interface{}{"hello": "world"}), "yolo",
+			New(map[string]interface{}{"key1": uint32(1), "key2": uint32(2)}), "foobar"),
+
+		s: "1_2=foobar_42=true_foo=bar_world=yolo",
+	}} {
+		t.Run(tc.s, func(t *testing.T) {
+			out := tc.m.KeyString()
+			if out != tc.s {
+				t.Errorf("expected %q got %q", tc.s, out)
+			}
+		})
+	}
+}
+
 func BenchmarkMapGrow(b *testing.B) {
 	keys := make([]Key, 150)
 	for j := 0; j < len(keys); j++ {
