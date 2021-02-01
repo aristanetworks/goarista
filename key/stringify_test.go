@@ -5,6 +5,7 @@
 package key
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -144,6 +145,57 @@ func TestStringify(t *testing.T) {
 				t.Errorf("Test %s: Result is different\nReceived: %s\nExpected: %s",
 					tcase.name, result, tcase.output)
 			}
+			keyString := StringKey(New(tcase.input))
+			if tcase.output != keyString {
+				t.Errorf("Test %s: KeyString result is different\nReceived: %s\nExpected: %s",
+					tcase.name, result, tcase.output)
+			}
 		}()
+	}
+}
+
+var benchcases = []Key{
+	New(nil),
+	New("foobar"),
+	New(string([]byte{0xef, 0xbf, 0xbe, 0xbe, 0xbe, 0xbe, 0xbe})),
+	New(uint64(123456)),
+	New(int8(-32)),
+	New(true),
+	New(float32(2.345)),
+	New(float64(-34.6543)),
+	New(map[string]interface{}{
+		"b": uint32(43),
+		"a": "foobar",
+		"ex": map[string]interface{}{
+			"d": "barfoo",
+			"c": uint32(45),
+		},
+	}),
+	New([]interface{}{
+		uint32(42),
+		true,
+		"foo", NewMap(
+			New("a"), "b",
+			New("b"), "c"),
+	}),
+	New(NewPointer(Path{New("foo"), New("bar")})),
+}
+
+var str string
+
+func BenchmarkStringification(b *testing.B) {
+	for _, k := range benchcases {
+		b.Run(fmt.Sprintf("SI_%T", k.Key()), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				str, _ = StringifyInterface(k.Key())
+			}
+		})
+		b.Run(fmt.Sprintf("SK_%T", k.Key()), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				str = StringKey(k)
+			}
+		})
 	}
 }

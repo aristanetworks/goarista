@@ -18,6 +18,18 @@ type keyStringer interface {
 	KeyString() string
 }
 
+// StringKey generates a String suitable to be used as a key in a
+// string index by calling k.StringKey, if available, otherwise it
+// calls k.String. StringKey returns the same results as
+// StringifyInterface(k.Key()) and should be preferred over
+// StringifyInterface.
+func StringKey(k Key) string {
+	if ks, ok := k.(keyStringer); ok {
+		return ks.KeyString()
+	}
+	return k.String()
+}
+
 // StringifyInterface transforms an arbitrary interface into a string
 // representation suitable to be used as a key, such as in a JSON
 // object, or as a path element.

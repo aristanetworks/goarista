@@ -286,6 +286,10 @@ func (k strKey) GoString() string {
 	return fmt.Sprintf("key.New(%q)", string(k))
 }
 
+func (k strKey) KeyString() string {
+	return escape(string(k))
+}
+
 func (k strKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(escape(string(k)))
 }
