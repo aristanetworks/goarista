@@ -149,3 +149,14 @@ func TestInvalidUTF8(t *testing.T) {
 		t.Errorf("expected %q to be valid utf8", pathString)
 	}
 }
+
+var pathStr string
+
+func BenchmarkPathString(b *testing.B) {
+	p := path.New("foo", "bar", "baz", "qux", "corge", "grault", "garply", "waldo", "fred")
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pathStr = p.String()
+	}
+}

@@ -22,13 +22,9 @@ func (p Path) String() string {
 	var b strings.Builder
 	for _, element := range p {
 		b.WriteByte('/')
-		// Use StringifyInterface instead of element.String() because
+		// Use StringKey instead of element.String() because
 		// that will escape any invalid UTF-8.
-		s, err := StringifyInterface(element.Key())
-		if err != nil {
-			panic(fmt.Errorf("unable to stringify %#v: %s", element, err))
-		}
-		b.WriteString(s)
+		b.WriteString(StringKey(element))
 	}
 	return b.String()
 }
