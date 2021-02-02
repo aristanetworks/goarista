@@ -36,78 +36,7 @@ func StringKey(k Key) string {
 //
 // Deprecated: Use StringKey instead.
 func StringifyInterface(key interface{}) (string, error) {
-	var str string
-	switch key := key.(type) {
-	case nil:
-		return "<nil>", nil
-	case bool:
-		str = strconv.FormatBool(key)
-	case uint8:
-		str = strconv.FormatUint(uint64(key), 10)
-	case uint16:
-		str = strconv.FormatUint(uint64(key), 10)
-	case uint32:
-		str = strconv.FormatUint(uint64(key), 10)
-	case uint64:
-		str = strconv.FormatUint(key, 10)
-	case int8:
-		str = strconv.FormatInt(int64(key), 10)
-	case int16:
-		str = strconv.FormatInt(int64(key), 10)
-	case int32:
-		str = strconv.FormatInt(int64(key), 10)
-	case int64:
-		str = strconv.FormatInt(key, 10)
-	case float32:
-		str = "f" + strconv.FormatInt(int64(math.Float32bits(key)), 10)
-	case float64:
-		str = "f" + strconv.FormatInt(int64(math.Float64bits(key)), 10)
-	case string:
-		str = escape(key)
-	case map[string]interface{}:
-		keys := SortedKeys(key)
-		for i, k := range keys {
-			v := key[k]
-			keys[i] = stringify(v)
-		}
-		str = strings.Join(keys, "_")
-	case *map[string]interface{}:
-		return StringifyInterface(*key)
-	case Map:
-		return key.KeyString(), nil
-	case *Map:
-		return key.KeyString(), nil
-	case map[Key]interface{}:
-		m := make(map[string]interface{}, len(key))
-		for k, v := range key {
-			m[k.String()] = v
-		}
-		keys := SortedKeys(m)
-		for i, k := range keys {
-			keys[i] = escape(k) + "=" + stringify(m[k])
-		}
-		str = strings.Join(keys, "_")
-	case *map[Key]interface{}:
-		return StringifyInterface(*key)
-	case []interface{}:
-		elements := make([]string, len(key))
-		for i, element := range key {
-			elements[i] = stringify(element)
-		}
-		str = strings.Join(elements, ",")
-	case Pointer:
-		return "{" + key.Pointer().String() + "}", nil
-	case Path:
-		return "[" + key.String() + "]", nil
-	case keyStringer:
-		return key.KeyString(), nil
-	case fmt.Stringer:
-		return key.String(), nil
-	default:
-		panic(fmt.Errorf("Unable to stringify type %T: %#v", key, key))
-	}
-
-	return str, nil
+	return stringify(key), nil
 }
 
 // escape checks if the string is a valid utf-8 string.
@@ -121,11 +50,75 @@ func escape(str string) string {
 }
 
 func stringify(key interface{}) string {
-	s, err := StringifyInterface(key)
-	if err != nil {
-		panic(err)
+	switch key := key.(type) {
+	case nil:
+		return "<nil>"
+	case bool:
+		return strconv.FormatBool(key)
+	case uint8:
+		return strconv.FormatUint(uint64(key), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(key), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(key), 10)
+	case uint64:
+		return strconv.FormatUint(key, 10)
+	case int8:
+		return strconv.FormatInt(int64(key), 10)
+	case int16:
+		return strconv.FormatInt(int64(key), 10)
+	case int32:
+		return strconv.FormatInt(int64(key), 10)
+	case int64:
+		return strconv.FormatInt(key, 10)
+	case float32:
+		return "f" + strconv.FormatInt(int64(math.Float32bits(key)), 10)
+	case float64:
+		return "f" + strconv.FormatInt(int64(math.Float64bits(key)), 10)
+	case string:
+		return escape(key)
+	case map[string]interface{}:
+		keys := SortedKeys(key)
+		for i, k := range keys {
+			v := key[k]
+			keys[i] = stringify(v)
+		}
+		return strings.Join(keys, "_")
+	case *map[string]interface{}:
+		return stringify(*key)
+	case Map:
+		return key.KeyString()
+	case *Map:
+		return key.KeyString()
+	case map[Key]interface{}:
+		m := make(map[string]interface{}, len(key))
+		for k, v := range key {
+			m[k.String()] = v
+		}
+		keys := SortedKeys(m)
+		for i, k := range keys {
+			keys[i] = escape(k) + "=" + stringify(m[k])
+		}
+		return strings.Join(keys, "_")
+	case *map[Key]interface{}:
+		return stringify(*key)
+	case []interface{}:
+		elements := make([]string, len(key))
+		for i, element := range key {
+			elements[i] = stringify(element)
+		}
+		return strings.Join(elements, ",")
+	case Pointer:
+		return "{" + key.Pointer().String() + "}"
+	case Path:
+		return "[" + key.String() + "]"
+	case keyStringer:
+		return key.KeyString()
+	case fmt.Stringer:
+		return key.String()
+	default:
+		panic(fmt.Errorf("Unable to stringify type %T: %#v", key, key))
 	}
-	return s
 }
 
 // StringifyCollection safely returns a string representation of a
