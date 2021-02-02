@@ -33,6 +33,8 @@ func StringKey(k Key) string {
 // StringifyInterface transforms an arbitrary interface into a string
 // representation suitable to be used as a key, such as in a JSON
 // object, or as a path element.
+//
+// Deprecated: Use StringKey instead.
 func StringifyInterface(key interface{}) (string, error) {
 	var str string
 	switch key := key.(type) {
