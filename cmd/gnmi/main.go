@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	aflag "github.com/aristanetworks/goarista/flag"
 	"github.com/aristanetworks/goarista/gnmi"
 
 	"github.com/aristanetworks/glog"
@@ -67,6 +68,9 @@ func main() {
 	arbitrationStr := flag.String("arbitration", "", "master arbitration identifier "+
 		"([<role_id>:]<election_id>)")
 	flag.StringVar(&cfg.Token, "token", "", "Authentication token")
+	grpcMetadata := aflag.Map{}
+	flag.Var(grpcMetadata, "grpcmetadata",
+		"key=value gRPC metadata fields, can be used repeatedly")
 
 	debug := flag.String("debug", "", "Enable a debug mode:\n"+
 		"  'proto' : prints SubscribeResponses in protobuf text format\n"+
@@ -80,6 +84,7 @@ func main() {
 	if cfg.Addr == "" {
 		usageAndExit("error: address not specified")
 	}
+	cfg.GRPCMetadata = grpcMetadata
 
 	var sampleInterval, heartbeatInterval time.Duration
 	var err error

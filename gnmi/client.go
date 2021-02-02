@@ -55,16 +55,17 @@ func ParseHostnames(list string) ([]string, error) {
 
 // Config is the gnmi.Client config
 type Config struct {
-	Addr        string
-	CAFile      string
-	CertFile    string
-	KeyFile     string
-	Password    string
-	Username    string
-	TLS         bool
-	Compression string
-	DialOptions []grpc.DialOption
-	Token       string
+	Addr         string
+	CAFile       string
+	CertFile     string
+	KeyFile      string
+	Password     string
+	Username     string
+	TLS          bool
+	Compression  string
+	DialOptions  []grpc.DialOption
+	Token        string
+	GRPCMetadata map[string]string
 }
 
 // SubscribeOptions is the gNMI subscription request options
@@ -254,12 +255,19 @@ func Dial(cfg *Config) (pb.GNMIClient, error) {
 }
 
 // NewContext returns a new context with username and password
-// metadata if they are set in cfg.
+// metadata if they are set in cfg, as well as any other metadata
+// provided.
 func NewContext(ctx context.Context, cfg *Config) context.Context {
+	md := map[string]string{}
+	for k, v := range cfg.GRPCMetadata {
+		md[k] = v
+	}
 	if cfg.Username != "" {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(
-			"username", cfg.Username,
-			"password", cfg.Password))
+		md["username"] = cfg.Username
+		md["password"] = cfg.Password
+	}
+	if len(md) > 0 {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(md))
 	}
 	return ctx
 }
