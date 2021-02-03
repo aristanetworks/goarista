@@ -102,7 +102,8 @@ func main() {
 
 	var setOps []*gnmi.Operation
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
+		op := args[i]
+		switch op {
 		case "capabilities":
 			if len(setOps) != 0 {
 				usageAndExit("error: 'capabilities' not allowed after 'merge|replace|delete'")
@@ -116,15 +117,8 @@ func main() {
 			if len(setOps) != 0 {
 				usageAndExit("error: 'get' not allowed after 'merge|replace|delete'")
 			}
-			origin, ok := parseOrigin(args[i+1])
-			if ok {
-				i++
-			}
-			target, ok := parseTarget(args[i+1])
-			if ok {
-				i++
-			}
-			req, err := gnmi.NewGetRequest(gnmi.SplitPaths(args[i+1:]), origin)
+			origin, target, paths, _ := parseOriginTargetPaths(args[1:], false)
+			req, err := gnmi.NewGetRequest(gnmi.SplitPaths(paths), origin)
 			if err != nil {
 				glog.Fatal(err)
 			}
@@ -144,18 +138,11 @@ func main() {
 			if len(setOps) != 0 {
 				usageAndExit("error: 'subscribe' not allowed after 'merge|replace|delete'")
 			}
-			origin, ok := parseOrigin(args[i+1])
-			if ok {
-				i++
-			}
-			target, ok := parseTarget(args[i+1])
-			if ok {
-				i++
-			}
+			origin, target, paths, _ := parseOriginTargetPaths(args[1:], false)
 			respChan := make(chan *pb.SubscribeResponse)
 			subscribeOptions.Origin = origin
 			subscribeOptions.Target = target
-			subscribeOptions.Paths = gnmi.SplitPaths(args[i+1:])
+			subscribeOptions.Paths = gnmi.SplitPaths(paths)
 			var g errgroup.Group
 			g.Go(func() error {
 				return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan)
@@ -194,21 +181,15 @@ func main() {
 			if len(args) <= i {
 				break
 			}
-			var ok bool
-			op.Origin, ok = parseOrigin(args[i])
-			if ok {
-				i++
-			}
-			op.Target, ok = parseTarget(args[i])
-			if ok {
-				i++
-			}
-			op.Path = gnmi.SplitPath(args[i])
+			origin, target, paths, argsParsed := parseOriginTargetPaths(args[i:], true)
+			i += argsParsed
+			op.Path = gnmi.SplitPath(paths[0])
+			op.Origin = origin
+			op.Target = target
 			if op.Type != "delete" {
-				if len(args) == i+1 {
+				if len(args) == i {
 					usageAndExit("error: missing JSON or FILEPATH to data")
 				}
-				i++
 				op.Val = args[i]
 			}
 			setOps = append(setOps, op)
@@ -244,6 +225,28 @@ func parseOrigin(s string) (string, bool) {
 
 func parseTarget(s string) (string, bool) {
 	return parseStringOpt(s, "target")
+}
+
+func parseOriginTargetPaths(args []string, maxOnePath bool) (origin,
+	target string, paths []string, argsParsed int) {
+	for i, arg := range args {
+		argsParsed++
+		if i < 2 {
+			if o, ok := parseOrigin(arg); ok {
+				origin = o
+				continue
+			}
+			if t, ok := parseTarget(arg); ok {
+				target = t
+				continue
+			}
+		}
+		paths = append(paths, arg)
+		if len(paths) > 0 && maxOnePath {
+			return
+		}
+	}
+	return
 }
 
 func printLatencyStats(s *pb.SubscribeResponse) {
