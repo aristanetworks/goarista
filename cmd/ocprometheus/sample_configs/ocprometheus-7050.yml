@@ -97,5 +97,23 @@ metrics:
           help: KernelProcStat
           valuelabel: command
           defaultvalue: 1
-        - name: connectivityMonitor        
+        - name: cputotal
+          path: /Kernel/proc/cpu/utilization/total/(?P<usageType>(?:idle|nice|system|user|util))
+          help: CPUtotal
+        - name: memoryinfo
+          path: /Kernel/proc/meminfo/(?P<usageType>(?:memAvailable|memFree|memTotal|buffers|cached))
+          help: memory info
+        - name: connectivityMonitor
           path: /Sysdb/connectivityMonitor/status/hostStatus/(?P<originhost>.+)/defaultStats/(?P<traceType>(?:jitter|latency|packetLoss|httpResponseTime))
+        - name: inputBinCtr
+          path: /Smash/counters/ethIntf/SandCounters/current/(counter)/(?P<intf>.+)/ethStatistics/(?P<type>(?:in1024To1522OctetFrames|in128To255OctetFrames|in256To511OctetFrames|in512To1023OctetFrames|in64OctetFrames|in65To127OctetFrames))
+        - name: interfaceLinkStatus
+          path: /Sysdb/interface/status/eth/phy/slice/1/intfStatus/(?P<intf>.+)/linkStatus$
+          help: LinkStatus
+          valuelabel: linkStatus
+          defaultvalue: 4
+        - name: interfaceOperStatus
+          path: /Sysdb/interface/status/eth/phy/slice/1/intfStatus/(?P<intr>.+)/operStatus$
+          help: OperStatus
+          valuelabel: operStatus
+          defaultvalue: 2

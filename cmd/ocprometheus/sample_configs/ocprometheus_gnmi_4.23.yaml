@@ -6,23 +6,18 @@ subscriptions:
         - /network-instances/network-instance[name=default]/protocols/protocol[identifier=BGP][name=BGP]/bgp
         - /system/processes
         - /interfaces/interface
+        - eos_native:/Kernel/proc
 # Prometheus metrics configuration.
 # If you use named capture groups in the path, they will be extracted into labels with the same name.
 # All fields are mandatory.
 metrics:
-        - name: BgpPfxReceived
-          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=openconfig-bgp-types:IPV4_UNICAST\]/state/prefixes/received
-        - name: BgpPfxInstalled
-          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=openconfig-bgp-types:IPV4_UNICAST\]/state/prefixes/installed
-        - name: BgpPfxSent
-          path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=openconfig-bgp-types:IPV4_UNICAST\]/state/prefixes/sent
         - name: BGPCPU
           path: /system/processes/process\[pid=2794\]/state/cpu-utilization
-        - name: BgpPfxReceived2
+        - name: BgpPfxReceived
           path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=IPV4_UNICAST\]/state/prefixes/received
-        - name: BgpPfxInstalled2
+        - name: BgpPfxInstalled
           path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=IPV4_UNICAST\]/state/prefixes/installed
-        - name: BgpPfxSent2
+        - name: BgpPfxSent
           path: /network-instances/network-instance\[name=default\]/protocols/protocol\[identifier=BGP\]\[name=BGP\]/bgp/neighbors/neighbor\[neighbor-address=(?P<neighbor>.+)\]/afi-safis/afi-safi\[afi-safi-name=IPV4_UNICAST\]/state/prefixes/sent
         - name: intfCounter
           path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/state/counters/(?P<countertype>.+)
@@ -44,3 +39,9 @@ metrics:
           path: /interfaces/interface\[name=(?P<intf>[^\]]+)\]/subinterfaces/subinterface\[index=(?P<subintf>[^\]]+)\]/state/admin-status
           valuelabel: subAdminState
           defaultvalue: 4
+        - name: cputotal
+          path: /Kernel/proc/cpu/utilization/total/(?P<usageType>(?:idle|nice|system|user|util))
+          help: CPUtotal
+        - name: memoryinfo
+          path: /Kernel/proc/meminfo/(?P<usageType>(?:memAvailable|memFree|memTotal|buffers|cached))
+          help: memory info

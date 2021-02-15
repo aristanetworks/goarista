@@ -8,7 +8,7 @@ dropped. Arrays (even with numeric values) are not yet supported.
 This tool requires a config file to specify how to map the path of the
 notificatons coming out of the OpenConfig gRPC interface onto Prometheus
 metric names, and how to extract labels from the path.  For example, the
-following rule, excerpt from `sampleconfig.yml`:
+following rule, excerpt from `sampleconfig_above_4.20.yml`:
 
 ```yaml
 metrics:
@@ -28,10 +28,17 @@ The timestamps from the notifications are not preserved since Prometheus uses a 
 doesn't have (yet) support for exporter specified timestamps.
 Prometheus 2.0 will probably support timestamps.
 
+Support for `eos_native` origin when using ocprometheus with the Octa agent (enabled with `provider eos-native` under `management api gnmi`) was added as part of #c6473e3ed183a4706d17336671d4e5be1991b7df
+
+The [sample_configs](./sample_configs) folder contains per platform examples using EOS native paths and also examples for OpenConfig paths.
+
 ## Usage
 
 See the `-help` output, but here's an example to push all the metrics defined
 in the sample config file:
 ```
-ocprometheus -addr <switch-hostname>:6042 -config sampleconfig.json
+ocprometheus -addr <switch-hostname>:6042 -config sampleconfig.yml
 ```
+
+For more usage examples and a detailed demo please visit:
+https://eos.arista.com/streaming-eos-telemetry-states-to-prometheus/
