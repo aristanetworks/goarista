@@ -14,7 +14,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // MessageEncoder is an encoder interface

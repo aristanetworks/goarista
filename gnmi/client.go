@@ -18,12 +18,12 @@ import (
 	"strings"
 
 	"github.com/aristanetworks/goarista/netns"
-	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 const (

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/openconfig/gnmi/proto/gnmi"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSampleList(t *testing.T) {

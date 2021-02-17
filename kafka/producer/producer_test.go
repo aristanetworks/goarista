@@ -14,8 +14,8 @@ import (
 	"github.com/aristanetworks/goarista/test"
 
 	"github.com/Shopify/sarama"
-	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"google.golang.org/protobuf/proto"
 )
 
 type mockAsyncProducer struct {

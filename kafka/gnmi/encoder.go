@@ -14,8 +14,8 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
 	"github.com/openconfig/gnmi/proto/gnmi"
+	"google.golang.org/protobuf/proto"
 )
 
 // UnhandledMessageError is used for proto messages not matching the handled types

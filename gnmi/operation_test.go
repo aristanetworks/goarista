@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
+	"google.golang.org/protobuf/proto"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 )

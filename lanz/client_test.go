@@ -17,7 +17,7 @@ import (
 	pb "github.com/aristanetworks/goarista/lanz/proto"
 
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var testProtoBuf = &pb.LanzRecord{

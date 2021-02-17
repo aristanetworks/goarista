@@ -14,10 +14,10 @@ import (
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/protobuf/proto"
 )
 
 // A metric source.

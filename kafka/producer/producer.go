@@ -13,7 +13,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // Producer forwards messages recvd on a channel to kafka.

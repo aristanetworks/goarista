@@ -90,6 +90,7 @@ func main() {
 }
 
 type server struct {
+	gnmireverse.UnimplementedGNMIReverseServer
 }
 
 func (s *server) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {

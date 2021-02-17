@@ -16,10 +16,10 @@ import (
 	"github.com/aristanetworks/goarista/gnmi"
 
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/gnmi/proto/gnmi_ext"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 )
 
 // TODO: Make this more clear
