@@ -265,7 +265,7 @@ func TestDefaultConnector(t *testing.T) {
 	go func() {
 		conn, err := l.Accept()
 		if err != nil {
-			t.Fatalf("Can't accept: %v", err)
+			t.Errorf("Can't accept: %v", err)
 		}
 		conn.Write(stream)
 		conn.Close()

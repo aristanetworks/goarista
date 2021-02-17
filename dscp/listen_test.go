@@ -31,16 +31,16 @@ func testListenTCPWithTOS(t *testing.T, ip string) {
 	go func() {
 		conn, err := listen.Accept()
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 		defer conn.Close()
 		buf := []byte{'!'}
 		conn.Write(buf)
 		n, err := conn.Read(buf)
 		if n != 1 || err != nil {
-			t.Fatalf("Read returned %d / %s", n, err)
+			t.Errorf("Read returned %d / %s", n, err)
 		} else if buf[0] != '!' {
-			t.Fatalf("Expected to read '!' but got %q", buf)
+			t.Errorf("Expected to read '!' but got %q", buf)
 		}
 		close(done)
 	}()
