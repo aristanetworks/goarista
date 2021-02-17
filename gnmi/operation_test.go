@@ -49,15 +49,15 @@ func TestNewSetRequest(t *testing.T) {
 
 	testCases := map[string]struct {
 		setOps []*Operation
-		exp    pb.SetRequest
+		exp    *pb.SetRequest
 	}{
 		"delete": {
 			setOps: []*Operation{{Type: "delete", Path: []string{"foo"}}},
-			exp:    pb.SetRequest{Delete: []*pb.Path{pathFoo}},
+			exp:    &pb.SetRequest{Delete: []*pb.Path{pathFoo}},
 		},
 		"update": {
 			setOps: []*Operation{{Type: "update", Path: []string{"foo"}, Val: "true"}},
-			exp: pb.SetRequest{
+			exp: &pb.SetRequest{
 				Update: []*pb.Update{{
 					Path: pathFoo,
 					Val: &pb.TypedValue{
@@ -67,7 +67,7 @@ func TestNewSetRequest(t *testing.T) {
 		},
 		"replace": {
 			setOps: []*Operation{{Type: "replace", Path: []string{"foo"}, Val: "true"}},
-			exp: pb.SetRequest{
+			exp: &pb.SetRequest{
 				Replace: []*pb.Update{{
 					Path: pathFoo,
 					Val: &pb.TypedValue{
@@ -78,7 +78,7 @@ func TestNewSetRequest(t *testing.T) {
 		"cli-replace": {
 			setOps: []*Operation{{Type: "replace", Origin: "cli",
 				Val: "hostname foo\nip routing"}},
-			exp: pb.SetRequest{
+			exp: &pb.SetRequest{
 				Replace: []*pb.Update{{
 					Path: pathCli,
 					Val: &pb.TypedValue{
@@ -89,7 +89,7 @@ func TestNewSetRequest(t *testing.T) {
 		"p4_config": {
 			setOps: []*Operation{{Type: "replace", Origin: "p4_config",
 				Val: p4Filename}},
-			exp: pb.SetRequest{
+			exp: &pb.SetRequest{
 				Replace: []*pb.Update{{
 					Path: pathP4,
 					Val: &pb.TypedValue{
@@ -100,7 +100,7 @@ func TestNewSetRequest(t *testing.T) {
 		"target": {
 			setOps: []*Operation{{Type: "replace", Target: "JPE1234567",
 				Path: []string{"foo"}, Val: "true"}},
-			exp: pb.SetRequest{
+			exp: &pb.SetRequest{
 				Prefix: &pb.Path{Target: "JPE1234567"},
 				Replace: []*pb.Update{{
 					Path: pathFoo,
@@ -112,7 +112,7 @@ func TestNewSetRequest(t *testing.T) {
 		"openconfig origin": {
 			setOps: []*Operation{{Type: "replace", Origin: "openconfig",
 				Val: "true"}},
-			exp: pb.SetRequest{
+			exp: &pb.SetRequest{
 				Replace: []*pb.Update{{
 					Path: pathOC,
 					Val: &pb.TypedValue{
@@ -131,8 +131,8 @@ func TestNewSetRequest(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := test.Diff(tc.exp, *got); diff != "" {
-				t.Errorf("unexpected diff: %s", diff)
+			if !proto.Equal(tc.exp, got) {
+				t.Errorf("Exp: %v Got: %v", tc.exp, got)
 			}
 		})
 	}
