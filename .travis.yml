@@ -1,14 +1,12 @@
 language: go
 go:
-- 1.13.x
-- 1.14.x
+- 1.15.x
+- 1.16.x
 - master
 env:
-# GOSUMDB is to make go1.12 behave like go1.13
-- GO111MODULE=on GOSUMDB=sum.golang.org
+- GO111MODULE=on
 before_install:
 - go get -v golang.org/x/lint/golint
-- go get -v -t -d ./...
 after_success:
 - make coverdata
 - bash <(curl -s https://codecov.io/bash)
