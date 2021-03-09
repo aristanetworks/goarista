@@ -19,6 +19,7 @@ import (
 
 	"github.com/aristanetworks/goarista/netns"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"github.com/openconfig/gnmi/proto/gnmi_ext"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
@@ -80,6 +81,7 @@ type SubscribeOptions struct {
 	Paths             [][]string
 	Origin            string
 	Target            string
+	Extensions        []*gnmi_ext.Extension
 }
 
 // ParseFlags reads arguments from stdin and returns a populated Config object and a list of
@@ -348,6 +350,37 @@ func NewSubscribeRequest(subscribeOptions *SubscribeOptions) (*pb.SubscribeReque
 			HeartbeatInterval: subscribeOptions.HeartbeatInterval,
 		}
 	}
-	return &pb.SubscribeRequest{Request: &pb.SubscribeRequest_Subscribe{
-		Subscribe: subList}}, nil
+	return &pb.SubscribeRequest{
+		Extension: subscribeOptions.Extensions,
+		Request: &pb.SubscribeRequest_Subscribe{
+			Subscribe: subList,
+		},
+	}, nil
+}
+
+// HistorySnapshotExtension returns an Extension_History for the given
+// time.
+func HistorySnapshotExtension(t int64) *gnmi_ext.Extension_History {
+	return &gnmi_ext.Extension_History{
+		History: &gnmi_ext.History{
+			Request: &gnmi_ext.History_SnapshotTime{
+				SnapshotTime: t,
+			},
+		},
+	}
+}
+
+// HistoryRangeExtension returns an Extension_History for the the
+// specified start and end times.
+func HistoryRangeExtension(s, e int64) *gnmi_ext.Extension_History {
+	return &gnmi_ext.Extension_History{
+		History: &gnmi_ext.History{
+			Request: &gnmi_ext.History_Range{
+				Range: &gnmi_ext.TimeRange{
+					Start: s,
+					End:   e,
+				},
+			},
+		},
+	}
 }

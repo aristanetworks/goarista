@@ -68,6 +68,15 @@ func main() {
 		"interval, only applies for on-change subscriptions (400ms, 2.5s, 1m, etc.)")
 	arbitrationStr := flag.String("arbitration", "", "master arbitration identifier "+
 		"([<role_id>:]<election_id>)")
+	historyStartStr := flag.String("history_start", "", "Historical data subscription "+
+		"start time (RFC3339 format with nanosecond precision, e.g., "+
+		"2006-01-02T15:04:05.999999999+07:00)")
+	historyEndStr := flag.String("history_end", "", "Historical data subscription "+
+		"end time (RFC3339 format with nanosecond precision, e.g., "+
+		"2006-01-02T15:04:05.999999999+07:00)")
+	historySnapshotStr := flag.String("history_snapshot", "", "Historical data subscription "+
+		"snapshot time (RFC3339 format with nanosecond precision, e.g., "+
+		"2006-01-02T15:04:05.999999999+07:00)")
 	flag.StringVar(&cfg.Token, "token", "", "Authentication token")
 	grpcMetadata := aflag.Map{}
 	flag.Var(grpcMetadata, "grpcmetadata",
@@ -98,6 +107,40 @@ func main() {
 		usageAndExit(fmt.Sprintf("error: heartbeat interval (%s) invalid", *heartbeatIntervalStr))
 	}
 	subscribeOptions.HeartbeatInterval = uint64(heartbeatInterval)
+
+	var histExt *gnmi_ext.Extension_History
+	if *historyStartStr != "" || *historyEndStr != "" || *historySnapshotStr != "" {
+		if *historySnapshotStr != "" {
+			if *historyStartStr != "" || *historyEndStr != "" {
+				usageAndExit("error: specified history start/end and snapshot time")
+			}
+			t, err := time.Parse(time.RFC3339Nano, *historySnapshotStr)
+			if err != nil {
+				usageAndExit(fmt.Sprintf("error: invalid snapshot time (%s): %s",
+					*historySnapshotStr, err))
+			}
+			histExt = gnmi.HistorySnapshotExtension(t.UnixNano())
+		} else {
+			var s, e int64
+			if *historyStartStr != "" {
+				st, err := time.Parse(time.RFC3339Nano, *historyStartStr)
+				if err != nil {
+					usageAndExit(fmt.Sprintf("error: invalid start time (%s): %s",
+						*historyStartStr, err))
+				}
+				s = st.UnixNano()
+			}
+			if *historyEndStr != "" {
+				et, err := time.Parse(time.RFC3339Nano, *historyEndStr)
+				if err != nil {
+					usageAndExit(fmt.Sprintf("error: invalid end time (%s): %s",
+						*historyEndStr, err))
+				}
+				e = et.UnixNano()
+			}
+			histExt = gnmi.HistoryRangeExtension(s, e)
+		}
+	}
 
 	args := flag.Args()
 
@@ -150,6 +193,11 @@ func main() {
 			subscribeOptions.Origin = origin
 			subscribeOptions.Target = target
 			subscribeOptions.Paths = gnmi.SplitPaths(paths)
+			if histExt != nil {
+				subscribeOptions.Extensions = []*gnmi_ext.Extension{{
+					Ext: histExt,
+				}}
+			}
 			var g errgroup.Group
 			g.Go(func() error {
 				return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan)
