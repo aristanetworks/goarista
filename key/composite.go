@@ -15,6 +15,8 @@ func hashInterface(v interface{}) uintptr {
 		return hashMapKey(v)
 	case []interface{}:
 		return hashSlice(v)
+	case []byte:
+		return hashInterface(string(v))
 	case Pointer:
 		// This case applies to pointers used
 		// as values in maps or slices (i.e.

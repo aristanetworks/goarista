@@ -5,6 +5,7 @@
 package key
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -223,6 +224,9 @@ func keyEqual(a, b interface{}) bool {
 	case []interface{}:
 		b, ok := b.([]interface{})
 		return ok && sliceEqual(a, b)
+	case []byte:
+		b, ok := b.([]byte)
+		return ok && bytes.Equal(a, b)
 	case Comparable:
 		return a.Equal(b)
 	case Pointer:

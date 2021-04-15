@@ -205,6 +205,14 @@ func TestKeyEqual(t *testing.T) {
 		a:      New(string([]byte{0x1, 0x2})),
 		b:      New([]byte{0x1, 0x2}),
 		result: false,
+	}, {
+		a:      New(map[string]interface{}{"key1": []byte{0x1}}),
+		b:      New(map[string]interface{}{"key1": []byte{0x1}}),
+		result: true,
+	}, {
+		a:      New(map[string]interface{}{"key1": []byte{0x1}}),
+		b:      New(map[string]interface{}{"key1": []byte{0x2}}),
+		result: false,
 	}}
 
 	for _, tcase := range tests {
@@ -329,6 +337,23 @@ func TestGetFromMap(t *testing.T) {
 			"nested": map[string]interface{}{
 				"a": uint32(42), "b": uint32(51)}}), "foo"),
 
+		found: false,
+	}, {
+		k: New(map[string]interface{}{
+			"nested": []byte{0x1, 0x2},
+		}),
+		m: NewMap(New(map[string]interface{}{
+			"nested": []byte{0x1, 0x2},
+		}), "foo"),
+		v:     "foo",
+		found: true,
+	}, {
+		k: New(map[string]interface{}{
+			"nested": []byte{0x1, 0x2},
+		}),
+		m: NewMap(New(map[string]interface{}{
+			"nested": []byte{0x1, 0x3},
+		}), "foo"),
 		found: false,
 	}}
 
