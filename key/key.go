@@ -34,7 +34,7 @@ type Key interface {
 // to the 'gc' implementation of Go (which is the one most people use when they
 // use Go), to bypass this check, by abusing reflection to override how Go
 // compares compositeKey for equality or how it's hashed. The values allowed in
-// this map are only the types whitelisted in New() as well as map[Key]interface{}
+// this map are only the types allowed by New() as well as map[Key]interface{}
 // and []interface{}.
 //
 // See also https://github.com/golang/go/issues/283
