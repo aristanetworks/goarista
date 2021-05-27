@@ -30,6 +30,9 @@ func SetKey(m map[string]interface{}, key interface{}) error {
 
 // SetValue fills a Data map's relevant Value fields
 func SetValue(m map[string]interface{}, val interface{}) error {
+	if val == nil {
+		return nil
+	}
 	if str := toStringPtr(val); str != nil {
 		m["ValueString"] = str
 	} else if long := toLongPtr(val); long != nil {
@@ -40,7 +43,7 @@ func SetValue(m map[string]interface{}, val interface{}) error {
 		m["ValueDouble"] = dub
 	} else if arr := toValueArray(val); arr != nil {
 		m["Value"] = arr
-	} else if json := toJSONValue(val); json != nil {
+	} else if json, err := toJSONValue(val); err == nil {
 		switch tv := json.(type) {
 		case string:
 			m["ValueString"] = &tv
@@ -53,9 +56,9 @@ func SetValue(m map[string]interface{}, val interface{}) error {
 		case float64:
 			m["ValueDouble"] = &tv
 		}
-	} else if val, ok := val.(*gnmi.TypedValue_BytesVal); ok {
-		// TODO: handle byte arrays properly:
-		fmt.Printf("ignoring byte array with string value %s\n", val.BytesVal)
+	} else if bytesVal, ok := val.(*gnmi.TypedValue_BytesVal); ok {
+		// TODO: handle byte arrays properly (BUG589248)
+		fmt.Printf("ignoring byte array with string value %s\n", bytesVal.BytesVal)
 	} else {
 		// this type may not be supported yet, or could not convert
 		return fmt.Errorf("unknown type %T for value %v", val, val)
@@ -141,20 +144,15 @@ func toValueArray(val interface{}) []*map[string]interface{} {
 }
 
 //	*TypedValue_JsonVal, *TypedValue_JsonIetfVal
-func toJSONValue(val interface{}) interface{} {
+func toJSONValue(val interface{}) (interface{}, error) {
+	var out interface{}
 	if tv, ok := val.(*gnmi.TypedValue_JsonVal); ok {
-		var out interface{}
-		if err := json.Unmarshal(tv.JsonVal, &out); err != nil {
-			return nil
-		}
-		return out
+		err := json.Unmarshal(tv.JsonVal, &out)
+		return out, err
 	}
 	if tv, ok := val.(*gnmi.TypedValue_JsonIetfVal); ok {
-		var out interface{}
-		if err := json.Unmarshal(tv.JsonIetfVal, &out); err != nil {
-			return nil
-		}
-		return out
+		err := json.Unmarshal(tv.JsonIetfVal, &out)
+		return out, err
 	}
-	return nil
+	return nil, nil
 }
