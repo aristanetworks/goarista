@@ -243,7 +243,7 @@ func (m *Map) Hash() uint64 {
 	}
 	var h uintptr
 	m.Iter(func(k, v interface{}) error {
-		h += hashInterface(k) + hashInterface(v)
+		h += HashInterface(k) + HashInterface(v)
 		return nil
 	})
 	return uint64(h)

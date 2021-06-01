@@ -4,7 +4,8 @@
 
 package key
 
-func hashInterface(v interface{}) uintptr {
+// HashInterface computes the hash of a Key
+func HashInterface(v interface{}) uintptr {
 	if vv, ok := v.(Key); ok {
 		v = vv.Key()
 	}
@@ -16,7 +17,7 @@ func hashInterface(v interface{}) uintptr {
 	case []interface{}:
 		return hashSlice(v)
 	case []byte:
-		return hashInterface(string(v))
+		return HashInterface(string(v))
 	case Pointer:
 		// This case applies to pointers used
 		// as values in maps or slices (i.e.
@@ -34,17 +35,12 @@ func hashInterface(v interface{}) uintptr {
 	}
 }
 
-// HashInterface computes the hash of a Key
-func HashInterface(v interface{}) uintptr {
-	return hashInterface(v)
-}
-
 func hashMapString(m map[string]interface{}) uintptr {
 	h := uintptr(31 * (len(m) + 1))
 	for k, v := range m {
 		// Use addition so that the order of iteration doesn't matter.
 		h += _strhash(k)
-		h += hashInterface(v)
+		h += HashInterface(v)
 	}
 	return h
 }
@@ -59,7 +55,7 @@ func hashMapKey(m map[Key]interface{}) uintptr {
 		case compositeKey:
 			h += hashMapString(k.m)
 		}
-		h += hashInterface(v)
+		h += HashInterface(v)
 	}
 	return h
 }
@@ -67,7 +63,7 @@ func hashMapKey(m map[Key]interface{}) uintptr {
 func hashSlice(s []interface{}) uintptr {
 	h := uintptr(31 * (len(s) + 1))
 	for _, v := range s {
-		h += hashInterface(v)
+		h += HashInterface(v)
 	}
 	return h
 }
