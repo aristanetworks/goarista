@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/aristanetworks/fsnotify"
-	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/dscp"
+	"github.com/aristanetworks/goarista/logger"
 )
 
 var makeListener = func(nsName string, addr *net.TCPAddr, tos byte) (net.Listener, error) {
@@ -27,28 +27,28 @@ var makeListener = func(nsName string, addr *net.TCPAddr, tos byte) (net.Listene
 		return err
 	})
 	return listener, err
+
 }
 
-func accept(listener net.Listener, conns chan<- net.Conn) {
+func accept(listener net.Listener, conns chan<- net.Conn, logger logger.Logger) {
 	for {
 		c, err := listener.Accept()
 		if err != nil {
-			glog.Infof("Accept error: %v", err)
+			logger.Infof("Accept error: %v", err)
 			return
 		}
 		conns <- c
 	}
 }
 
-func waitForMount(mountPoint string) bool {
-	for !hasMount(mountPoint) {
+func (l *nsListener) waitForMount() bool {
+	for !hasMount(l.nsFile, l.logger) {
 		time.Sleep(time.Second)
-		if _, err := os.Stat(mountPoint); err != nil {
-			glog.Infof("error stating %s: %v", mountPoint, err)
+		if _, err := os.Stat(l.nsFile); err != nil {
+			l.logger.Infof("error stating %s: %v", l.nsFile, err)
 			return false
 		}
 	}
-
 	return true
 }
 
@@ -64,36 +64,36 @@ type nsListener struct {
 	tos      byte
 	done     chan struct{}
 	conns    chan net.Conn
+	logger   logger.Logger
 }
 
 func (l *nsListener) tearDown() {
 	if l.listener != nil {
-		glog.Info("Destroying listener")
+		l.logger.Info("Destroying listener")
 		l.listener.Close()
 		l.listener = nil
 	}
 }
 
 func (l *nsListener) setUp() bool {
-	glog.Infof("Creating listener in namespace %v", l.nsName)
+	l.logger.Infof("Creating listener in namespace %v", l.nsName)
 	if err := l.watcher.Add(l.nsFile); err != nil {
-		glog.Infof("Can't watch the file (will try again): %v", err)
+		l.logger.Infof("Can't watch the file (will try again): %v", err)
 		return false
 	}
 	listener, err := makeListener(l.nsName, l.addr, l.tos)
 	if err != nil {
-		glog.Infof("Can't create TCP listener (will try again): %v", err)
+		l.logger.Infof("Can't create TCP listener (will try again): %v", err)
 		return false
 	}
 	l.listener = listener
-	go accept(l.listener, l.conns)
-
+	go accept(l.listener, l.conns, l.logger)
 	return true
 }
 
 func (l *nsListener) watch() {
 	var mounted bool
-	if hasMount(l.nsFile) {
+	if hasMount(l.nsFile, l.logger) {
 		mounted = l.setUp()
 	}
 
@@ -114,7 +114,7 @@ func (l *nsListener) watch() {
 				continue
 			}
 			if ev.Op&fsnotify.Create == fsnotify.Create {
-				if mounted || !waitForMount(l.nsFile) {
+				if mounted || !l.waitForMount() {
 					continue
 				}
 				mounted = l.setUp()
@@ -141,7 +141,8 @@ func (l *nsListener) setupWatch() error {
 	return nil
 }
 
-func newNSListenerWithDir(nsDir, nsName string, addr *net.TCPAddr, tos byte) (net.Listener, error) {
+func newNSListenerWithDir(nsDir, nsName string, addr *net.TCPAddr, tos byte,
+	logger logger.Logger) (net.Listener, error) {
 	l := &nsListener{
 		nsName: nsName,
 		nsFile: filepath.Join(nsDir, nsName),
@@ -149,6 +150,7 @@ func newNSListenerWithDir(nsDir, nsName string, addr *net.TCPAddr, tos byte) (ne
 		tos:    tos,
 		done:   make(chan struct{}),
 		conns:  make(chan net.Conn),
+		logger: logger,
 	}
 	if err := l.setupWatch(); err != nil {
 		return nil, err

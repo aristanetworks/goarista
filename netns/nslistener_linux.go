@@ -9,13 +9,13 @@ import (
 	"net"
 	"os"
 
-	"github.com/aristanetworks/glog"
+	"github.com/aristanetworks/goarista/logger"
 )
 
-var hasMount = func(mountPoint string) bool {
+var hasMount = func(mountPoint string, logger logger.Logger) bool {
 	fd, err := os.Open("/proc/mounts")
 	if err != nil {
-		glog.Fatalf("can't open /proc/mounts")
+		logger.Fatal("can't open /proc/mounts")
 	}
 	defer fd.Close()
 
@@ -34,7 +34,8 @@ func getNsDir() (string, error) {
 
 // NewNSListener creates a new net.Listener bound to a network namespace. The listening socket will
 // be bound to the specified local address and will have the specified tos.
-func NewNSListener(nsName string, addr *net.TCPAddr, tos byte) (net.Listener, error) {
+func NewNSListener(nsName string, addr *net.TCPAddr, tos byte, logger logger.Logger) (net.Listener,
+	error) {
 	// The default namespace doesn't get recreated and avoid the watcher helps with environments
 	// that aren't setup for multiple namespaces (eg inside containers)
 	if nsName == "" || nsName == "default" {
@@ -45,5 +46,5 @@ func NewNSListener(nsName string, addr *net.TCPAddr, tos byte) (net.Listener, er
 		return nil, err
 	}
 
-	return newNSListenerWithDir(nsDir, nsName, addr, tos)
+	return newNSListenerWithDir(nsDir, nsName, addr, tos, logger)
 }

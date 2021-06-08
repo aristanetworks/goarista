@@ -13,6 +13,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/aristanetworks/goarista/glog"
+	"github.com/aristanetworks/goarista/logger"
 )
 
 type mockListener struct {
@@ -65,7 +68,7 @@ func makeMockListener(n int) func(string, *net.TCPAddr, byte) (net.Listener, err
 
 func TestNSListener(t *testing.T) {
 	makeListener = makeMockListener(1)
-	hasMount = func(_ string) bool {
+	hasMount = func(_ string, _ logger.Logger) bool {
 		return true
 	}
 
@@ -75,7 +78,7 @@ func TestNSListener(t *testing.T) {
 	}
 	defer os.RemoveAll(nsDir)
 
-	l, err := newNSListenerWithDir(nsDir, "ns-yolo", nil, 0)
+	l, err := newNSListenerWithDir(nsDir, "ns-yolo", nil, 0, &glog.Glog{})
 	if err != nil {
 		t.Fatalf("Can't create mock listener: %v", err)
 	}
@@ -119,7 +122,7 @@ func TestNSListener(t *testing.T) {
 
 func TestNSListenerClose(t *testing.T) {
 	makeListener = makeMockListener(0)
-	hasMount = func(_ string) bool {
+	hasMount = func(_ string, _ logger.Logger) bool {
 		return true
 	}
 
@@ -129,7 +132,7 @@ func TestNSListenerClose(t *testing.T) {
 	}
 	defer os.RemoveAll(nsDir)
 
-	l, err := newNSListenerWithDir(nsDir, "ns-yolo", nil, 0)
+	l, err := newNSListenerWithDir(nsDir, "ns-yolo", nil, 0, &glog.Glog{})
 	if err != nil {
 		t.Fatalf("Can't create mock listener: %v", err)
 	}

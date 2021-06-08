@@ -7,9 +7,13 @@
 
 package netns
 
-import "net"
+import (
+	"net"
 
-var hasMount = func(_ string) bool {
+	"github.com/aristanetworks/goarista/logger"
+)
+
+var hasMount = func(_ string, _ logger.Logger) bool {
 	return true
 }
 
