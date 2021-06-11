@@ -5,29 +5,18 @@
 package test
 
 import (
+	"errors"
 	"testing"
 )
 
 func TestShouldPanic(t *testing.T) {
-	fn := func() { panic("Here we are") }
+	ShouldPanic(t, func() { panic("Here we are") })
 
-	ShouldPanic(t, fn)
-}
+	ShouldPanicWith(t, "Here we are", func() { panic("Here we are") })
+	ShouldPanicWith(t, 42, func() { panic(42) })
+	ShouldPanicWith(t, struct{ foo string }{foo: "panic"},
+		func() { panic(struct{ foo string }{foo: "panic"}) })
 
-func TestShouldPanicWithString(t *testing.T) {
-	fn := func() { panic("Here we are") }
-
-	ShouldPanicWith(t, "Here we are", fn)
-}
-
-func TestShouldPanicWithInt(t *testing.T) {
-	fn := func() { panic(42) }
-
-	ShouldPanicWith(t, 42, fn)
-}
-
-func TestShouldPanicWithStruct(t *testing.T) {
-	fn := func() { panic(struct{ foo string }{foo: "panic"}) }
-
-	ShouldPanicWith(t, struct{ foo string }{foo: "panic"}, fn)
+	ShouldPanicWithStr(t, "foo", func() { panic("foo") })
+	ShouldPanicWithStr(t, "foo", func() { panic(errors.New("foo")) })
 }
