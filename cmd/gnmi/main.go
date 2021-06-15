@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -69,14 +70,14 @@ func main() {
 	arbitrationStr := flag.String("arbitration", "", "master arbitration identifier "+
 		"([<role_id>:]<election_id>)")
 	historyStartStr := flag.String("history_start", "", "Historical data subscription "+
-		"start time (RFC3339 format with nanosecond precision, e.g., "+
-		"2006-01-02T15:04:05.999999999+07:00)")
+		"start time (nanoseconds since Unix epoch or RFC3339 format with nanosecond "+
+		"precision, e.g., 2006-01-02T15:04:05.999999999+07:00)")
 	historyEndStr := flag.String("history_end", "", "Historical data subscription "+
-		"end time (RFC3339 format with nanosecond precision, e.g., "+
-		"2006-01-02T15:04:05.999999999+07:00)")
+		"end time (nanoseconds since Unix epoch or RFC3339 format with nanosecond "+
+		"precision, e.g., 2006-01-02T15:04:05.999999999+07:00)")
 	historySnapshotStr := flag.String("history_snapshot", "", "Historical data subscription "+
-		"snapshot time (RFC3339 format with nanosecond precision, e.g., "+
-		"2006-01-02T15:04:05.999999999+07:00)")
+		"snapshot time (nanoseconds since Unix epoch or RFC3339 format with nanosecond "+
+		"precision, e.g., 2006-01-02T15:04:05.999999999+07:00)")
 	flag.StringVar(&cfg.Token, "token", "", "Authentication token")
 	grpcMetadata := aflag.Map{}
 	flag.Var(grpcMetadata, "grpcmetadata",
@@ -115,7 +116,7 @@ func main() {
 			if *historyStartStr != "" || *historyEndStr != "" {
 				usageAndExit("error: specified history start/end and snapshot time")
 			}
-			t, err := time.Parse(time.RFC3339Nano, *historySnapshotStr)
+			t, err := parseTime(*historySnapshotStr)
 			if err != nil {
 				usageAndExit(fmt.Sprintf("error: invalid snapshot time (%s): %s",
 					*historySnapshotStr, err))
@@ -124,7 +125,7 @@ func main() {
 		} else {
 			var s, e int64
 			if *historyStartStr != "" {
-				st, err := time.Parse(time.RFC3339Nano, *historyStartStr)
+				st, err := parseTime(*historyStartStr)
 				if err != nil {
 					usageAndExit(fmt.Sprintf("error: invalid start time (%s): %s",
 						*historyStartStr, err))
@@ -132,7 +133,7 @@ func main() {
 				s = st.UnixNano()
 			}
 			if *historyEndStr != "" {
-				et, err := time.Parse(time.RFC3339Nano, *historyEndStr)
+				et, err := parseTime(*historyEndStr)
 				if err != nil {
 					usageAndExit(fmt.Sprintf("error: invalid end time (%s): %s",
 						*historyEndStr, err))
@@ -271,6 +272,15 @@ func main() {
 		glog.Fatal(err)
 	}
 
+}
+
+// Parse string timestamp, first trying for ns since epoch, and then
+// for RFC3339.
+func parseTime(ts string) (time.Time, error) {
+	if ti, err := strconv.ParseInt(ts, 10, 64); err == nil {
+		return time.Unix(0, ti), nil
+	}
+	return time.Parse(time.RFC3339Nano, ts)
 }
 
 func parseStringOpt(s, prefix string) (string, bool) {
