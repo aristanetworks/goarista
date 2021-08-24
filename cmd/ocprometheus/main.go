@@ -69,7 +69,6 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	respChan := make(chan *pb.SubscribeResponse)
 	for origin, paths := range config.subsByOrigin {
 		subscribeOptions := &gnmi.SubscribeOptions{
 			Mode:       "stream",
@@ -77,16 +76,18 @@ func main() {
 			Paths:      gnmi.SplitPaths(paths),
 			Origin:     origin,
 		}
-		go handleSubscription(ctx, client, subscribeOptions, respChan, coll, gNMIcfg.Addr)
+		go handleSubscription(ctx, client, subscribeOptions, coll, gNMIcfg.Addr)
 	}
 	http.Handle(*url, promhttp.Handler())
 	glog.Fatal(http.ListenAndServe(*listenaddr, nil))
 }
 
 func handleSubscription(ctx context.Context, client pb.GNMIClient,
-	subscribeOptions *gnmi.SubscribeOptions, respChan chan *pb.SubscribeResponse, coll *collector,
+	subscribeOptions *gnmi.SubscribeOptions, coll *collector,
 	addr string) {
 	var g errgroup.Group
+	// That channel is closed by SubscribeErr
+	respChan := make(chan *pb.SubscribeResponse)
 	g.Go(func() error { return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan) })
 	for resp := range respChan {
 		coll.update(addr, resp)
