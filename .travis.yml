@@ -1,10 +1,8 @@
 language: go
 go:
-- 1.15.x
 - 1.16.x
+- 1.17.x
 - master
-env:
-- GO111MODULE=on
 before_install:
 - go get -v golang.org/x/lint/golint
 after_success:
