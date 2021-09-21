@@ -40,9 +40,10 @@ func makeMetrics(cfg *Config, expValues map[source]float64, notification *pb.Not
 				if !ok {
 					continue
 				}
-				if strVal, ok := val.(string); ok {
-					if !metric.stringMetric {
-						continue
+				if metric.stringMetric {
+					strVal, ok := val.(string)
+					if !ok {
+						strVal = fmt.Sprintf("%.0f", val)
 					}
 					v = metric.defaultValue
 					labels[len(labels)-1] = strVal
@@ -296,6 +297,10 @@ metrics:
 	}
 
 	coll.update("10.1.1.1:6042", makeResponse(notif))
+	src.addr = "10.1.1.1"
+	src.path = "/Sysdb/lag/intfCounterDir/Ethernet1/intfCounter"
+	expValues[src] = 0
+	expMetrics = makeMetrics(cfg, expValues, notif, expMetrics)
 	// Don't make new metrics as it should have no effect
 	if !test.DeepEqual(expMetrics, coll.metrics) {
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))

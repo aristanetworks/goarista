@@ -139,10 +139,11 @@ func (c *collector) update(addr string, message proto.Message) {
 			continue
 		}
 
-		if strUpdate {
-			if !metric.stringMetric {
-				// Skip string updates for non string metrics
-				continue
+		if metric.stringMetric {
+			if !strUpdate {
+				// A float was parsed from the update, yet metric expects a string.
+				// Store the float as a string.
+				strVal = fmt.Sprintf("%.0f", floatVal)
 			}
 			// Display a default value and replace the value label with the string value
 			floatVal = metric.defaultValue
