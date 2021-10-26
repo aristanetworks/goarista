@@ -34,6 +34,7 @@ const (
 	match visitType = iota
 	prefix
 	suffix
+	children
 )
 
 // Visit calls a function fn for every value in the Map
@@ -59,6 +60,10 @@ func (m *Map) VisitPrefixed(p key.Path, fn VisitorFunc) error {
 	return m.visit(suffix, p, fn)
 }
 
+func (m *Map) VisitChildren(p key.Path, fn VisitorFunc) error {
+	return m.visit(children, p, fn)
+}
+
 func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
 	for i, element := range p {
 		if m.ok && typ == prefix {
@@ -76,6 +81,14 @@ func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
 			return nil
 		}
 		m = next.(*Map)
+	}
+	if typ == children {
+		if err := m.children.Iter(func(_, next interface{}) error {
+			return fn(next.(*Map).val)
+		}); err != nil {
+			return err
+		}
+		return nil
 	}
 	if typ == suffix {
 		return m.visitSubtree(fn)
