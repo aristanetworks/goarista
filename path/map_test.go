@@ -403,6 +403,48 @@ func TestMapVisitPrefixed(t *testing.T) {
 	}
 }
 
+func TestMapVisitChildren(t *testing.T) {
+	m := Map{}
+	m.Set(key.Path{}, 0)
+	m.Set(key.Path{key.New("foo")}, 1)
+	m.Set(key.Path{key.New("foo"), key.New("bar")}, 2)
+	m.Set(key.Path{key.New("foo"), key.New("bar"), key.New("baz")}, 3)
+	m.Set(key.Path{key.New("foo"), key.New("bar"), key.New("baz"), key.New("quux")}, 4)
+	m.Set(key.Path{key.New("quux"), key.New("bar")}, 5)
+	m.Set(key.Path{key.New("foo"), key.New("quux")}, 6)
+	m.Set(key.Path{Wildcard}, 7)
+	m.Set(key.Path{key.New("foo"), Wildcard}, 8)
+	m.Set(key.Path{Wildcard, key.New("bar")}, 9)
+	m.Set(key.Path{Wildcard, key.New("bar"), key.New("quux")}, 10)
+	m.Set(key.Path{key.New("quux"), key.New("quux"), key.New("quux"), key.New("quux")}, 11)
+
+	testCases := []struct {
+		path     key.Path
+		expected map[int]int
+	}{{
+		path:     key.Path{key.New("foo"), key.New("bar"), key.New("baz")},
+		expected: map[int]int{4: 1},
+	}, {
+		path:     key.Path{key.New("zip"), key.New("zap")},
+		expected: map[int]int{},
+	}, {
+		path:     key.Path{key.New("foo"), key.New("bar")},
+		expected: map[int]int{3: 1, 10: 1},
+	}, {
+		path:     key.Path{key.New("quux"), key.New("quux"), key.New("quux")},
+		expected: map[int]int{11: 1},
+	}}
+
+	for _, tc := range testCases {
+		result := make(map[int]int, len(tc.expected))
+		m.VisitChildren(tc.path, accumulator(result))
+		if diff := test.Diff(tc.expected, result); diff != "" {
+			t.Errorf("Test case %v: %s", tc.path, diff)
+			t.Errorf("tc.expected: %#v, got %#v", tc.expected, result)
+		}
+	}
+}
+
 func TestMapString(t *testing.T) {
 	m := Map{}
 	m.Set(key.Path{}, 0)
