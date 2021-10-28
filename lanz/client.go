@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	pb "github.com/aristanetworks/goarista/lanz/proto"
@@ -43,19 +44,21 @@ type ConnectReadCloser interface {
 }
 
 type client struct {
-	addr     string
-	stopping bool
-	timeout  time.Duration
-	backoff  time.Duration
-	conn     ConnectReadCloser
+	sync.Mutex
+	addr      string
+	stop      chan struct{}
+	connected bool
+	timeout   time.Duration
+	backoff   time.Duration
+	conn      ConnectReadCloser
 }
 
 // New creates a new client with default TCP connection to the LANZ server.
 func New(opts ...Option) Client {
 	c := &client{
-		stopping: false,
-		timeout:  defaultConnectTimeout,
-		backoff:  defaultConnectBackoff,
+		stop:    make(chan struct{}),
+		timeout: defaultConnectTimeout,
+		backoff: defaultConnectBackoff,
 	}
 
 	for _, opt := range opts {
@@ -76,56 +79,91 @@ func New(opts ...Option) Client {
 	return c
 }
 
+func (c *client) setConnected(connected bool) {
+	c.Lock()
+	defer c.Unlock()
+	if c.connected && !connected {
+		c.conn.Close()
+	}
+	c.connected = connected
+}
+
 func (c *client) Run(ch chan<- *pb.LanzRecord) {
-	for !c.stopping {
-		if err := c.conn.Connect(); err != nil && !c.stopping {
-			glog.V(1).Infof("Can't connect to LANZ server: %v", err)
-			time.Sleep(c.backoff)
-			continue
-		}
-		glog.V(1).Infof("Connected successfully to LANZ server: %v", c.addr)
-		if err := c.read(bufio.NewReader(c.conn), ch); err != nil && !c.stopping {
-			if err != io.EOF && err != io.ErrUnexpectedEOF {
-				glog.Errorf("Error receiving LANZ events: %v", err)
+	go func() {
+		<-c.stop
+		c.setConnected(false)
+	}()
+
+	defer func() {
+		close(ch)
+		// This is to handle a race when the connection is
+		// established, but not marked as connected yet and is then
+		// preempted with c.stop closing.
+		c.setConnected(false)
+	}()
+
+	for {
+		select {
+		case <-c.stop:
+			return
+		default:
+			if err := c.conn.Connect(); err != nil {
+				select {
+				case <-c.stop:
+					return
+				default:
+					glog.V(1).Infof("Can't connect to LANZ server: %v", err)
+					time.Sleep(c.backoff)
+					continue
+				}
 			}
-			c.conn.Close()
-			time.Sleep(c.backoff)
+			glog.V(1).Infof("Connected successfully to LANZ server: %v", c.addr)
+			c.setConnected(true)
+			if err := c.read(bufio.NewReader(c.conn), ch); err != nil {
+				select {
+				case <-c.stop:
+					return
+				default:
+					if err != io.EOF && err != io.ErrUnexpectedEOF {
+						glog.Errorf("Error receiving LANZ events: %v", err)
+					}
+					c.setConnected(false)
+					time.Sleep(c.backoff)
+				}
+			}
 		}
 	}
 
-	close(ch)
 }
 
 func (c *client) read(r *bufio.Reader, ch chan<- *pb.LanzRecord) error {
-	for !c.stopping {
-		len, err := binary.ReadUvarint(r)
-		if err != nil {
-			return err
-		}
+	for {
+		select {
+		case <-c.stop:
+			return nil
+		default:
+			len, err := binary.ReadUvarint(r)
+			if err != nil {
+				return err
+			}
 
-		buf := make([]byte, len)
-		if _, err = io.ReadFull(r, buf); err != nil {
-			return err
-		}
+			buf := make([]byte, len)
+			if _, err = io.ReadFull(r, buf); err != nil {
+				return err
+			}
 
-		rec := &pb.LanzRecord{}
-		if err = proto.Unmarshal(buf, rec); err != nil {
-			return err
-		}
+			rec := &pb.LanzRecord{}
+			if err = proto.Unmarshal(buf, rec); err != nil {
+				return err
+			}
 
-		ch <- rec
+			ch <- rec
+		}
 	}
-
-	return nil
 }
 
 func (c *client) Stop() {
-	if c.stopping {
-		return
-	}
-
-	c.stopping = true
-	c.conn.Close()
+	close(c.stop)
 }
 
 type netConnector struct {
