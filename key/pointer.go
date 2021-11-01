@@ -20,7 +20,7 @@ func NewPointer(path Path) Pointer {
 
 // This is the type returned by pointerKey.Key. Returning this is a
 // lot faster than having pointerKey implement Pointer, since it is
-// a compositeKey and thus would require reconstructing a Path from
+// a sliceKey and thus would require reconstructing a Path from
 // []interface{} any time the Pointer method is called.
 type pointer Path
 

@@ -148,7 +148,7 @@ func TestStringify(t *testing.T) {
 			keyString := StringKey(New(tcase.input))
 			if tcase.output != keyString {
 				t.Errorf("Test %s: KeyString result is different\nReceived: %s\nExpected: %s",
-					tcase.name, result, tcase.output)
+					tcase.name, keyString, tcase.output)
 			}
 		}()
 	}
