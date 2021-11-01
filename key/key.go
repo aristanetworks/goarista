@@ -25,24 +25,13 @@ type Key interface {
 	Equal(other interface{}) bool
 }
 
-// compositeKey allows storing a map[string]interface{} or []interface{} as a key
-// in a Go map. This is useful when the key isn't a fixed data structure known
-// at compile time but rather something generic, like a bag of key-value pairs
-// or a list of elements. Go does not allow storing a map or slice inside the
-// key of a map, because maps and slices are not comparable or hashable, and
-// keys in maps and slice elements must be both.  This file is a hack specific
-// to the 'gc' implementation of Go (which is the one most people use when they
-// use Go), to bypass this check, by abusing reflection to override how Go
-// compares compositeKey for equality or how it's hashed. The values allowed in
-// this map are only the types allowed by New() as well as map[Key]interface{}
-// and []interface{}.
-//
-// See also https://github.com/golang/go/issues/283
+// compositeKey aids in storing a map[string]interface{} or
+// []interface{} as a key in a key.Map. These types cannot be used as
+// keys in Go's built-in map type, see:
+// https://github.com/golang/go/issues/283
 type compositeKey struct {
-	// This value must always be set to the sentinel constant above.
-	sentinel uintptr
-	m        map[string]interface{}
-	s        []interface{}
+	m map[string]interface{}
+	s []interface{}
 }
 
 type interfaceKey struct {
@@ -109,9 +98,9 @@ func New(intf interface{}) Key {
 	case nil:
 		return nilKey{}
 	case map[string]interface{}:
-		return compositeKey{sentinel: sentinel, m: t}
+		return compositeKey{m: t}
 	case []interface{}:
-		return compositeKey{sentinel: sentinel, s: t}
+		return compositeKey{s: t}
 	case string:
 		return strKey(t)
 	case int8:
@@ -139,11 +128,11 @@ func New(intf interface{}) Key {
 	case value.Value:
 		return interfaceKey{key: intf}
 	case Pointer:
-		return pointerKey{compositeKey{sentinel: sentinel, s: pointerToSlice(t)}}
+		return pointerKey{compositeKey{s: pointerToSlice(t)}}
 	case []byte:
 		return bytesKey(t)
 	case Path:
-		return pathKey{compositeKey{sentinel: sentinel, s: pathToSlice(t)}}
+		return pathKey{compositeKey{s: pathToSlice(t)}}
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}

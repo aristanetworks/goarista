@@ -526,18 +526,6 @@ func BenchmarkMapGrow(b *testing.B) {
 			"baz":    j,
 		})
 	}
-	b.Run("map[key.Key]interface{}", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			m := make(map[Key]interface{})
-			for j := 0; j < len(keys); j++ {
-				m[keys[j]] = "foobar"
-			}
-			if len(m) != len(keys) {
-				b.Fatal(m)
-			}
-		}
-	})
 	b.Run("key.Map", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
@@ -564,22 +552,6 @@ func BenchmarkMapGet(b *testing.B) {
 	copy(keysRandomOrder, keys)
 	rand.Shuffle(len(keysRandomOrder), func(i, j int) {
 		keysRandomOrder[i], keysRandomOrder[j] = keysRandomOrder[j], keysRandomOrder[i]
-	})
-	b.Run("map[key.Key]interface{}", func(b *testing.B) {
-		m := make(map[Key]interface{})
-		for j := 0; j < len(keys); j++ {
-			m[keys[j]] = "foobar"
-		}
-		b.ReportAllocs()
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			for _, k := range keysRandomOrder {
-				_, ok := m[k]
-				if !ok {
-					b.Fatal("didn't find key")
-				}
-			}
-		}
 	})
 	b.Run("key.Map", func(b *testing.B) {
 		m := NewMap()

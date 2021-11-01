@@ -663,7 +663,7 @@ func BenchmarkGetFromMapWithMapKey(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		key := New(map[string]interface{}{fmt.Sprint('a' + i%19): true})
+		key := New(map[string]interface{}{string(rune('a' + i%19)): true})
 		_, found := m.Get(key)
 		if !found {
 			b.Fatalf("WTF: %#v", key)
@@ -692,6 +692,7 @@ func BenchmarkBigMapWithCompositeKeys(b *testing.B) {
 	}
 	k := mkKey(0)
 	submap := k.Key().(map[string]interface{})["foo"].(map[string]interface{})
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		submap["aaaa3"] = uint32(i)
@@ -702,7 +703,7 @@ func BenchmarkBigMapWithCompositeKeys(b *testing.B) {
 	}
 }
 
-func BenchmarkBuiltInType(b *testing.B) {
+func BenchmarkKeyTypes(b *testing.B) {
 	benches := []struct {
 		val interface{}
 	}{
@@ -741,6 +742,12 @@ func BenchmarkBuiltInType(b *testing.B) {
 		},
 		{
 			val: true,
+		},
+		{
+			val: map[string]interface{}{"foo": uint32(42), "bar": uint32(42), "baz": uint32(42)},
+		},
+		{
+			val: []interface{}{"foo", "bar", "baz"},
 		},
 	}
 
