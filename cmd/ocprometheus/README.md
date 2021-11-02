@@ -24,9 +24,7 @@ will lead to the metric name `tempSensor` and labels `sensor=TempSensor1` and `t
 
 Basically, named groups are used to extract (optional) metrics.
 Unnamed groups will be given labels names like "unnamedLabelX" (where X is the group's position).
-The timestamps from the notifications are not preserved since Prometheus uses a pull model and
-doesn't have (yet) support for exporter specified timestamps.
-Prometheus 2.0 will probably support timestamps.
+The timestamps from the notifications are forwarded to Prometheus.
 
 Support for `eos_native` origin when using ocprometheus with the Octa agent (enabled with `provider eos-native` under `management api gnmi`) was added as part of #c6473e3ed183a4706d17336671d4e5be1991b7df
 
