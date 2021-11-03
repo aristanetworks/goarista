@@ -110,11 +110,21 @@ func extractJSON(val string) []byte {
 
 // StrUpdateVal will return a string representing the value within the supplied update
 func StrUpdateVal(u *pb.Update) string {
+	return strUpdateVal(u, false)
+}
+
+// StrUpdateValCompactJSON will return a string representing the value within the supplied
+// update. If the value is a JSON value, a non-indented JSON string will be returned.
+func StrUpdateValCompactJSON(u *pb.Update) string {
+	return strUpdateVal(u, true)
+}
+
+func strUpdateVal(u *pb.Update, alwaysCompactJSON bool) string {
 	if u.Value != nil {
 		// Backwards compatibility with pre-v0.4 gnmi
 		switch u.Value.Type {
 		case pb.Encoding_JSON, pb.Encoding_JSON_IETF:
-			return strJSON(u.Value.Value)
+			return strJSON(u.Value.Value, alwaysCompactJSON)
 		case pb.Encoding_BYTES, pb.Encoding_PROTO:
 			return base64.StdEncoding.EncodeToString(u.Value.Value)
 		case pb.Encoding_ASCII:
@@ -123,18 +133,28 @@ func StrUpdateVal(u *pb.Update) string {
 			return string(u.Value.Value)
 		}
 	}
-	return StrVal(u.Val)
+	return strVal(u.Val, alwaysCompactJSON)
 }
 
 // StrVal will return a string representing the supplied value
 func StrVal(val *pb.TypedValue) string {
+	return strVal(val, false)
+}
+
+// StrValCompactJSON will return a string representing the supplied value. If the value
+// is a JSON value, a non-indented JSON string will be returned.
+func StrValCompactJSON(val *pb.TypedValue) string {
+	return strVal(val, true)
+}
+
+func strVal(val *pb.TypedValue, alwaysCompactJSON bool) string {
 	switch v := val.GetValue().(type) {
 	case *pb.TypedValue_StringVal:
 		return v.StringVal
 	case *pb.TypedValue_JsonIetfVal:
-		return strJSON(v.JsonIetfVal)
+		return strJSON(v.JsonIetfVal, alwaysCompactJSON)
 	case *pb.TypedValue_JsonVal:
-		return strJSON(v.JsonVal)
+		return strJSON(v.JsonVal, alwaysCompactJSON)
 	case *pb.TypedValue_IntVal:
 		return strconv.FormatInt(v.IntVal, 10)
 	case *pb.TypedValue_UintVal:
@@ -155,19 +175,21 @@ func StrVal(val *pb.TypedValue) string {
 		return v.AnyVal.String()
 	case *pb.TypedValue_ProtoBytes:
 		return base64.StdEncoding.EncodeToString(v.ProtoBytes)
+	case nil:
+		return ""
 	default:
 		panic(v)
 	}
 }
 
-func strJSON(inJSON []byte) string {
+func strJSON(inJSON []byte, alwaysCompactJSON bool) string {
 	var (
 		out bytes.Buffer
 		err error
 	)
 	// Check for ',' as simple heuristic on whether to expand JSON
 	// onto multiple lines, or compact it to a single line.
-	if bytes.Contains(inJSON, []byte{','}) {
+	if !alwaysCompactJSON && bytes.Contains(inJSON, []byte{','}) {
 		err = json.Indent(&out, inJSON, "", "  ")
 	} else {
 		err = json.Compact(&out, inJSON)
