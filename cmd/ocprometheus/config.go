@@ -48,6 +48,9 @@ type MetricDef struct {
 	// Label to store string values
 	ValueLabel string
 
+	// Map decoding enumeration values to numeric values
+	DecodeEnum map[string]float64
+
 	// Default value to display for string values
 	DefaultValue float64
 
@@ -67,6 +70,7 @@ type metricValues struct {
 	labels       []string
 	defaultValue float64
 	stringMetric bool
+	decodeEnum   map[string]float64
 }
 
 // Parses the config and creates the descriptors for each path and device.
@@ -128,7 +132,7 @@ func (c *Config) getMetricValues(s source) *metricValues {
 				desc = def.desc
 			}
 			return &metricValues{desc: desc, labels: groups[1:], defaultValue: def.DefaultValue,
-				stringMetric: def.stringMetric}
+				stringMetric: def.stringMetric, decodeEnum: def.DecodeEnum}
 		}
 	}
 
