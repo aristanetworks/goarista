@@ -86,7 +86,10 @@ func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
 	}
 	if typ == children {
 		if err := m.children.Iter(func(_, next interface{}) error {
-			return fn(next.(*Map).val)
+			if next.(*Map).ok {
+				return fn(next.(*Map).val)
+			}
+			return nil
 		}); err != nil {
 			return err
 		}

@@ -417,6 +417,8 @@ func TestMapVisitChildren(t *testing.T) {
 	m.Set(key.Path{Wildcard, key.New("bar")}, 9)
 	m.Set(key.Path{Wildcard, key.New("bar"), key.New("quux")}, 10)
 	m.Set(key.Path{key.New("quux"), key.New("quux"), key.New("quux"), key.New("quux")}, 11)
+	m.Set(key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")}, 12)
+	m.Set(key.Path{key.New("a"), key.New("b")}, 13)
 
 	testCases := []struct {
 		path     key.Path
@@ -433,6 +435,9 @@ func TestMapVisitChildren(t *testing.T) {
 	}, {
 		path:     key.Path{key.New("quux"), key.New("quux"), key.New("quux")},
 		expected: map[int]int{11: 1},
+	}, {
+		path:     key.Path{key.New("a"), key.New("b")},
+		expected: map[int]int{},
 	}}
 
 	for _, tc := range testCases {
