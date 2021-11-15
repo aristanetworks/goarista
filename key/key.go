@@ -6,6 +6,7 @@ package key
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -311,7 +312,7 @@ func (k bytesKey) Key() interface{} {
 }
 
 func (k bytesKey) String() string {
-	return fmt.Sprintf("%s", []byte(k))
+	return base64.StdEncoding.EncodeToString([]byte(k))
 }
 
 func (k bytesKey) GoString() string {

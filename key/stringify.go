@@ -108,6 +108,8 @@ func stringify(key interface{}) string {
 			elements[i] = stringify(element)
 		}
 		return strings.Join(elements, ",")
+	case []byte:
+		return base64.StdEncoding.EncodeToString(key)
 	case Pointer:
 		return "{" + key.Pointer().String() + "}"
 	case Path:

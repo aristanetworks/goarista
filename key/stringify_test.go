@@ -126,6 +126,14 @@ func TestStringify(t *testing.T) {
 		name:   "pointer",
 		input:  NewPointer(Path{New("foo"), New("bar")}),
 		output: "{/foo/bar}",
+	}, {
+		name:   "[]byte",
+		input:  []byte{0x1},
+		output: "AQ==",
+	}, {
+		name:   "map with []byte",
+		input:  map[string]interface{}{"key1": []byte{0x1}, "key2": uint32(42)},
+		output: "AQ==_42",
 	}}
 
 	for _, tcase := range testcases {
