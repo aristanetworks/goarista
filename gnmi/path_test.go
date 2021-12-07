@@ -72,6 +72,8 @@ func TestStrPath(t *testing.T) {
 		path: "/foo[a=1\\]2][b=2]/bar",
 	}, {
 		path: "/foo[a=1][b=2]/bar\\/baz",
+	}, {
+		path: `/foo[a\==1]`,
 	}} {
 		sElms := SplitPath(tc.path)
 		pbPath, err := ParseGNMIElements(sElms)
@@ -79,7 +81,7 @@ func TestStrPath(t *testing.T) {
 			t.Errorf("failed to parse %s: %s", sElms, err)
 		}
 		s := StrPath(pbPath)
-		if !test.DeepEqual(tc.path, s) {
+		if tc.path != s {
 			t.Errorf("[%d] want %s, got %s", i, tc.path, s)
 		}
 	}
@@ -212,6 +214,11 @@ func TestParseElement(t *testing.T) {
 		fieldName: "hello",
 		keys: map[string]string{"there": "*", "somename": "somevalue",
 			"anothername": "value"},
+	}, {
+		name:      "escaped =",
+		in:        `hello[foo\==bar]`,
+		fieldName: "hello",
+		keys:      map[string]string{"foo=": "bar"},
 	}}
 
 	for _, tc := range cases {

@@ -99,7 +99,7 @@ func strPathV04(path *pb.Path) string {
 			sort.Strings(keys)
 			for _, k := range keys {
 				b.WriteRune('[')
-				b.WriteString(k)
+				writeSafeString(b, k, '=')
 				b.WriteRune('=')
 				writeSafeString(b, elm.Key[k], ']')
 				b.WriteRune(']')
