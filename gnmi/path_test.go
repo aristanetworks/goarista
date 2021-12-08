@@ -74,6 +74,8 @@ func TestStrPath(t *testing.T) {
 		path: "/foo[a=1][b=2]/bar\\/baz",
 	}, {
 		path: `/foo[a\==1]`,
+	}, {
+		path: `/f\/o\[o[a\==1]`,
 	}} {
 		sElms := SplitPath(tc.path)
 		pbPath, err := ParseGNMIElements(sElms)
@@ -219,6 +221,11 @@ func TestParseElement(t *testing.T) {
 		in:        `hello[foo\==bar]`,
 		fieldName: "hello",
 		keys:      map[string]string{"foo=": "bar"},
+	}, {
+		name:      "escaped [",
+		in:        `hell\[o[foo=bar]`,
+		fieldName: "hell[o",
+		keys:      map[string]string{"foo": "bar"},
 	}}
 
 	for _, tc := range cases {

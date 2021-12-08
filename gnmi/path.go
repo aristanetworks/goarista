@@ -87,7 +87,7 @@ func strPathV04(path *pb.Path) string {
 	b := &strings.Builder{}
 	for _, elm := range path.Elem {
 		b.WriteRune('/')
-		writeSafeString(b, elm.Name, '/')
+		writeSafeString(b, elm.Name, map[rune]bool{'/': true, '[': true})
 		if len(elm.Key) > 0 {
 			// Sort the keys so that they print in a conistent
 			// order. We don't have the YANG AST information, so the
@@ -99,9 +99,9 @@ func strPathV04(path *pb.Path) string {
 			sort.Strings(keys)
 			for _, k := range keys {
 				b.WriteRune('[')
-				writeSafeString(b, k, '=')
+				writeSafeString(b, k, map[rune]bool{'=': true})
 				b.WriteRune('=')
-				writeSafeString(b, elm.Key[k], ']')
+				writeSafeString(b, elm.Key[k], map[rune]bool{']': true})
 				b.WriteRune(']')
 			}
 		}
@@ -138,9 +138,9 @@ func JoinPaths(paths ...*pb.Path) *pb.Path {
 	return &pb.Path{Elem: elems}
 }
 
-func writeSafeString(b *strings.Builder, s string, esc rune) {
+func writeSafeString(b *strings.Builder, s string, esc map[rune]bool) {
 	for _, c := range s {
-		if c == esc || c == '\\' {
+		if _, ok := esc[c]; ok || c == '\\' {
 			b.WriteRune('\\')
 		}
 		b.WriteRune(c)
