@@ -52,8 +52,8 @@ var currentMockListener struct {
 	listener *mockListener
 }
 
-func makeMockListener(n int) func(string, *net.TCPAddr, byte) (net.Listener, error) {
-	return func(_ string, _ *net.TCPAddr, _ byte) (net.Listener, error) {
+func makeMockListener(n int) func(string, *net.TCPAddr, byte, logger.Logger) (net.Listener, error) {
+	return func(_ string, _ *net.TCPAddr, _ byte, _ logger.Logger) (net.Listener, error) {
 		currentMockListener.mu.Lock()
 		defer currentMockListener.mu.Unlock()
 		currentMockListener.listener = &mockListener{

@@ -39,7 +39,7 @@ func NewNSListener(nsName string, addr *net.TCPAddr, tos byte, logger logger.Log
 	// The default namespace doesn't get recreated and avoid the watcher helps with environments
 	// that aren't setup for multiple namespaces (eg inside containers)
 	if nsName == "" || nsName == "default" {
-		return makeListener(nsName, addr, tos)
+		return makeListener(nsName, addr, tos, logger)
 	}
 	nsDir, err := getNsDir()
 	if err != nil {

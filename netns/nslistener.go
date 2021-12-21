@@ -19,11 +19,12 @@ import (
 	"github.com/aristanetworks/goarista/logger"
 )
 
-var makeListener = func(nsName string, addr *net.TCPAddr, tos byte) (net.Listener, error) {
+var makeListener = func(nsName string, addr *net.TCPAddr, tos byte, l logger.Logger) (net.Listener,
+	error) {
 	var listener net.Listener
 	err := Do(nsName, func() error {
 		var err error
-		listener, err = dscp.ListenTCPWithTOS(addr, tos)
+		listener, err = dscp.ListenTCPWithTOSLogger(addr, tos, l)
 		return err
 	})
 	return listener, err
@@ -81,7 +82,7 @@ func (l *nsListener) setUp() bool {
 		l.logger.Infof("Can't watch the file (will try again): %v", err)
 		return false
 	}
-	listener, err := makeListener(l.nsName, l.addr, l.tos)
+	listener, err := makeListener(l.nsName, l.addr, l.tos, l.logger)
 	if err != nil {
 		l.logger.Infof("Can't create TCP listener (will try again): %v", err)
 		return false
