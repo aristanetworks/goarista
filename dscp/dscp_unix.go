@@ -9,12 +9,12 @@ package dscp
 
 import (
 	"context"
+	"log"
 	"net"
 	"os"
 	"strings"
 	"syscall"
 
-	"github.com/aristanetworks/glog"
 	"golang.org/x/sys/unix"
 )
 
@@ -44,7 +44,7 @@ func SetTOS(network string, c syscall.RawConn, tos byte) error {
 		// v4 connections can still come over v6 networks.
 		err := unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, int(tos))
 		if err != nil {
-			glog.Errorf("failed to configure IP_TOS: %v", os.NewSyscallError("setsockopt", err))
+			log.Printf("failed to configure IP_TOS: %v", os.NewSyscallError("setsockopt", err))
 		}
 		if strings.HasSuffix(network, "4") {
 			// Skip configuring IPv6 when we know we are using an IPv4
@@ -53,7 +53,7 @@ func SetTOS(network string, c syscall.RawConn, tos byte) error {
 		}
 		err6 := unix.SetsockoptInt(int(fd), unix.IPPROTO_IPV6, unix.IPV6_TCLASS, int(tos))
 		if err6 != nil {
-			glog.Errorf(
+			log.Printf(
 				"failed to configure IPV6_TCLASS, traffic may not use the configured DSCP: %v",
 				os.NewSyscallError("setsockopt", err6))
 		}
