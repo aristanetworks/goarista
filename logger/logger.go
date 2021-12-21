@@ -4,6 +4,11 @@
 
 package logger
 
+import (
+	"fmt"
+	"log"
+)
+
 // Logger is an interface to pass a generic logger without depending on either golang/glog or
 // aristanetworks/glog
 type Logger interface {
@@ -19,4 +24,27 @@ type Logger interface {
 	Fatal(args ...interface{})
 	// Fatalf logs at the fatal level, with format
 	Fatalf(format string, args ...interface{})
+}
+
+// Std implements the logger interface using the stdlib "log" package.
+var Std Logger = std{log.Default()}
+
+type std struct {
+	*log.Logger
+}
+
+func (l std) Info(args ...interface{}) {
+	l.Output(2, fmt.Sprint(args...))
+}
+
+func (l std) Infof(format string, args ...interface{}) {
+	l.Output(2, fmt.Sprintf(format, args...))
+}
+
+func (l std) Error(args ...interface{}) {
+	l.Output(2, fmt.Sprint(args...))
+}
+
+func (l std) Errorf(format string, args ...interface{}) {
+	l.Output(2, fmt.Sprintf(format, args...))
 }
