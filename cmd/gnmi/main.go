@@ -78,6 +78,8 @@ func main() {
 	historySnapshotStr := flag.String("history_snapshot", "", "Historical data subscription "+
 		"snapshot time (nanoseconds since Unix epoch or RFC3339 format with nanosecond "+
 		"precision, e.g., 2006-01-02T15:04:05.999999999+07:00)")
+	dataTypeStr := flag.String("data_type", "all",
+		"Get data type (all | config | state | operational)")
 	flag.StringVar(&cfg.Token, "token", "", "Authentication token")
 	grpcMetadata := aflag.Map{}
 	flag.Var(grpcMetadata, "grpcmetadata",
@@ -179,6 +181,18 @@ func main() {
 					req.Prefix = &pb.Path{}
 				}
 				req.Prefix.Target = target
+			}
+			switch strings.ToLower(*dataTypeStr) {
+			case "", "all":
+				req.Type = pb.GetRequest_ALL
+			case "config":
+				req.Type = pb.GetRequest_CONFIG
+			case "state":
+				req.Type = pb.GetRequest_STATE
+			case "operational":
+				req.Type = pb.GetRequest_OPERATIONAL
+			default:
+				usageAndExit(fmt.Sprintf("error: invalid data type (%s)", *dataTypeStr))
 			}
 
 			err = gnmi.GetWithRequest(ctx, client, req)
