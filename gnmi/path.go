@@ -82,6 +82,32 @@ func StrPath(path *pb.Path) string {
 	return "/"
 }
 
+// writeKey is used as a helper to contain the logic of writing keys as a string.
+func writeKey(b *strings.Builder, key map[string]string) {
+	// Sort the keys so that they print in a consistent
+	// order. We don't have the YANG AST information, so the
+	// best we can do is sort them alphabetically.
+	keys := make([]string, 0, len(key))
+	for k := range key {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		b.WriteRune('[')
+		writeSafeString(b, k, map[rune]bool{'=': true})
+		b.WriteRune('=')
+		writeSafeString(b, key[k], map[rune]bool{']': true})
+		b.WriteRune(']')
+	}
+}
+
+// KeyToString is used to get the string representation of the keys.
+func KeyToString(key map[string]string) string {
+	b := &strings.Builder{}
+	writeKey(b, key)
+	return b.String()
+}
+
 // strPathV04 handles the v0.4 gnmi and later path.Elem member.
 func strPathV04(path *pb.Path) string {
 	b := &strings.Builder{}
@@ -89,21 +115,7 @@ func strPathV04(path *pb.Path) string {
 		b.WriteRune('/')
 		writeSafeString(b, elm.Name, map[rune]bool{'/': true, '[': true})
 		if len(elm.Key) > 0 {
-			// Sort the keys so that they print in a conistent
-			// order. We don't have the YANG AST information, so the
-			// best we can do is sort them alphabetically.
-			keys := make([]string, 0, len(elm.Key))
-			for k := range elm.Key {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			for _, k := range keys {
-				b.WriteRune('[')
-				writeSafeString(b, k, map[rune]bool{'=': true})
-				b.WriteRune('=')
-				writeSafeString(b, elm.Key[k], map[rune]bool{']': true})
-				b.WriteRune(']')
-			}
+			writeKey(b, elm.Key)
 		}
 	}
 	return b.String()
