@@ -108,15 +108,26 @@ func KeyToString(key map[string]string) string {
 	return b.String()
 }
 
+func writeElem(b *strings.Builder, elm *pb.PathElem) {
+	writeSafeString(b, elm.Name, map[rune]bool{'/': true, '[': true})
+	if len(elm.Key) > 0 {
+		writeKey(b, elm.Key)
+	}
+}
+
+// ElemToString is used to get the string representation of the Element.
+func ElemToString(elm *pb.PathElem) string {
+	b := &strings.Builder{}
+	writeElem(b, elm)
+	return b.String()
+}
+
 // strPathV04 handles the v0.4 gnmi and later path.Elem member.
 func strPathV04(path *pb.Path) string {
 	b := &strings.Builder{}
 	for _, elm := range path.Elem {
 		b.WriteRune('/')
-		writeSafeString(b, elm.Name, map[rune]bool{'/': true, '[': true})
-		if len(elm.Key) > 0 {
-			writeKey(b, elm.Key)
-		}
+		writeElem(b, elm)
 	}
 	return b.String()
 }
