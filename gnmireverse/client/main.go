@@ -125,10 +125,11 @@ type config struct {
 	username   string
 	password   string
 
-	targetVal        string
-	subTargetDefined subscriptionList
-	subSample        sampleList
-	origin           string
+	targetVal         string
+	subTargetDefined  subscriptionList
+	subSample         sampleList
+	origin            string
+	targetTLSInsecure bool
 
 	// collector config
 	collectorAddr        string
@@ -163,6 +164,8 @@ func main() {
 			"  -sample /interfaces/interface/state/counters@30s\n"+
 			"This option can be repeated multiple times.")
 	flag.StringVar(&cfg.origin, "origin", "", "value for the origin field of the Subscribe")
+	flag.BoolVar(&cfg.targetTLSInsecure, "target_tls_insecure", false,
+		"use TLS connection with target and do not verify target certificate")
 
 	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
 		"Address of collector in the form of [<vrf-name>/]host:port.\n"+
@@ -360,11 +363,20 @@ func dialTarget(cfg *config) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("error parsing address: %s", err)
 	}
 
-	var d net.Dialer
-	dialOptions := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithContextDialer(newVRFDialer(&d, nsName)),
+	var dialOptions []grpc.DialOption
+	if cfg.targetTLSInsecure {
+		dialOptions = append(dialOptions,
+			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+				InsecureSkipVerify: true,
+			})))
+	} else {
+		dialOptions = append(dialOptions, grpc.WithInsecure())
 	}
+
+	var d net.Dialer
+	dialOptions = append(dialOptions,
+		grpc.WithContextDialer(newVRFDialer(&d, nsName)),
+	)
 
 	return grpc.Dial(addr, dialOptions...)
 }
