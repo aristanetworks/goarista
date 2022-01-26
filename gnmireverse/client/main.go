@@ -17,16 +17,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/dscp"
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/gnmireverse"
 	"github.com/aristanetworks/goarista/netns"
-
-	"github.com/aristanetworks/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -131,14 +131,15 @@ type config struct {
 	origin           string
 
 	// collector config
-	collectorAddr       string
-	sourceAddr          string
-	dscp                int
-	collectorTLS        bool
-	collectorSkipVerify bool
-	collectorCert       string
-	collectorKey        string
-	collectorCA         string
+	collectorAddr        string
+	sourceAddr           string
+	dscp                 int
+	collectorTLS         bool
+	collectorSkipVerify  bool
+	collectorCert        string
+	collectorKey         string
+	collectorCA          string
+	collectorCompression string
 }
 
 func main() {
@@ -174,6 +175,8 @@ func main() {
 			"For example, [::1]:1234")
 	flag.IntVar(&cfg.dscp, "collector_dscp", 0,
 		"DSCP used on connection to collector, valid values 0-63")
+	flag.StringVar(&cfg.collectorCompression, "collector_compression", "gzip",
+		"compression method used when streaming to collector (gzip | none)")
 
 	flag.BoolVar(&cfg.collectorTLS, "collector_tls", true, "use TLS in connection with collector")
 	flag.BoolVar(&cfg.collectorSkipVerify, "collector_tls_skipverify", false,
@@ -235,12 +238,21 @@ func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 		tlsConfig, err := newTLSConfig(cfg.collectorSkipVerify,
 			cfg.collectorCert, cfg.collectorKey, cfg.collectorCA)
 		if err != nil {
-			glog.Fatalf("error creating TLS config for collector: %s", err)
+			return nil, fmt.Errorf("error creating TLS config for collector: %s", err)
 		}
 		dialOptions = append(dialOptions,
 			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
 		dialOptions = append(dialOptions, grpc.WithInsecure())
+	}
+
+	switch cfg.collectorCompression {
+	case "", "none":
+	case "gzip":
+		dialOptions = append(dialOptions,
+			grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)))
+	default:
+		return nil, fmt.Errorf("unknown compression method %q", cfg.collectorCompression)
 	}
 
 	nsName, addr, err := netns.ParseAddress(cfg.collectorAddr)
@@ -352,6 +364,7 @@ func dialTarget(cfg *config) (*grpc.ClientConn, error) {
 	dialOptions := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithContextDialer(newVRFDialer(&d, nsName)),
+		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	}
 
 	return grpc.Dial(addr, dialOptions...)

@@ -18,6 +18,7 @@ import (
 	"github.com/aristanetworks/glog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	_ "google.golang.org/grpc/encoding/gzip" // Enable gzip encoding for the server.
 )
 
 func newTLSConfig(clientCertAuth bool, certFile, keyFile, clientCAFile string) (*tls.Config,
