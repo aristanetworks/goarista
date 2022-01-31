@@ -8,6 +8,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,7 +20,16 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GNMIReverseClient interface {
+	// Publish allows the client to publish gNMI SubscribeResponses to the
+	// collector server. The client is typically run alongside the gNMI target
+	// and forwards SubscribeResponses from the target to the collector server.
+	// The SubscribeRequest is specified by the client.
 	Publish(ctx context.Context, opts ...grpc.CallOption) (GNMIReverse_PublishClient, error)
+	// PublishGet allows the client to publish gNMI GetResponses to the
+	// collector server. The client is typically run alongside the gNMI target
+	// and forwards GetResponses from the target to the collector server.
+	// The GetRequest and Get sample interval are specified by the client.
+	PublishGet(ctx context.Context, opts ...grpc.CallOption) (GNMIReverse_PublishGetClient, error)
 }
 
 type gNMIReverseClient struct {
@@ -41,7 +51,7 @@ func (c *gNMIReverseClient) Publish(ctx context.Context, opts ...grpc.CallOption
 
 type GNMIReverse_PublishClient interface {
 	Send(*gnmi.SubscribeResponse) error
-	CloseAndRecv() (*Empty, error)
+	CloseAndRecv() (*emptypb.Empty, error)
 	grpc.ClientStream
 }
 
@@ -53,11 +63,45 @@ func (x *gNMIReversePublishClient) Send(m *gnmi.SubscribeResponse) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *gNMIReversePublishClient) CloseAndRecv() (*Empty, error) {
+func (x *gNMIReversePublishClient) CloseAndRecv() (*emptypb.Empty, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
-	m := new(Empty)
+	m := new(emptypb.Empty)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *gNMIReverseClient) PublishGet(ctx context.Context, opts ...grpc.CallOption) (GNMIReverse_PublishGetClient, error) {
+	stream, err := c.cc.NewStream(ctx, &GNMIReverse_ServiceDesc.Streams[1], "/gnmireverse.gNMIReverse/PublishGet", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &gNMIReversePublishGetClient{stream}
+	return x, nil
+}
+
+type GNMIReverse_PublishGetClient interface {
+	Send(*gnmi.GetResponse) error
+	CloseAndRecv() (*emptypb.Empty, error)
+	grpc.ClientStream
+}
+
+type gNMIReversePublishGetClient struct {
+	grpc.ClientStream
+}
+
+func (x *gNMIReversePublishGetClient) Send(m *gnmi.GetResponse) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *gNMIReversePublishGetClient) CloseAndRecv() (*emptypb.Empty, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(emptypb.Empty)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -68,7 +112,16 @@ func (x *gNMIReversePublishClient) CloseAndRecv() (*Empty, error) {
 // All implementations must embed UnimplementedGNMIReverseServer
 // for forward compatibility
 type GNMIReverseServer interface {
+	// Publish allows the client to publish gNMI SubscribeResponses to the
+	// collector server. The client is typically run alongside the gNMI target
+	// and forwards SubscribeResponses from the target to the collector server.
+	// The SubscribeRequest is specified by the client.
 	Publish(GNMIReverse_PublishServer) error
+	// PublishGet allows the client to publish gNMI GetResponses to the
+	// collector server. The client is typically run alongside the gNMI target
+	// and forwards GetResponses from the target to the collector server.
+	// The GetRequest and Get sample interval are specified by the client.
+	PublishGet(GNMIReverse_PublishGetServer) error
 	mustEmbedUnimplementedGNMIReverseServer()
 }
 
@@ -78,6 +131,9 @@ type UnimplementedGNMIReverseServer struct {
 
 func (UnimplementedGNMIReverseServer) Publish(GNMIReverse_PublishServer) error {
 	return status.Errorf(codes.Unimplemented, "method Publish not implemented")
+}
+func (UnimplementedGNMIReverseServer) PublishGet(GNMIReverse_PublishGetServer) error {
+	return status.Errorf(codes.Unimplemented, "method PublishGet not implemented")
 }
 func (UnimplementedGNMIReverseServer) mustEmbedUnimplementedGNMIReverseServer() {}
 
@@ -97,7 +153,7 @@ func _GNMIReverse_Publish_Handler(srv interface{}, stream grpc.ServerStream) err
 }
 
 type GNMIReverse_PublishServer interface {
-	SendAndClose(*Empty) error
+	SendAndClose(*emptypb.Empty) error
 	Recv() (*gnmi.SubscribeResponse, error)
 	grpc.ServerStream
 }
@@ -106,12 +162,38 @@ type gNMIReversePublishServer struct {
 	grpc.ServerStream
 }
 
-func (x *gNMIReversePublishServer) SendAndClose(m *Empty) error {
+func (x *gNMIReversePublishServer) SendAndClose(m *emptypb.Empty) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func (x *gNMIReversePublishServer) Recv() (*gnmi.SubscribeResponse, error) {
 	m := new(gnmi.SubscribeResponse)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _GNMIReverse_PublishGet_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GNMIReverseServer).PublishGet(&gNMIReversePublishGetServer{stream})
+}
+
+type GNMIReverse_PublishGetServer interface {
+	SendAndClose(*emptypb.Empty) error
+	Recv() (*gnmi.GetResponse, error)
+	grpc.ServerStream
+}
+
+type gNMIReversePublishGetServer struct {
+	grpc.ServerStream
+}
+
+func (x *gNMIReversePublishGetServer) SendAndClose(m *emptypb.Empty) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *gNMIReversePublishGetServer) Recv() (*gnmi.GetResponse, error) {
+	m := new(gnmi.GetResponse)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -129,6 +211,11 @@ var GNMIReverse_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Publish",
 			Handler:       _GNMIReverse_Publish_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "PublishGet",
+			Handler:       _GNMIReverse_PublishGet_Handler,
 			ClientStreams: true,
 		},
 	},

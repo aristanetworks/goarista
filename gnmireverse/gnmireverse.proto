@@ -5,11 +5,28 @@
 syntax = "proto3";
 
 import "github.com/openconfig/gnmi/proto/gnmi/gnmi.proto";
+import "google/protobuf/empty.proto";
 
+// Package gNMIReverse defines a service specification that reverses the
+// direction of the dial for gNMI Subscribe and gNMI Get.
+//
+// gNMI is a "dial-in" service, where the telemetry collector must make a
+// connection to the gNMI target. With gNMIReverse, a client can be run
+// alongside the gNMI target and then "dial-out" to a gNMIReverse server
+// to send streaming data.
 package gnmireverse;
 
-service gNMIReverse {
-  rpc Publish(stream gnmi.SubscribeResponse) returns (Empty);
-}
+option go_package = "github.com/aristanetworks/goarista/gnmireverse";
 
-message Empty {}
+service gNMIReverse {
+    // Publish allows the client to publish gNMI SubscribeResponses to the
+    // collector server. The client is typically run alongside the gNMI target
+    // and forwards SubscribeResponses from the target to the collector server.
+    // The SubscribeRequest is specified by the client.
+    rpc Publish(stream gnmi.SubscribeResponse) returns (google.protobuf.Empty);
+    // PublishGet allows the client to publish gNMI GetResponses to the
+    // collector server. The client is typically run alongside the gNMI target
+    // and forwards GetResponses from the target to the collector server.
+    // The GetRequest and Get sample interval are specified by the client.
+     rpc PublishGet(stream gnmi.GetResponse) returns (google.protobuf.Empty);
+}

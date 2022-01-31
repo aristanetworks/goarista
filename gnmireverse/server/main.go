@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"path"
+	"time"
 
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/gnmireverse"
@@ -102,6 +104,29 @@ func (s *server) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
 		}
 		if err := gnmilib.LogSubscribeResponse(resp); err != nil {
 			glog.Error(err)
+		}
+	}
+}
+
+func (s *server) PublishGet(stream gnmireverse.GNMIReverse_PublishGetServer) error {
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		for _, notif := range resp.GetNotification() {
+			var notifTarget string
+			if target := notif.GetPrefix().GetTarget(); target != "" {
+				notifTarget = " (" + target + ")"
+			}
+			notifTime := time.Unix(0, notif.GetTimestamp()).UTC()
+			fmt.Printf("[%s]%s\n", notifTime.Format(time.RFC3339Nano), notifTarget)
+			prefix := gnmilib.StrPath(notif.GetPrefix())
+			for _, update := range notif.GetUpdate() {
+				fmt.Println(path.Join(prefix, gnmilib.StrPath(update.GetPath())))
+				fmt.Println(gnmilib.StrUpdateVal(update))
+			}
 		}
 	}
 }

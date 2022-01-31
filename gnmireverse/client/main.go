@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,6 +28,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
+	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -41,6 +43,10 @@ type sampleList struct {
 type subscription struct {
 	p        *gnmi.Path
 	interval time.Duration
+}
+
+type getList struct {
+	paths []*gnmi.Path
 }
 
 func str(subs []subscription) string {
@@ -66,6 +72,17 @@ func (l *sampleList) String() string {
 		return ""
 	}
 	return str(l.subs)
+}
+
+func (l *getList) String() string {
+	if l == nil {
+		return ""
+	}
+	var pathStrs []string
+	for _, path := range l.paths {
+		pathStrs = append(pathStrs, gnmilib.StrPath(path))
+	}
+	return strings.Join(pathStrs, ", ")
 }
 
 func parseInterval(s string) (time.Duration, int, error) {
@@ -119,17 +136,29 @@ func (l *sampleList) Set(s string) error {
 	return setSubscriptions(&l.subs, s[:i], interval)
 }
 
+func (l *getList) Set(gnmiPathStr string) error {
+	gnmiPath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(gnmiPathStr))
+	if err != nil {
+		return err
+	}
+	l.paths = append(l.paths, gnmiPath)
+	return nil
+}
+
 type config struct {
 	// target config
-	targetAddr string
-	username   string
-	password   string
-
-	targetVal         string
-	subTargetDefined  subscriptionList
-	subSample         sampleList
-	origin            string
+	targetAddr        string
+	username          string
+	password          string
 	targetTLSInsecure bool
+
+	targetVal        string
+	subTargetDefined subscriptionList
+	subSample        sampleList
+	origin           string
+
+	getSampleInterval time.Duration
+	getPaths          getList
 
 	// collector config
 	collectorAddr        string
@@ -167,6 +196,12 @@ func main() {
 	flag.BoolVar(&cfg.targetTLSInsecure, "target_tls_insecure", false,
 		"use TLS connection with target and do not verify target certificate")
 
+	flag.Var(&cfg.getPaths, "get", "Path to retrieve periodically using Get.\n"+
+		"This option can be repeated multiple times.")
+	getSampleIntervalStr := flag.String("get_sample_interval", "",
+		"Interval between periodic Get requests (400ms, 2.5s, 1m, etc.)\n"+
+			"Must be specified for Get and applies to all Get paths.")
+
 	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
 		"Address of collector in the form of [<vrf-name>/]host:port.\n"+
 			"The host portion must be enclosed in square brackets "+
@@ -193,6 +228,43 @@ func main() {
 
 	flag.Parse()
 
+	// If -v is specified, enables gRPC logging at level corresponding to verbosity evel.
+	if glog.V(1) {
+		glogVStr := flag.Lookup("v").Value.String()
+		logLevel, err := strconv.Atoi(glogVStr)
+		if err != nil {
+			glog.Infof("cannot parse %q", glogVStr)
+		} else {
+			grpclog.SetLoggerV2(
+				grpclog.NewLoggerV2WithVerbosity(os.Stdout, os.Stdout, os.Stdout, logLevel))
+		}
+	}
+
+	if cfg.collectorAddr == "" {
+		glog.Fatal("collector address must be specified")
+	}
+
+	if *getSampleIntervalStr != "" {
+		getSampleInterval, err := time.ParseDuration(*getSampleIntervalStr)
+		if err != nil {
+			glog.Fatalf("Get sample interval %q invalid", *getSampleIntervalStr)
+		}
+		cfg.getSampleInterval = getSampleInterval
+	}
+
+	isSubscribe := len(cfg.subTargetDefined.subs) != 0 || len(cfg.subSample.subs) != 0
+	isGet := len(cfg.getPaths.paths) != 0
+
+	if !isSubscribe && !isGet {
+		glog.Fatal("Subscribe paths or Get paths must be specifed")
+	}
+	if !isGet && cfg.getSampleInterval != 0 {
+		glog.Fatal("Get path must be specified with Get sample interval")
+	}
+	if isGet && cfg.getSampleInterval == 0 {
+		glog.Fatal("Get sample interval must be specified with Get path")
+	}
+
 	if cfg.origin != "" {
 		// Workaround for EOS BUG479731: set origin on paths, rather
 		// than on the prefix.
@@ -201,6 +273,9 @@ func main() {
 		}
 		for _, sub := range cfg.subSample.subs {
 			sub.p.Origin = cfg.origin
+		}
+		for _, get := range cfg.getPaths.paths {
+			get.Origin = cfg.origin
 		}
 	}
 
@@ -213,24 +288,52 @@ func main() {
 		glog.Fatalf("error dialing target %q: %s", cfg.targetAddr, err)
 	}
 
+	if isSubscribe {
+		go streamResponses(streamSubscribeResponses(&cfg, destConn, targetConn))
+	}
+	if isGet {
+		go streamResponses(streamGetResponses(&cfg, destConn, targetConn))
+	}
+	select {} // Wait forever
+}
+
+func streamResponses(streamResponsesFunc func(context.Context, *errgroup.Group)) {
 	for {
-		// Start publisher and subscriber in a loop, each running in
+		// Start publisher and client in a loop, each running in
 		// their own goroutine. If either of them encounters an error,
 		// retry.
+		var eg *errgroup.Group
 		eg, ctx := errgroup.WithContext(context.Background())
-		// c is used to send subscribe responses from subscriber to
-		// publisher.
+		streamResponsesFunc(ctx, eg)
+		if err := eg.Wait(); err != nil {
+			glog.Infof("encountered error, retrying: %s", err)
+		}
+	}
+}
+
+func streamSubscribeResponses(cfg *config, destConn, targetConn *grpc.ClientConn) func(
+	context.Context, *errgroup.Group) {
+	return func(ctx context.Context, eg *errgroup.Group) {
 		c := make(chan *gnmi.SubscribeResponse)
 		eg.Go(func() error {
 			return publish(ctx, destConn, c)
 		})
 		eg.Go(func() error {
-			return subscribe(ctx, &cfg, targetConn, c)
+			return subscribe(ctx, cfg, targetConn, c)
 		})
-		err := eg.Wait()
-		if err != nil {
-			glog.Errorf("encountered error, retrying: %s", err)
-		}
+	}
+}
+
+func streamGetResponses(cfg *config, destConn, targetConn *grpc.ClientConn) func(
+	context.Context, *errgroup.Group) {
+	return func(ctx context.Context, eg *errgroup.Group) {
+		c := make(chan *gnmi.GetResponse)
+		eg.Go(func() error {
+			return publishGet(ctx, destConn, c)
+		})
+		eg.Go(func() error {
+			return sampleGet(ctx, cfg, targetConn, c)
+		})
 	}
 }
 
@@ -400,6 +503,27 @@ func publish(ctx context.Context, destConn *grpc.ClientConn,
 	}
 }
 
+func publishGet(ctx context.Context, destConn *grpc.ClientConn, c <-chan *gnmi.GetResponse) error {
+	client := gnmireverse.NewGNMIReverseClient(destConn)
+	stream, err := client.PublishGet(ctx, grpc.WaitForReady(true))
+	if err != nil {
+		return fmt.Errorf("error from PublishGet: %s", err)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case response := <-c:
+			if glog.V(7) {
+				glog.Infof("send Get response to collector: %v", response)
+			}
+			if err := stream.Send(response); err != nil {
+				return fmt.Errorf("error from PublishGet.Send: %s", err)
+			}
+		}
+	}
+}
+
 func subscribe(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
 	c chan<- *gnmi.SubscribeResponse) error {
 	client := gnmi.NewGNMIClient(targetConn)
@@ -455,6 +579,61 @@ func subscribe(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
 		case <-ctx.Done():
 			return ctx.Err()
 		case c <- resp:
+		}
+	}
+}
+
+func sampleGet(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
+	c chan<- *gnmi.GetResponse) error {
+	client := gnmi.NewGNMIClient(targetConn)
+
+	req := &gnmi.GetRequest{
+		Path: cfg.getPaths.paths,
+	}
+
+	if cfg.username != "" {
+		ctx = metadata.NewOutgoingContext(ctx,
+			metadata.Pairs(
+				"username", cfg.username,
+				"password", cfg.password),
+		)
+	}
+
+	// Set up a ticker for a consistent interval to exclude the additional time taken
+	// for issuing the Get request and processing the response.
+	ticker := time.NewTicker(cfg.getSampleInterval)
+	defer ticker.Stop()
+
+	for {
+		if glog.V(5) {
+			glog.Infof("send Get request to target: %v", req)
+		}
+		resp, err := client.Get(ctx, req, grpc.WaitForReady(true))
+		if err != nil {
+			return fmt.Errorf("error from Get: %s", err)
+		}
+		if glog.V(7) {
+			glog.Infof("receive Get response: %v", resp)
+		}
+		currentTime := time.Now().UnixNano()
+		for _, notif := range resp.GetNotification() {
+			notif.Timestamp = currentTime
+			if notif.GetPrefix() == nil {
+				notif.Prefix = &gnmi.Path{}
+			}
+			notif.Prefix.Target = cfg.targetVal
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case c <- resp:
+		}
+
+		glog.V(5).Infof("wait for %s", cfg.getSampleInterval)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
 		}
 	}
 }
