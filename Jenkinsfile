@@ -1,6 +1,5 @@
 pipeline {
     environment {
-        GOPATH = "${WORKSPACE}"
         GOCACHE = "/tmp/.gocache"
         GOARISTA = "src/github.com/aristanetworks/goarista"
         // golangci has its own cache.
