@@ -1,12 +1,5 @@
-def isMirror() {
-    return env.JOB_NAME.endsWith("-to-github")
-}
-
 pipeline {
     agent { label 'jenkins-agent-cloud' }
-    when {
-        expression{ return !isMirror() }
-    }
     stages {
         stage('Mirror to Github') {
             steps {
