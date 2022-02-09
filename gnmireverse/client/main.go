@@ -175,8 +175,8 @@ func main() {
 			"For example, [::1]:1234")
 	flag.IntVar(&cfg.dscp, "collector_dscp", 0,
 		"DSCP used on connection to collector, valid values 0-63")
-	flag.StringVar(&cfg.collectorCompression, "collector_compression", "gzip",
-		"compression method used when streaming to collector (gzip | none)")
+	flag.StringVar(&cfg.collectorCompression, "collector_compression", "none",
+		"compression method used when streaming to collector (none | gzip)")
 
 	flag.BoolVar(&cfg.collectorTLS, "collector_tls", true, "use TLS in connection with collector")
 	flag.BoolVar(&cfg.collectorSkipVerify, "collector_tls_skipverify", false,
@@ -364,7 +364,6 @@ func dialTarget(cfg *config) (*grpc.ClientConn, error) {
 	dialOptions := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithContextDialer(newVRFDialer(&d, nsName)),
-		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	}
 
 	return grpc.Dial(addr, dialOptions...)
