@@ -5,14 +5,16 @@
 
 # Installation
 
-After installing [Go](https://golang.org/dl/) run:
+Compiling `gnmi` requires Go 1.16 or later. Instructions for
+installing Go can be found [here](https://go.dev/doc/install). Once Go
+is installed you can run:
 
 ```
-GO111MODULE=on go get github.com/aristanetworks/goarista/cmd/gnmi
+go install github.com/aristanetworks/goarista/cmd/gnmi@latest
 ```
 
-This will install the `gnmi` binary in the `bin` directory
-under [GOPATH](https://golang.org/doc/code.html#GOPATH).
+This will install the `gnmi` binary in the `$HOME/go/bin` directory by
+default. Run `go help install` for more information.
 
 # Usage
 
