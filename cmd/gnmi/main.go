@@ -50,7 +50,7 @@ func main() {
 	flag.StringVar(&cfg.KeyFile, "keyfile", "", "Path to client TLS private key file")
 	flag.StringVar(&cfg.Password, "password", "", "Password to authenticate with")
 	flag.StringVar(&cfg.Username, "username", "", "Username to authenticate with")
-	flag.StringVar(&cfg.Compression, "compression", "gzip", "Compression method. "+
+	flag.StringVar(&cfg.Compression, "compression", "", "Compression method. "+
 		`Supported options: "" and "gzip"`)
 	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
 
