@@ -23,6 +23,7 @@ import (
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/gnmireverse"
 	"github.com/aristanetworks/goarista/netns"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -30,6 +31,11 @@ import (
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
+)
+
+const (
+	// errorLoopRetryMaxInterval caps the time between error loop retries.
+	errorLoopRetryMaxInterval = time.Minute
 )
 
 type subscriptionList struct {
@@ -298,6 +304,13 @@ func main() {
 }
 
 func streamResponses(streamResponsesFunc func(context.Context, *errgroup.Group)) {
+	// Used for error loop detection and backoff retries.
+	var lastErrorTime time.Time
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxElapsedTime = 0 // Never stop
+	bo.MaxInterval = errorLoopRetryMaxInterval
+	bo.Reset()
+
 	for {
 		// Start publisher and client in a loop, each running in
 		// their own goroutine. If either of them encounters an error,
@@ -306,7 +319,15 @@ func streamResponses(streamResponsesFunc func(context.Context, *errgroup.Group))
 		eg, ctx := errgroup.WithContext(context.Background())
 		streamResponsesFunc(ctx, eg)
 		if err := eg.Wait(); err != nil {
+			nowTime := time.Now()
+			// If the last error was from a while ago, reset the backoff interval because
+			// this error is not from an error loop.
+			if lastErrorTime.Add(errorLoopRetryMaxInterval * 2).Before(nowTime) {
+				bo.Reset()
+			}
+			lastErrorTime = nowTime
 			glog.Infof("encountered error, retrying: %s", err)
+			time.Sleep(bo.NextBackOff())
 		}
 	}
 }
