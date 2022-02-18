@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -167,6 +168,25 @@ func (l *getList) Set(gnmiPathStr string) error {
 	return nil
 }
 
+func (l *getList) readGetPathsFile(filePath string) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		glog.Fatalf("failed to read Get paths file %q: %s", filePath, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if path := strings.TrimSpace(scanner.Text()); path != "" {
+			l.Set(path)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		glog.Fatalf("failed to read Get paths file %q: %s", filePath, err)
+	}
+}
+
 type config struct {
 	// target config
 	targetAddr        string
@@ -222,6 +242,8 @@ func main() {
 		"Arista EOS native origin paths can be specified with the prefix \"eos_native:\".\n"+
 		"For example, eos_native:/Sysdb/hardware\n"+
 		"This option can be repeated multiple times.")
+	getPathsFile := flag.String("get_file", "", "Read file containing a list of paths"+
+		" separated by newlines to retrieve periodically using Get.")
 	getSampleIntervalStr := flag.String("get_sample_interval", "",
 		"Interval between periodic Get requests (400ms, 2.5s, 1m, etc.)\n"+
 			"Must be specified for Get and applies to all Get paths.")
@@ -266,6 +288,10 @@ func main() {
 
 	if cfg.collectorAddr == "" {
 		glog.Fatal("collector address must be specified")
+	}
+
+	if *getPathsFile != "" {
+		cfg.getPaths.readGetPathsFile(*getPathsFile)
 	}
 
 	if *getSampleIntervalStr != "" {
