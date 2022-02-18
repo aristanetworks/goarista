@@ -161,10 +161,30 @@ func TestStreamGetResponses(t *testing.T) {
 	}
 
 	collectorErrChan := make(chan error, 1)
+	gnmiServer := &gnmiServer{}
+	gnmireverseServer := &gnmireverseServer{
+		errChan: collectorErrChan,
+	}
+	runStreamGetResponsesTest(t, cfg, collectorErrChan, gnmiServer, gnmireverseServer)
+}
 
+// getTestAddress gets a localhost address with a random unused port.
+func getTestAddress(t *testing.T) string {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to find an available port: %s", err)
+	}
+	defer listener.Close()
+	return listener.Addr().String()
+}
+
+// runStreamGetResponsesTest runs the gNMIReverse Get client with the mock gNMI server and
+// mock gNMIReverse server and checks if the collectorErrChan receives an error.
+func runStreamGetResponsesTest(t *testing.T, cfg *config, collectorErrChan chan error,
+	gnmiServer gnmi.GNMIServer, gnmireverseServer gnmireverse.GNMIReverseServer) {
 	// Start the mock gNMI target server.
 	targetGRPCServer := grpc.NewServer()
-	gnmi.RegisterGNMIServer(targetGRPCServer, &gnmiServer{})
+	gnmi.RegisterGNMIServer(targetGRPCServer, gnmiServer)
 	targetListener, err := net.Listen("tcp", cfg.targetAddr)
 	if err != nil {
 		t.Fatal(err)
@@ -178,9 +198,7 @@ func TestStreamGetResponses(t *testing.T) {
 
 	// Start the mock gNMIReverse collector server.
 	collectorGRPCServer := grpc.NewServer()
-	gnmireverse.RegisterGNMIReverseServer(collectorGRPCServer, &gnmireverseServer{
-		errChan: collectorErrChan,
-	})
+	gnmireverse.RegisterGNMIReverseServer(collectorGRPCServer, gnmireverseServer)
 	collectorListener, err := net.Listen("tcp", cfg.collectorAddr)
 	if err != nil {
 		t.Fatal(err)
@@ -211,16 +229,6 @@ func TestStreamGetResponses(t *testing.T) {
 	if err := <-collectorErrChan; err != nil {
 		t.Error(err)
 	}
-}
-
-// getTestAddress gets a localhost address with a random unused port.
-func getTestAddress(t *testing.T) string {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to find an available port: %s", err)
-	}
-	defer listener.Close()
-	return listener.Addr().String()
 }
 
 var testGetResponse = &gnmi.GetResponse{
@@ -288,5 +296,191 @@ func (*gnmiServer) Subscribe(gnmi.GNMI_SubscribeServer) error {
 }
 
 func (*gnmiServer) Get(ctx context.Context, req *gnmi.GetRequest) (*gnmi.GetResponse, error) {
+	return testGetResponse, nil
+}
+
+func TestCombineGetResponses(t *testing.T) {
+	for name, tc := range map[string]struct {
+		getResponses        []*gnmi.GetResponse
+		combinedGetResponse *gnmi.GetResponse
+	}{
+		"0_notifs_0_notifs_total_0_notifs": {
+			getResponses: []*gnmi.GetResponse{
+				{},
+				{},
+			},
+			combinedGetResponse: &gnmi.GetResponse{},
+		},
+		"1_notif_0_notif_total_1_notif": {
+			getResponses: []*gnmi.GetResponse{
+				testGetResponse,
+				{},
+			},
+			combinedGetResponse: testGetResponse,
+		},
+		"0_notif_1_notif_total_1_notif": {
+			getResponses: []*gnmi.GetResponse{
+				{},
+				testEOSNativeGetResponse,
+			},
+			combinedGetResponse: testEOSNativeGetResponse,
+		},
+		"1_notif_1_notif_total_2_notifs": {
+			getResponses: []*gnmi.GetResponse{
+				testGetResponse,
+				testEOSNativeGetResponse,
+			},
+			combinedGetResponse: testCombinedGetResponse,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			timestamp := int64(123)
+			target := "baz"
+			combinedGetResponse := combineGetResponses(timestamp, target, tc.getResponses...)
+			if !proto.Equal(tc.combinedGetResponse, combinedGetResponse) {
+				t.Errorf("combined Get responses do not match, expected: %v, got: %v",
+					tc.combinedGetResponse, combinedGetResponse)
+			}
+		})
+	}
+}
+
+func TestStreamMixedOriginGetResponses(t *testing.T) {
+	// Set the Get paths list with one OpenConfig and one EOS native path.
+	var cfgGetList getList
+	cfgGetList.Set("openconfig:/foo/bar")
+	cfgGetList.Set("eos_native:/a/b")
+
+	cfg := &config{
+		targetVal:         "baz",
+		targetAddr:        getTestAddress(t),
+		collectorAddr:     getTestAddress(t),
+		getPaths:          cfgGetList,
+		getSampleInterval: time.Second,
+	}
+
+	collectorErrChan := make(chan error, 1)
+	gnmiServer := &mixedOriginGNMIServer{}
+	gnmireverseServer := &mixedOriginGNMIReverseServer{
+		errChan: collectorErrChan,
+	}
+	runStreamGetResponsesTest(t, cfg, collectorErrChan, gnmiServer, gnmireverseServer)
+}
+
+var testEOSNativeGetResponse = &gnmi.GetResponse{
+	Notification: []*gnmi.Notification{{
+		Prefix: &gnmi.Path{
+			Target: "baz",
+		},
+		Update: []*gnmi.Update{{
+			Path: &gnmi.Path{
+				Elem: []*gnmi.PathElem{
+					{Name: "a"},
+					{Name: "b"},
+				},
+			},
+			Val: &gnmi.TypedValue{
+				Value: &gnmi.TypedValue_StringVal{
+					StringVal: "c",
+				},
+			},
+		}},
+	}},
+}
+
+var testCombinedGetResponse = &gnmi.GetResponse{
+	Notification: []*gnmi.Notification{{
+		Timestamp: 123,
+		Prefix: &gnmi.Path{
+			Target: "baz",
+		},
+		Update: []*gnmi.Update{{
+			Path: &gnmi.Path{
+				Elem: []*gnmi.PathElem{
+					{Name: "foo"},
+					{Name: "bar"},
+				},
+			},
+			Val: &gnmi.TypedValue{
+				Value: &gnmi.TypedValue_IntVal{
+					IntVal: 1,
+				},
+			},
+		}},
+	}, {
+		Timestamp: 123,
+		Prefix: &gnmi.Path{
+			Target: "baz",
+		},
+		Update: []*gnmi.Update{{
+			Path: &gnmi.Path{
+				Elem: []*gnmi.PathElem{
+					{Name: "a"},
+					{Name: "b"},
+				},
+			},
+			Val: &gnmi.TypedValue{
+				Value: &gnmi.TypedValue_StringVal{
+					StringVal: "c",
+				},
+			},
+		}},
+	}},
+}
+
+// Mock gNMIReverse server checks if the published Get response matches the
+// testCombinedGetResponse.
+type mixedOriginGNMIReverseServer struct {
+	errChan chan error
+	gnmireverse.UnsafeGNMIReverseServer
+}
+
+func (*mixedOriginGNMIReverseServer) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
+	return nil
+}
+
+func (s *mixedOriginGNMIReverseServer) PublishGet(
+	stream gnmireverse.GNMIReverse_PublishGetServer) error {
+	for {
+		res, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		// Overwrite the OpenConfig and EOS native notification timestamps so notification
+		// can be compared.
+		res.Notification[0].Timestamp = 123
+		res.Notification[1].Timestamp = 123
+		if !proto.Equal(testCombinedGetResponse, res) {
+			s.errChan <- fmt.Errorf(
+				"Get response not equal: want %v, got %v", testGetResponse, res)
+		} else {
+			s.errChan <- nil
+		}
+	}
+}
+
+// Mock gNMI server returns for Get the testGetResponse for OpenConfig origins and
+// testEOSNativeGetResponse for EOS native origins.
+type mixedOriginGNMIServer struct {
+	gnmi.UnsafeGNMIServer
+}
+
+func (*mixedOriginGNMIServer) Capabilities(context.Context, *gnmi.CapabilityRequest) (
+	*gnmi.CapabilityResponse, error) {
+	return nil, nil
+}
+func (*mixedOriginGNMIServer) Set(context.Context, *gnmi.SetRequest) (
+	*gnmi.SetResponse, error) {
+	return nil, nil
+}
+func (*mixedOriginGNMIServer) Subscribe(gnmi.GNMI_SubscribeServer) error {
+	return nil
+}
+
+func (*mixedOriginGNMIServer) Get(
+	ctx context.Context, req *gnmi.GetRequest) (*gnmi.GetResponse, error) {
+	if req.GetPath()[0].GetOrigin() == "eos_native" {
+		return testEOSNativeGetResponse, nil
+	}
 	return testGetResponse, nil
 }

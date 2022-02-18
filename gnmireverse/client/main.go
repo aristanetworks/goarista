@@ -52,7 +52,8 @@ type subscription struct {
 }
 
 type getList struct {
-	paths []*gnmi.Path
+	openconfigPaths []*gnmi.Path
+	eosNativePaths  []*gnmi.Path
 }
 
 func str(subs []subscription) string {
@@ -85,7 +86,10 @@ func (l *getList) String() string {
 		return ""
 	}
 	var pathStrs []string
-	for _, path := range l.paths {
+	for _, path := range l.openconfigPaths {
+		pathStrs = append(pathStrs, gnmilib.StrPath(path))
+	}
+	for _, path := range l.eosNativePaths {
 		pathStrs = append(pathStrs, gnmilib.StrPath(path))
 	}
 	return strings.Join(pathStrs, ", ")
@@ -143,11 +147,23 @@ func (l *sampleList) Set(s string) error {
 }
 
 func (l *getList) Set(gnmiPathStr string) error {
-	gnmiPath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(gnmiPathStr))
-	if err != nil {
-		return err
+	switch {
+	case strings.HasPrefix(gnmiPathStr, "eos_native:"):
+		gnmiPathStr = strings.TrimPrefix(gnmiPathStr, "eos_native:")
+		eosNativePath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(gnmiPathStr))
+		if err != nil {
+			return err
+		}
+		eosNativePath.Origin = "eos_native"
+		l.eosNativePaths = append(l.eosNativePaths, eosNativePath)
+	default:
+		gnmiPathStr = strings.TrimPrefix(gnmiPathStr, "openconfig:")
+		openconfigPath, err := gnmilib.ParseGNMIElements(gnmilib.SplitPath(gnmiPathStr))
+		if err != nil {
+			return err
+		}
+		l.openconfigPaths = append(l.openconfigPaths, openconfigPath)
 	}
-	l.paths = append(l.paths, gnmiPath)
 	return nil
 }
 
@@ -203,6 +219,8 @@ func main() {
 		"use TLS connection with target and do not verify target certificate")
 
 	flag.Var(&cfg.getPaths, "get", "Path to retrieve periodically using Get.\n"+
+		"Arista EOS native origin paths can be specified with the prefix \"eos_native:\".\n"+
+		"For example, eos_native:/Sysdb/hardware\n"+
 		"This option can be repeated multiple times.")
 	getSampleIntervalStr := flag.String("get_sample_interval", "",
 		"Interval between periodic Get requests (400ms, 2.5s, 1m, etc.)\n"+
@@ -259,7 +277,7 @@ func main() {
 	}
 
 	isSubscribe := len(cfg.subTargetDefined.subs) != 0 || len(cfg.subSample.subs) != 0
-	isGet := len(cfg.getPaths.paths) != 0
+	isGet := len(cfg.getPaths.openconfigPaths) != 0 || len(cfg.getPaths.eosNativePaths) != 0
 
 	if !isSubscribe && !isGet {
 		glog.Fatal("Subscribe paths or Get paths must be specifed")
@@ -280,8 +298,14 @@ func main() {
 		for _, sub := range cfg.subSample.subs {
 			sub.p.Origin = cfg.origin
 		}
-		for _, get := range cfg.getPaths.paths {
+		for _, get := range cfg.getPaths.openconfigPaths {
 			get.Origin = cfg.origin
+		}
+		// If "eos_native" was specified by the global origin flag,
+		// point Get paths to EOS native Get paths instead.
+		if strings.ToLower(cfg.origin) == "eos_native" {
+			cfg.getPaths.eosNativePaths = cfg.getPaths.openconfigPaths
+			cfg.getPaths.openconfigPaths = nil
 		}
 	}
 
@@ -608,8 +632,12 @@ func sampleGet(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
 	c chan<- *gnmi.GetResponse) error {
 	client := gnmi.NewGNMIClient(targetConn)
 
-	req := &gnmi.GetRequest{
-		Path: cfg.getPaths.paths,
+	openconfigGetReq := &gnmi.GetRequest{
+		Path: cfg.getPaths.openconfigPaths,
+	}
+
+	eosNativeGetReq := &gnmi.GetRequest{
+		Path: cfg.getPaths.eosNativePaths,
 	}
 
 	if cfg.username != "" {
@@ -621,33 +649,52 @@ func sampleGet(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
 	}
 
 	// Set up a ticker for a consistent interval to exclude the additional time taken
-	// for issuing the Get request and processing the response.
+	// for issuing the Get request(s) and processing the response(s).
 	ticker := time.NewTicker(cfg.getSampleInterval)
 	defer ticker.Stop()
 
 	for {
-		if glog.V(5) {
-			glog.Infof("send Get request to target: %v", req)
-		}
-		resp, err := client.Get(ctx, req, grpc.WaitForReady(true))
-		if err != nil {
-			return fmt.Errorf("error from Get: %s", err)
-		}
-		if glog.V(7) {
-			glog.Infof("receive Get response: %v", resp)
-		}
-		currentTime := time.Now().UnixNano()
-		for _, notif := range resp.GetNotification() {
-			notif.Timestamp = currentTime
-			if notif.GetPrefix() == nil {
-				notif.Prefix = &gnmi.Path{}
+		var openConfigGetResponse *gnmi.GetResponse
+		if len(cfg.getPaths.openconfigPaths) > 0 {
+			if glog.V(5) {
+				glog.Infof("send OpenConfig Get request to target: %v", openconfigGetReq)
 			}
-			notif.Prefix.Target = cfg.targetVal
+			var err error
+			openConfigGetResponse, err = client.Get(ctx, openconfigGetReq, grpc.WaitForReady(true))
+			if err != nil {
+				return fmt.Errorf("error from OpenConfig Get: %s", err)
+			}
+			if glog.V(7) {
+				glog.Infof("receive OpenConfig Get response: %v", openConfigGetResponse)
+			}
 		}
+
+		// Issue separate Get request for EOS native paths because target may not support mixed
+		// origin paths in the same Get request.
+		var eosNativeGetResponse *gnmi.GetResponse
+		if len(cfg.getPaths.eosNativePaths) > 0 {
+			if glog.V(5) {
+				glog.Infof("send EOS native Get request to target: %v", eosNativeGetReq)
+			}
+			var err error
+			eosNativeGetResponse, err = client.Get(ctx, eosNativeGetReq, grpc.WaitForReady(true))
+			if err != nil {
+				return fmt.Errorf("error from EOS native Get: %s", err)
+			}
+			if glog.V(7) {
+				glog.Infof("receive EOS native Get response: %v", eosNativeGetResponse)
+			}
+		}
+
+		// Combine the Get responses.
+		currentTime := time.Now().UnixNano()
+		combinedGetResponse := combineGetResponses(
+			currentTime, cfg.targetVal, openConfigGetResponse, eosNativeGetResponse)
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case c <- resp:
+		case c <- combinedGetResponse:
 		}
 
 		glog.V(5).Infof("wait for %s", cfg.getSampleInterval)
@@ -657,4 +704,29 @@ func sampleGet(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
 		case <-ticker.C:
 		}
 	}
+}
+
+// combineGetResponses combines the notifications of GetResponses to one GetResponse
+// with the same timestamp and target prefix for all notifications.
+func combineGetResponses(timestamp int64, target string,
+	getResponses ...*gnmi.GetResponse) *gnmi.GetResponse {
+	var totalNotifications int
+	for _, res := range getResponses {
+		totalNotifications += len(res.GetNotification())
+	}
+	combinedGetResponse := &gnmi.GetResponse{
+		Notification: make([]*gnmi.Notification, 0, totalNotifications),
+	}
+	for _, res := range getResponses {
+		for _, notif := range res.GetNotification() {
+			// Workaround for EOS BUG568084: set timestamp on GetResponse notification.
+			notif.Timestamp = timestamp
+			if notif.GetPrefix() == nil {
+				notif.Prefix = &gnmi.Path{}
+			}
+			notif.Prefix.Target = target
+			combinedGetResponse.Notification = append(combinedGetResponse.Notification, notif)
+		}
+	}
+	return combinedGetResponse
 }
