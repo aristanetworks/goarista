@@ -15,13 +15,14 @@ import (
 	"path"
 	"time"
 
+	"github.com/aristanetworks/glog"
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/gnmireverse"
-
-	"github.com/aristanetworks/glog"
+	"github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	_ "google.golang.org/grpc/encoding/gzip" // Enable gzip encoding for the server.
+	"google.golang.org/protobuf/proto"
 )
 
 func newTLSConfig(clientCertAuth bool, certFile, keyFile, clientCAFile string) (*tls.Config,
@@ -64,6 +65,7 @@ func main() {
 	keyFile := flag.String("keyfile", "", "path to TLS key file")
 	clientCAFile := flag.String("client_cafile", "",
 		"path to TLS CA file to verify client certificate")
+	debugMode := flag.Bool("debug", false, "enable debug mode")
 	flag.Parse()
 
 	var config *tls.Config
@@ -85,7 +87,9 @@ func main() {
 	)
 
 	grpcServer := grpc.NewServer(serverOptions...)
-	s := &server{}
+	s := &server{
+		debugMode: *debugMode,
+	}
 	gnmireverse.RegisterGNMIReverseServer(grpcServer, s)
 
 	listener, err := net.Listen("tcp", *addr)
@@ -99,6 +103,7 @@ func main() {
 
 type server struct {
 	gnmireverse.UnimplementedGNMIReverseServer
+	debugMode bool
 }
 
 func (s *server) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
@@ -114,10 +119,15 @@ func (s *server) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
 }
 
 func (s *server) PublishGet(stream gnmireverse.GNMIReverse_PublishGetServer) error {
+	debugGet := &debugGet{}
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
 			return err
+		}
+		if s.debugMode {
+			debugGet.log(resp)
+			continue
 		}
 
 		for _, notif := range resp.GetNotification() {
@@ -134,4 +144,44 @@ func (s *server) PublishGet(stream gnmireverse.GNMIReverse_PublishGetServer) err
 			}
 		}
 	}
+}
+
+type debugGet struct {
+	lastReceiveTime time.Time
+	lastNotifTime   time.Time
+}
+
+func (d *debugGet) log(res *gnmi.GetResponse) {
+	// Time in which the GetResponse was received.
+	receiveTime := time.Now().UTC()
+	var lastReceiveAgo time.Duration
+	if !d.lastReceiveTime.IsZero() {
+		lastReceiveAgo = receiveTime.Sub(d.lastReceiveTime)
+	}
+	d.lastReceiveTime = receiveTime
+
+	// Timestamp of the first notification of the GetResponse.
+	var timestamp int64
+	if len(res.GetNotification()) > 0 {
+		timestamp = res.GetNotification()[0].GetTimestamp()
+	}
+	notifTime := time.Unix(0, timestamp).UTC()
+	var lastNotifAgo time.Duration
+	if !d.lastNotifTime.IsZero() {
+		lastNotifAgo = notifTime.Sub(d.lastNotifTime)
+	}
+	d.lastNotifTime = notifTime
+
+	// Difference between the GetResponse receive time and notification timestamp.
+	latency := receiveTime.Sub(d.lastNotifTime)
+
+	fmt.Printf("rx_time=%s notif_time=%s latency=%s"+
+		" last_rx_ago=%s last_notif_ago=%s size_bytes=%d num_notifs=%d\n",
+		receiveTime.Format(time.RFC3339Nano),
+		notifTime.Format(time.RFC3339Nano),
+		latency,
+		lastReceiveAgo,
+		lastNotifAgo,
+		proto.Size(res),
+		len(res.GetNotification()))
 }
