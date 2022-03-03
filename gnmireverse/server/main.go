@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net"
 	"path"
 	"time"
@@ -78,6 +79,10 @@ func main() {
 	if config != nil {
 		serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(config)))
 	}
+
+	serverOptions = append(serverOptions,
+		grpc.MaxRecvMsgSize(math.MaxInt32),
+	)
 
 	grpcServer := grpc.NewServer(serverOptions...)
 	s := &server{}

@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net"
 	"os"
 	"strconv"
@@ -32,6 +33,7 @@ import (
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -550,6 +552,7 @@ func dialTarget(cfg *config) (*grpc.ClientConn, error) {
 	var d net.Dialer
 	dialOptions = append(dialOptions,
 		grpc.WithContextDialer(newVRFDialer(&d, nsName)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 	)
 
 	return grpc.Dial(addr, dialOptions...)
@@ -585,6 +588,10 @@ func publishGet(ctx context.Context, destConn *grpc.ClientConn, c <-chan *gnmi.G
 		case <-ctx.Done():
 			return ctx.Err()
 		case response := <-c:
+			if glog.V(3) {
+				glog.Infof("send Get response: size_bytes=%d num_notifs=%d",
+					proto.Size(response), len(response.GetNotification()))
+			}
 			if glog.V(7) {
 				glog.Infof("send Get response to collector: %v", response)
 			}

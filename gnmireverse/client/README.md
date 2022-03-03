@@ -121,6 +121,12 @@ with `-collector_compression gzip` to lower bandwidth. Ensure that the gNMIRever
 the gzip gRPC compression method. Note that this may cause an increase in CPU load on the target
 device due to compression overhead.
 
+## gRPC maximum message size
+
+By default, gRPC limits the maximum incoming message size to 4 MB. For gNMI Get, a large
+`GetResponse` can result if many paths are retrieved and/or the data trees are large. As a result,
+it is possible for the message to exceed the default maximum size. In these cases, it is necessary
+to configure the gNMIReverse server to accept larger message sizes from the gNMIReverse client.
 
 ## Debugging
 
