@@ -2,7 +2,7 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-package main
+package client
 
 import (
 	"context"
@@ -42,7 +42,8 @@ func usageAndExit(s string) {
 	os.Exit(1)
 }
 
-func main() {
+// Main initializes the gNMI client.
+func Main() {
 	cfg := &gnmi.Config{}
 	flag.StringVar(&cfg.Addr, "addr", "", "Address of gNMI gRPC server with optional VRF name")
 	flag.StringVar(&cfg.CAFile, "cafile", "", "Path to server TLS certificate file")
