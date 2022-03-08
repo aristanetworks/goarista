@@ -14,10 +14,10 @@ Compiling the client requires Go 1.16 or later. Instructions for installing Go c
 found [here](https://go.dev/doc/install). Once Go is installed you can run:
 
 ```
-GOOS=linux go install github.com/aristanetworks/goarista/gnmireverse/client@latest
+GOOS=linux go install github.com/aristanetworks/goarista/cmd/gnmireverse_client@latest
 ```
 
-This will install the gNMIReverse `client` binary in the `$HOME/go/bin` or
+This will install the `gnmireverse_client` binary in the `$HOME/go/bin` or
 `$HOME/go/bin/linux_amd64` directory by default. Run `go help install` for more information.
 
 

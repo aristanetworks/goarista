@@ -2,7 +2,7 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-package main
+package client
 
 import (
 	"bufio"
@@ -216,7 +216,8 @@ type config struct {
 	collectorCompression string
 }
 
-func main() {
+// Main initializes the gNMIReverse client.
+func Main() {
 	var cfg config
 	flag.StringVar(&cfg.targetAddr, "target_addr", "127.0.0.1:6030",
 		"address of the gNMI target in the form of [<vrf-name>/]address:port")
