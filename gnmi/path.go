@@ -87,32 +87,59 @@ func writeKey(b *strings.Builder, key map[string]string) {
 	// Sort the keys so that they print in a consistent
 	// order. We don't have the YANG AST information, so the
 	// best we can do is sort them alphabetically.
+	size := 0
 	keys := make([]string, 0, len(key))
-	for k := range key {
+	for k, v := range key {
 		keys = append(keys, k)
+		size += len(k) + len(v) + 3 // [, =, ]
 	}
 	sort.Strings(keys)
+	b.Grow(size)
 	for _, k := range keys {
-		b.WriteRune('[')
-		writeSafeString(b, k, map[rune]bool{'=': true})
-		b.WriteRune('=')
-		writeSafeString(b, key[k], map[rune]bool{']': true})
-		b.WriteRune(']')
+		b.WriteByte('[')
+		b.WriteString(escapeKey(k))
+		b.WriteByte('=')
+		b.WriteString(escapeValue(key[k]))
+		b.WriteByte(']')
 	}
 }
 
 // KeyToString is used to get the string representation of the keys.
 func KeyToString(key map[string]string) string {
-	b := &strings.Builder{}
-	writeKey(b, key)
+	if len(key) == 1 {
+		for k, v := range key {
+			return "[" + escapeKey(k) + "=" + escapeValue(v) + "]"
+		}
+	}
+	var b strings.Builder
+	writeKey(&b, key)
 	return b.String()
 }
 
 func writeElem(b *strings.Builder, elm *pb.PathElem) {
-	writeSafeString(b, elm.Name, map[rune]bool{'/': true, '[': true})
+	b.WriteString(escapeName(elm.Name))
 	if len(elm.Key) > 0 {
 		writeKey(b, elm.Key)
 	}
+}
+
+func escapeKey(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `=`, `\=`)
+	return s
+}
+
+func escapeValue(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `]`, `\]`)
+	return s
+}
+
+func escapeName(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `/`, `\/`)
+	s = strings.ReplaceAll(s, `[`, `\[`)
+	return s
 }
 
 // ElemToString is used to get the string representation of the Element.
@@ -159,15 +186,6 @@ func JoinPaths(paths ...*pb.Path) *pb.Path {
 		elems = append(elems, path.Elem...)
 	}
 	return &pb.Path{Elem: elems}
-}
-
-func writeSafeString(b *strings.Builder, s string, esc map[rune]bool) {
-	for _, c := range s {
-		if _, ok := esc[c]; ok || c == '\\' {
-			b.WriteRune('\\')
-		}
-		b.WriteRune(c)
-	}
 }
 
 // ParseGNMIElements builds up a gnmi path, from user-supplied text

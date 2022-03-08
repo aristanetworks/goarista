@@ -324,3 +324,35 @@ func BenchmarkPathElementMaxKeys(b *testing.B) {
 			"[name=fourthName][name=fifthName][name=sixthName]")
 	}
 }
+
+func BenchmarkKeyToString(b *testing.B) {
+	for _, bench := range []struct {
+		name string
+		key  map[string]string
+	}{{
+		name: "singlekey",
+		key:  map[string]string{"abcdefghijkm": "nopqrstuvwxyz"},
+	}, {
+		name: "fivekeys",
+		key: map[string]string{
+			"one":   "one",
+			"two":   "two",
+			"three": "three",
+			"four":  "four",
+			"five":  "five",
+		},
+	}, {
+		name: "escaped",
+		key: map[string]string{
+			"foo=": "bar",
+			"foo":  "ba]r]",
+		},
+	}} {
+		b.Run(bench.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				KeyToString(bench.key)
+			}
+		})
+	}
+}
