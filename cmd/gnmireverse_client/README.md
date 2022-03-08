@@ -107,7 +107,7 @@ eos_native:/Sysdb/hardware
 A collector implementing a gNMIReverse server can be installed with:
 
 ```
-go install github.com/aristanetworks/goarista/gnmireverse/server@latest
+go install github.com/aristanetworks/goarista/cmd/gnmireverse_server@latest
 ```
 Run the program with the flag `--help` or `-h` to see the full list of options.
 

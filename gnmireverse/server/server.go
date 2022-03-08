@@ -2,7 +2,7 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-package main
+package server
 
 import (
 	"crypto/tls"
@@ -56,7 +56,8 @@ func newTLSConfig(clientCertAuth bool, certFile, keyFile, clientCAFile string) (
 	return &tlsConfig, nil
 }
 
-func main() {
+// Main initializes the gNMIReverse server.
+func Main() {
 	addr := flag.String("addr", "127.0.0.1:6035", "address to listen on")
 	useTLS := flag.Bool("tls", true, "set to false to disable TLS in collector")
 	clientCertAuth := flag.Bool("client_cert_auth", false,
