@@ -28,11 +28,17 @@ import (
 var help = `Usage of gnmi:
 gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
-  get (origin=ORIGIN) (target=TARGET) PATH+
-  subscribe (origin=ORIGIN) (target=TARGET) PATH+
+  get ((origin=ORIGIN) (target=TARGET) PATH+)+
+  subscribe ((origin=ORIGIN) (target=TARGET) PATH+)+ 
   ((update|replace (origin=ORIGIN) (target=TARGET) PATH JSON|FILE) |
    (delete (origin=ORIGIN) (target=TARGET) PATH))+
 `
+
+type reqParams struct {
+	origin string
+	target string
+	paths  []string
+}
 
 func usageAndExit(s string) {
 	flag.Usage()
@@ -172,75 +178,87 @@ func Main() {
 			if len(setOps) != 0 {
 				usageAndExit("error: 'get' not allowed after 'merge|replace|delete'")
 			}
-			origin, target, paths, _ := parseOriginTargetPaths(args[1:], false)
-			req, err := gnmi.NewGetRequest(gnmi.SplitPaths(paths), origin)
-			if err != nil {
-				glog.Fatal(err)
-			}
-			if target != "" {
-				if req.Prefix == nil {
-					req.Prefix = &pb.Path{}
+			pathParams, _ := parsereqParams(args[1:], false)
+			for _, pathParam := range pathParams {
+				origin := pathParam.origin
+				target := pathParam.target
+				paths := pathParam.paths
+
+				req, err := gnmi.NewGetRequest(gnmi.SplitPaths(paths), origin)
+				if err != nil {
+					glog.Fatal(err)
 				}
-				req.Prefix.Target = target
-			}
-			switch strings.ToLower(*dataTypeStr) {
-			case "", "all":
-				req.Type = pb.GetRequest_ALL
-			case "config":
-				req.Type = pb.GetRequest_CONFIG
-			case "state":
-				req.Type = pb.GetRequest_STATE
-			case "operational":
-				req.Type = pb.GetRequest_OPERATIONAL
-			default:
-				usageAndExit(fmt.Sprintf("error: invalid data type (%s)", *dataTypeStr))
+				if target != "" {
+					if req.Prefix == nil {
+						req.Prefix = &pb.Path{}
+					}
+					req.Prefix.Target = target
+				}
+				switch strings.ToLower(*dataTypeStr) {
+				case "", "all":
+					req.Type = pb.GetRequest_ALL
+				case "config":
+					req.Type = pb.GetRequest_CONFIG
+				case "state":
+					req.Type = pb.GetRequest_STATE
+				case "operational":
+					req.Type = pb.GetRequest_OPERATIONAL
+				default:
+					usageAndExit(fmt.Sprintf("error: invalid data type (%s)", *dataTypeStr))
+				}
+				err = gnmi.GetWithRequest(ctx, client, req)
+				if err != nil {
+					glog.Fatal(err)
+				}
 			}
 
-			err = gnmi.GetWithRequest(ctx, client, req)
-			if err != nil {
-				glog.Fatal(err)
-			}
 			return
 		case "subscribe":
 			if len(setOps) != 0 {
 				usageAndExit("error: 'subscribe' not allowed after 'merge|replace|delete'")
 			}
-			origin, target, paths, _ := parseOriginTargetPaths(args[1:], false)
-			respChan := make(chan *pb.SubscribeResponse)
-			subscribeOptions.Origin = origin
-			subscribeOptions.Target = target
-			subscribeOptions.Paths = gnmi.SplitPaths(paths)
-			if histExt != nil {
-				subscribeOptions.Extensions = []*gnmi_ext.Extension{{
-					Ext: histExt,
-				}}
-			}
 			var g errgroup.Group
-			g.Go(func() error {
-				return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan)
-			})
-			switch *debug {
-			case "proto":
-				for resp := range respChan {
-					fmt.Println(resp)
+			pathParams, _ := parsereqParams(args[1:], false)
+			for _, pathParam := range pathParams {
+				origin := pathParam.origin
+				target := pathParam.target
+				paths := pathParam.paths
+
+				respChan := make(chan *pb.SubscribeResponse)
+				subOptions := new(gnmi.SubscribeOptions)
+				*subOptions = *subscribeOptions
+				subOptions.Origin = origin
+				subOptions.Target = target
+				subOptions.Paths = gnmi.SplitPaths(paths)
+				if histExt != nil {
+					subOptions.Extensions = []*gnmi_ext.Extension{{
+						Ext: histExt,
+					}}
 				}
-			case "latency":
-				for resp := range respChan {
-					printLatencyStats(resp)
-				}
-			case "throughput":
-				handleThroughput(respChan)
-			case "clog":
-				// Don't read any subscription updates
-				g.Wait()
-			case "":
-				for resp := range respChan {
-					if err := gnmi.LogSubscribeResponse(resp); err != nil {
-						glog.Fatal(err)
+
+				g.Go(func() error {
+					return gnmi.SubscribeErr(ctx, client, subOptions, respChan)
+				})
+				switch *debug {
+				case "proto":
+					for resp := range respChan {
+						fmt.Println(resp)
 					}
+				case "latency":
+					for resp := range respChan {
+						printLatencyStats(resp)
+					}
+				case "throughput":
+					handleThroughput(respChan)
+				case "clog":
+					// Don't read any subscription updates
+					g.Wait()
+				case "":
+					go processSubscribeResponses(origin, respChan)
+
+				default:
+					usageAndExit(fmt.Sprintf("unknown debug option: %q", *debug))
 				}
-			default:
-				usageAndExit(fmt.Sprintf("unknown debug option: %q", *debug))
 			}
 			if err := g.Wait(); err != nil {
 				glog.Fatal(err)
@@ -258,11 +276,11 @@ func Main() {
 			if len(args) <= i {
 				break
 			}
-			origin, target, paths, argsParsed := parseOriginTargetPaths(args[i:], true)
+			pathParams, argsParsed := parsereqParams(args[i:], true)
 			i += argsParsed
-			op.Path = gnmi.SplitPath(paths[0])
-			op.Origin = origin
-			op.Target = target
+			op.Path = gnmi.SplitPath(pathParams[0].paths[0])
+			op.Origin = pathParams[0].origin
+			op.Target = pathParams[0].target
 			if op.Type != "delete" {
 				if len(args) == i {
 					usageAndExit("error: missing JSON or FILEPATH to data")
@@ -289,6 +307,14 @@ func Main() {
 
 }
 
+func processSubscribeResponses(origin string, respChan chan *pb.SubscribeResponse) {
+	for resp := range respChan {
+		if err := gnmi.LogSubscribeResponse(resp); err != nil {
+			glog.Fatal(err)
+		}
+	}
+}
+
 // Parse string timestamp, first trying for ns since epoch, and then
 // for RFC3339.
 func parseTime(ts string) (time.Time, error) {
@@ -313,25 +339,40 @@ func parseTarget(s string) (string, bool) {
 	return parseStringOpt(s, "target")
 }
 
-func parseOriginTargetPaths(args []string, maxOnePath bool) (origin,
-	target string, paths []string, argsParsed int) {
-	for i, arg := range args {
+func parsereqParams(args []string, maxOnePath bool) (pathParams []reqParams,
+	argsParsed int) {
+	var pP *reqParams = nil
+	//
+	for _, arg := range args {
 		argsParsed++
-		if i < 2 {
-			if o, ok := parseOrigin(arg); ok {
-				origin = o
-				continue
+		if o, ok := parseOrigin(arg); ok {
+			// Either this is the first Origin-Target-Path or a subsequent one
+			if pP == nil {
+				pP = new(reqParams)
+			} else {
+				// Subsequent one, save the last set
+				pathParams = append(pathParams, *pP)
+				pP = new(reqParams)
 			}
-			if t, ok := parseTarget(arg); ok {
-				target = t
-				continue
+			pP.origin = o
+		} else if t, ok := parseTarget(arg); ok { // if this is target , assume origin has been set
+			if pP == nil {
+				pP = new(reqParams)
 			}
-		}
-		paths = append(paths, arg)
-		if len(paths) > 0 && maxOnePath {
-			return
+			pP.target = t
+		} else {
+			// Its the path, origin may or may not be set
+			if pP == nil {
+				pP = new(reqParams)
+			}
+			pP.paths = append(pP.paths, arg)
+			if maxOnePath {
+				pathParams = append(pathParams, *pP)
+				return
+			}
 		}
 	}
+	pathParams = append(pathParams, *pP)
 	return
 }
 
