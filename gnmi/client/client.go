@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -62,6 +63,7 @@ func Main() {
 	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
 	flag.BoolVar(&cfg.BDP, "bdp", true,
 		"Enable Bandwidth Delay Product (BDP) estimation and dynamic flow control window")
+	outputVersion := flag.Bool("version", false, "print version information")
 
 	subscribeOptions := &gnmi.SubscribeOptions{}
 	flag.StringVar(&subscribeOptions.Prefix, "prefix", "", "Subscribe prefix path")
@@ -94,7 +96,7 @@ func Main() {
 	flag.Var(grpcMetadata, "grpcmetadata",
 		"key=value gRPC metadata fields, can be used repeatedly")
 
-	debug := flag.String("debug", "", "Enable a debug mode:\n"+
+	debugMode := flag.String("debug", "", "Enable a debug mode:\n"+
 		"  'proto' : print SubscribeResponses in protobuf text format\n"+
 		"  'latency' : print timing numbers to help debug latency\n"+
 		"  'throughput' : print number of notifications sent in a second\n"+
@@ -105,6 +107,19 @@ func Main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *outputVersion {
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, data := range info.Settings {
+				if data.Key == "vcs.revision" {
+					fmt.Printf("%s_%s", data.Value, info.GoVersion)
+				}
+			}
+		} else {
+			fmt.Printf("version information only available in go 1.18+")
+		}
+		return
+	}
+
 	if cfg.Addr == "" {
 		usageAndExit("error: address not specified")
 	}
@@ -241,7 +256,7 @@ func Main() {
 				g.Go(func() error {
 					return gnmi.SubscribeErr(ctx, client, subOptions, respChan)
 				})
-				switch *debug {
+				switch *debugMode {
 				case "proto":
 					for resp := range respChan {
 						fmt.Println(resp)
@@ -259,7 +274,7 @@ func Main() {
 					go processSubscribeResponses(origin, respChan)
 
 				default:
-					usageAndExit(fmt.Sprintf("unknown debug option: %q", *debug))
+					usageAndExit(fmt.Sprintf("unknown debug option: %q", *debugMode))
 				}
 			}
 			if err := g.Wait(); err != nil {
