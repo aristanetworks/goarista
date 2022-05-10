@@ -11,7 +11,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/kylelemons/godebug v1.1.0
-	github.com/openconfig/gnmi v0.0.0-20210914185457-51254b657b7d
+	github.com/openconfig/gnmi v0.0.0-20220503232738-6eb133c65a13
 	github.com/openconfig/reference v0.0.0-20210430191810-4f59a97df244
 	github.com/prometheus/client_golang v1.11.0
 	github.com/xtaci/kcp-go v5.4.20+incompatible
