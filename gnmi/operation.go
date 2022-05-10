@@ -167,6 +167,8 @@ func strVal(val *pb.TypedValue, alwaysCompactJSON bool) string {
 		return strDecimal64(v.DecimalVal)
 	case *pb.TypedValue_FloatVal:
 		return strconv.FormatFloat(float64(v.FloatVal), 'g', -1, 32)
+	case *pb.TypedValue_DoubleVal:
+		return strconv.FormatFloat(float64(v.DoubleVal), 'g', -1, 64)
 	case *pb.TypedValue_LeaflistVal:
 		return strLeaflist(v.LeaflistVal)
 	case *pb.TypedValue_AsciiVal:
@@ -271,9 +273,7 @@ func TypedValue(val interface{}) *pb.TypedValue {
 	case float32:
 		return &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: v}}
 	case float64:
-		// There are no plans as of 12/2020 to support float64 in gNMI so just
-		// cast to float 32. See https://github.com/openconfig/gnmi/issues/54
-		return &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: float32(v)}}
+		return &pb.TypedValue{Value: &pb.TypedValue_DoubleVal{DoubleVal: v}}
 	case []interface{}:
 		gnmiElems := make([]*pb.TypedValue, len(v))
 		for i, elem := range v {
@@ -330,6 +330,8 @@ func extractValueV04(val *pb.TypedValue) (interface{}, error) {
 		return v.BytesVal, nil
 	case *pb.TypedValue_FloatVal:
 		return v.FloatVal, nil
+	case *pb.TypedValue_DoubleVal:
+		return v.DoubleVal, nil
 	case *pb.TypedValue_DecimalVal:
 		return v.DecimalVal, nil
 	case *pb.TypedValue_LeaflistVal:

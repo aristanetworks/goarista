@@ -221,6 +221,11 @@ func TestStrUpdateVal(t *testing.T) {
 				Value: &pb.TypedValue_FloatVal{FloatVal: 3.14}}},
 			exp: "3.14",
 		},
+		"DoubleVal": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_DoubleVal{DoubleVal: 3.14}}},
+			exp: "3.14",
+		},
 		"DecimalVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
 				Value: &pb.TypedValue_DecimalVal{
@@ -307,11 +312,8 @@ func TestTypedValue(t *testing.T) {
 			exp: &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: 42.234123}},
 		},
 		"float64": {
-			// The last decimal point truncation can be odd. The TypedValue ends up as
-			// 42.234123 if checked. The test case uses disparate numbers to help demonstrate this
-			// behavior (the 42.234122 expected value ends up as 42.234123, as does the input value)
 			in:  float64(42.234124222222),
-			exp: &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: 42.234122}},
+			exp: &pb.TypedValue{Value: &pb.TypedValue_DoubleVal{DoubleVal: 42.234124222222}},
 		},
 		"bool": {
 			in:  true,
@@ -405,6 +407,10 @@ func TestExtractValue(t *testing.T) {
 		in: &pb.Update{Val: &pb.TypedValue{
 			Value: &pb.TypedValue_FloatVal{FloatVal: -12.34}}},
 		exp: float32(-12.34),
+	}, {
+		in: &pb.Update{Val: &pb.TypedValue{
+			Value: &pb.TypedValue_DoubleVal{DoubleVal: -12.34}}},
+		exp: float64(-12.34),
 	}, {
 		in: &pb.Update{Val: &pb.TypedValue{
 			Value: &pb.TypedValue_DecimalVal{DecimalVal: &pb.Decimal64{

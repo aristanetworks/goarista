@@ -103,6 +103,11 @@ func toDoublePtr(val interface{}) *float64 {
 		if !math.IsInf(val, 0) && !math.IsNaN(val) {
 			return &val
 		}
+	case *gnmi.TypedValue_DoubleVal:
+		val := float64(tv.DoubleVal)
+		if !math.IsInf(val, 0) && !math.IsNaN(val) {
+			return &val
+		}
 	case *gnmi.TypedValue_DecimalVal:
 		// convert to float64 for now
 		val := float64(tv.DecimalVal.Digits)
