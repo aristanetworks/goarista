@@ -166,7 +166,7 @@ func strPathV03(path *pb.Path) string {
 
 // upgradePath modernizes a Path by translating the contents of the Element field to Elem
 func upgradePath(path *pb.Path) *pb.Path {
-	if len(path.Elem) == 0 {
+	if path != nil && len(path.Elem) == 0 {
 		var elems []*pb.PathElem
 		for _, element := range path.Element {
 			n, keys, _ := parseElement(element)
