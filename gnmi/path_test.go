@@ -283,10 +283,20 @@ func TestJoinPath(t *testing.T) {
 		},
 		{
 			paths: []*pb.Path{
-				&pb.Path{Element: []string{"foo", "bar[somekey=someval][otherkey=otherval]"}},
-				&pb.Path{Element: []string{"baz", "qux[somekey=someval][otherkey=otherval]"}}},
+				{Element: []string{"foo", "bar[somekey=someval][otherkey=otherval]"}},
+				{Element: []string{"baz", "qux[somekey=someval][otherkey=otherval]"}}},
 			exp: "/foo/bar[somekey=someval][otherkey=otherval]/" +
 				"baz/qux[somekey=someval][otherkey=otherval]",
+		},
+		{
+			paths: []*pb.Path{
+				nil,
+				{Element: []string{"baz", "qux[somekey=someval][otherkey=otherval]"}},
+				nil,
+				{Element: []string{"foo", "bar[somekey=someval][otherkey=otherval]"}},
+				nil},
+			exp: "baz/qux[otherkey=otherval][somekey=someval]/" +
+				"foo/bar[somekey=someval][otherkey=otherval]",
 		},
 	}
 

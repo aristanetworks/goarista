@@ -178,12 +178,14 @@ func upgradePath(path *pb.Path) *pb.Path {
 	return path
 }
 
-// JoinPaths joins multiple gnmi paths and returns a string representation
+// JoinPaths joins multiple gnmi paths into a single path
 func JoinPaths(paths ...*pb.Path) *pb.Path {
 	var elems []*pb.PathElem
 	for _, path := range paths {
-		path = upgradePath(path)
-		elems = append(elems, path.Elem...)
+		if path != nil {
+			path = upgradePath(path)
+			elems = append(elems, path.Elem...)
+		}
 	}
 	return &pb.Path{Elem: elems}
 }
