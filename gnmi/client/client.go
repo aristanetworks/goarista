@@ -60,6 +60,8 @@ func Main() {
 	flag.StringVar(&cfg.Compression, "compression", "", "Compression method. "+
 		`Supported options: "" and "gzip"`)
 	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
+	flag.BoolVar(&cfg.BDP, "bdp", true,
+		"Enable Bandwidth Delay Product (BDP) estimation and dynamic flow control window")
 
 	subscribeOptions := &gnmi.SubscribeOptions{}
 	flag.StringVar(&subscribeOptions.Prefix, "prefix", "", "Subscribe prefix path")

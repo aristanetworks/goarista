@@ -64,6 +64,7 @@ type Config struct {
 	Username     string
 	TLS          bool
 	Compression  string
+	BDP          bool
 	DialOptions  []grpc.DialOption
 	Token        string
 	GRPCMetadata map[string]string
@@ -163,6 +164,23 @@ func (a *accessTokenCred) RequireTransportSecurity() bool { return true }
 // DialContext connects to a gnmi service and returns a client
 func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
 	opts := append([]grpc.DialOption(nil), cfg.DialOptions...)
+
+	if !cfg.BDP {
+		// By default, the client and server will dynamically adjust the connection's
+		// window size using the Bandwidth Delay Product (BDP).
+		// See: https://grpc.io/blog/grpc-go-perf-improvements/
+		// The default values for InitialWindowSize and InitialConnWindowSize are 65535.
+		// If values less than 65535 are used, then BDP and dynamic windows are enabled.
+		// Here, we disable the BDP and dynamic windows by setting these values >= 65535.
+		// We set these values to (1 << 20) * 16 as this is the largest window size that
+		// the BDP estimator could ever use.
+		// See: https://github.com/grpc/grpc-go/blob/master/internal/transport/bdp_estimator.go
+		const maxWindowSize int32 = (1 << 20) * 16
+		opts = append(opts,
+			grpc.WithInitialWindowSize(maxWindowSize),
+			grpc.WithInitialConnWindowSize(maxWindowSize),
+		)
+	}
 
 	switch cfg.Compression {
 	case "":
