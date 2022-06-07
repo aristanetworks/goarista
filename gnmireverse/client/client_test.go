@@ -14,7 +14,10 @@ import (
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmireverse"
 	"github.com/openconfig/gnmi/proto/gnmi"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -165,7 +168,8 @@ func TestStreamGetResponses(t *testing.T) {
 	gnmireverseServer := &gnmireverseServer{
 		errChan: collectorErrChan,
 	}
-	runStreamGetResponsesTest(t, cfg, collectorErrChan, gnmiServer, gnmireverseServer)
+	runStreamGetResponsesTest(t, cfg, collectorErrChan,
+		gnmiServer, gnmireverseServer, streamGetResponses)
 }
 
 // getTestAddress gets a localhost address with a random unused port.
@@ -181,7 +185,9 @@ func getTestAddress(t *testing.T) string {
 // runStreamGetResponsesTest runs the gNMIReverse Get client with the mock gNMI server and
 // mock gNMIReverse server and checks if the collectorErrChan receives an error.
 func runStreamGetResponsesTest(t *testing.T, cfg *config, collectorErrChan chan error,
-	gnmiServer gnmi.GNMIServer, gnmireverseServer gnmireverse.GNMIReverseServer) {
+	gnmiServer gnmi.GNMIServer, gnmireverseServer gnmireverse.GNMIReverseServer,
+	streamResponsesFunc func(*config, *grpc.ClientConn, *grpc.ClientConn) func(
+		context.Context, *errgroup.Group)) {
 	// Start the mock gNMI target server.
 	targetGRPCServer := grpc.NewServer()
 	gnmi.RegisterGNMIServer(targetGRPCServer, gnmiServer)
@@ -222,7 +228,7 @@ func runStreamGetResponsesTest(t *testing.T, cfg *config, collectorErrChan chan 
 	glog.V(1).Infof("gNMIReverse client publish Get response from %s to %s",
 		targetConn.Target(), destConn.Target())
 	go func() {
-		streamResponses(streamGetResponses(cfg, destConn, targetConn))
+		streamResponses(streamResponsesFunc(cfg, destConn, targetConn))
 	}()
 
 	// Check that the gNMIReverse collector server receives the expected Get response.
@@ -231,35 +237,33 @@ func runStreamGetResponsesTest(t *testing.T, cfg *config, collectorErrChan chan 
 	}
 }
 
-var testGetResponse = &gnmi.GetResponse{
-	Notification: []*gnmi.Notification{{
-		Prefix: &gnmi.Path{
-			Target: "baz",
+var testNotification = &gnmi.Notification{
+	Prefix: &gnmi.Path{
+		Target: "baz",
+	},
+	Update: []*gnmi.Update{{
+		Path: &gnmi.Path{
+			Elem: []*gnmi.PathElem{
+				{Name: "foo"},
+				{Name: "bar"},
+			},
 		},
-		Update: []*gnmi.Update{{
-			Path: &gnmi.Path{
-				Elem: []*gnmi.PathElem{
-					{Name: "foo"},
-					{Name: "bar"},
-				},
+		Val: &gnmi.TypedValue{
+			Value: &gnmi.TypedValue_IntVal{
+				IntVal: 1,
 			},
-			Val: &gnmi.TypedValue{
-				Value: &gnmi.TypedValue_IntVal{
-					IntVal: 1,
-				},
-			},
-		}},
+		},
 	}},
+}
+
+var testGetResponse = &gnmi.GetResponse{
+	Notification: []*gnmi.Notification{testNotification},
 }
 
 // Mock gNMIReverse server checks if the published Get response matches the testGetResponse.
 type gnmireverseServer struct {
 	errChan chan error
-	gnmireverse.UnsafeGNMIReverseServer
-}
-
-func (*gnmireverseServer) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
-	return nil
+	gnmireverse.UnimplementedGNMIReverseServer
 }
 
 func (s *gnmireverseServer) PublishGet(stream gnmireverse.GNMIReverse_PublishGetServer) error {
@@ -281,18 +285,7 @@ func (s *gnmireverseServer) PublishGet(stream gnmireverse.GNMIReverse_PublishGet
 
 // Mock gNMI server returns testGetResponse for Get.
 type gnmiServer struct {
-	gnmi.UnsafeGNMIServer
-}
-
-func (*gnmiServer) Capabilities(context.Context, *gnmi.CapabilityRequest) (
-	*gnmi.CapabilityResponse, error) {
-	return nil, nil
-}
-func (*gnmiServer) Set(context.Context, *gnmi.SetRequest) (*gnmi.SetResponse, error) {
-	return nil, nil
-}
-func (*gnmiServer) Subscribe(gnmi.GNMI_SubscribeServer) error {
-	return nil
+	gnmi.UnimplementedGNMIServer
 }
 
 func (*gnmiServer) Get(ctx context.Context, req *gnmi.GetRequest) (*gnmi.GetResponse, error) {
@@ -364,79 +357,44 @@ func TestStreamMixedOriginGetResponses(t *testing.T) {
 	gnmireverseServer := &mixedOriginGNMIReverseServer{
 		errChan: collectorErrChan,
 	}
-	runStreamGetResponsesTest(t, cfg, collectorErrChan, gnmiServer, gnmireverseServer)
+	runStreamGetResponsesTest(t, cfg, collectorErrChan,
+		gnmiServer, gnmireverseServer, streamGetResponses)
+}
+
+var testEOSNativeNotification = &gnmi.Notification{
+	Timestamp: 123,
+	Prefix: &gnmi.Path{
+		Target: "baz",
+		Origin: "eos_native",
+	},
+	Update: []*gnmi.Update{{
+		Path: &gnmi.Path{
+			Elem: []*gnmi.PathElem{
+				{Name: "a"},
+				{Name: "b"},
+			},
+		},
+		Val: &gnmi.TypedValue{
+			Value: &gnmi.TypedValue_StringVal{
+				StringVal: "c",
+			},
+		},
+	}},
 }
 
 var testEOSNativeGetResponse = &gnmi.GetResponse{
-	Notification: []*gnmi.Notification{{
-		Prefix: &gnmi.Path{
-			Target: "baz",
-		},
-		Update: []*gnmi.Update{{
-			Path: &gnmi.Path{
-				Elem: []*gnmi.PathElem{
-					{Name: "a"},
-					{Name: "b"},
-				},
-			},
-			Val: &gnmi.TypedValue{
-				Value: &gnmi.TypedValue_StringVal{
-					StringVal: "c",
-				},
-			},
-		}},
-	}},
+	Notification: []*gnmi.Notification{testEOSNativeNotification},
 }
 
 var testCombinedGetResponse = &gnmi.GetResponse{
-	Notification: []*gnmi.Notification{{
-		Timestamp: 123,
-		Prefix: &gnmi.Path{
-			Target: "baz",
-		},
-		Update: []*gnmi.Update{{
-			Path: &gnmi.Path{
-				Elem: []*gnmi.PathElem{
-					{Name: "foo"},
-					{Name: "bar"},
-				},
-			},
-			Val: &gnmi.TypedValue{
-				Value: &gnmi.TypedValue_IntVal{
-					IntVal: 1,
-				},
-			},
-		}},
-	}, {
-		Timestamp: 123,
-		Prefix: &gnmi.Path{
-			Target: "baz",
-		},
-		Update: []*gnmi.Update{{
-			Path: &gnmi.Path{
-				Elem: []*gnmi.PathElem{
-					{Name: "a"},
-					{Name: "b"},
-				},
-			},
-			Val: &gnmi.TypedValue{
-				Value: &gnmi.TypedValue_StringVal{
-					StringVal: "c",
-				},
-			},
-		}},
-	}},
+	Notification: []*gnmi.Notification{testNotification, testEOSNativeNotification},
 }
 
 // Mock gNMIReverse server checks if the published Get response matches the
 // testCombinedGetResponse.
 type mixedOriginGNMIReverseServer struct {
 	errChan chan error
-	gnmireverse.UnsafeGNMIReverseServer
-}
-
-func (*mixedOriginGNMIReverseServer) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
-	return nil
+	gnmireverse.UnimplementedGNMIReverseServer
 }
 
 func (s *mixedOriginGNMIReverseServer) PublishGet(
@@ -462,19 +420,7 @@ func (s *mixedOriginGNMIReverseServer) PublishGet(
 // Mock gNMI server returns for Get the testGetResponse for OpenConfig origins and
 // testEOSNativeGetResponse for EOS native origins.
 type mixedOriginGNMIServer struct {
-	gnmi.UnsafeGNMIServer
-}
-
-func (*mixedOriginGNMIServer) Capabilities(context.Context, *gnmi.CapabilityRequest) (
-	*gnmi.CapabilityResponse, error) {
-	return nil, nil
-}
-func (*mixedOriginGNMIServer) Set(context.Context, *gnmi.SetRequest) (
-	*gnmi.SetResponse, error) {
-	return nil, nil
-}
-func (*mixedOriginGNMIServer) Subscribe(gnmi.GNMI_SubscribeServer) error {
-	return nil
+	gnmi.UnimplementedGNMIServer
 }
 
 func (*mixedOriginGNMIServer) Get(
@@ -483,4 +429,187 @@ func (*mixedOriginGNMIServer) Get(
 		return testEOSNativeGetResponse, nil
 	}
 	return testGetResponse, nil
+}
+
+func TestStreamGetResponsesModeSubscribe(t *testing.T) {
+	// Set the Get paths list with one OpenConfig and one EOS native path.
+	var cfgGetList getList
+	cfgGetList.Set("/foo/bar")
+	cfgGetList.Set("eos_native:/a/b")
+
+	cfg := &config{
+		targetVal:         "baz",
+		targetAddr:        getTestAddress(t),
+		collectorAddr:     getTestAddress(t),
+		getPaths:          cfgGetList,
+		getSampleInterval: time.Second,
+	}
+
+	collectorErrChan := make(chan error, 1)
+	gnmiServer := &gnmiServerGetModeSubscribe{}
+	gnmireverseServer := &gnmireverseServerGetModeSubscribe{
+		errChan: collectorErrChan,
+	}
+	runStreamGetResponsesTest(t, cfg, collectorErrChan,
+		gnmiServer, gnmireverseServer, streamGetResponsesModeSubscribe)
+}
+
+func TestStreamGetResponsesModeSubscribeOnceNotSupported(t *testing.T) {
+	// Set the Get paths list with one OpenConfig and one EOS native path.
+	var cfgGetList getList
+	cfgGetList.Set("/foo/bar")
+	cfgGetList.Set("eos_native:/a/b")
+
+	cfg := &config{
+		targetVal:         "baz",
+		targetAddr:        getTestAddress(t),
+		collectorAddr:     getTestAddress(t),
+		getPaths:          cfgGetList,
+		getSampleInterval: time.Second,
+	}
+
+	collectorErrChan := make(chan error, 1)
+	gnmiServer := &gnmiServerGetModeSubscribe{
+		subscribeOnceNotSupported: true,
+	}
+	gnmireverseServer := &gnmireverseServerGetModeSubscribe{
+		errChan: collectorErrChan,
+	}
+	runStreamGetResponsesTest(t, cfg, collectorErrChan,
+		gnmiServer, gnmireverseServer, streamGetResponsesModeSubscribe)
+}
+
+var testSubscribeResponse = &gnmi.SubscribeResponse{
+	Response: &gnmi.SubscribeResponse_Update{
+		Update: testNotification,
+	},
+}
+
+var testEOSNativeSubscribeResponse = &gnmi.SubscribeResponse{
+	Response: &gnmi.SubscribeResponse_Update{
+		Update: testEOSNativeNotification,
+	},
+}
+
+// Mock gNMIReverse server checks if the published Get response matches the
+// testCombinedGetResponse.
+type gnmireverseServerGetModeSubscribe struct {
+	errChan chan error
+	gnmireverse.UnimplementedGNMIReverseServer
+}
+
+func (s *gnmireverseServerGetModeSubscribe) PublishGet(
+	stream gnmireverse.GNMIReverse_PublishGetServer) error {
+	for {
+		res, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		if !proto.Equal(testCombinedGetResponse, res) {
+			s.errChan <- fmt.Errorf(
+				"Get response not equal: want %v, got %v", testCombinedGetResponse, res)
+		} else {
+			s.errChan <- nil
+		}
+	}
+}
+
+// gNMI server which mocks the Subscribe behaviour and sends expected
+// responses for OpenConfig and EOS native path subscriptions.
+type gnmiServerGetModeSubscribe struct {
+	subscribeOnceNotSupported bool
+	gnmi.UnimplementedGNMIServer
+}
+
+func (s *gnmiServerGetModeSubscribe) Subscribe(stream gnmi.GNMI_SubscribeServer) error {
+	req, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+	origin := req.GetSubscribe().GetSubscription()[0].GetPath().GetOrigin()
+	switch origin {
+	case "":
+		return openconfigSubscribePoll(stream, req)
+	case "eos_native":
+		mode := req.GetSubscribe().GetMode()
+		switch mode {
+		case gnmi.SubscriptionList_ONCE:
+			if s.subscribeOnceNotSupported {
+				return status.Errorf(codes.Unimplemented, "Subscribe ONCE mode not supported")
+			}
+			return eosNativeSubscribeOnce(stream, req)
+		case gnmi.SubscriptionList_STREAM:
+			return eosNativeSubscribeStream(stream)
+		default:
+			return fmt.Errorf("unexpected Subscribe mode: %s", mode.String())
+		}
+	default:
+		return fmt.Errorf("unexpected Subscribe origin: %s", origin)
+	}
+}
+
+var syncResponse = &gnmi.SubscribeResponse{
+	Response: &gnmi.SubscribeResponse_SyncResponse{
+		SyncResponse: true,
+	},
+}
+
+// openconfigSubscribePoll mocks the server Subscribe POLL behavior.
+func openconfigSubscribePoll(stream gnmi.GNMI_SubscribeServer, req *gnmi.SubscribeRequest) error {
+	if !(req.GetSubscribe().GetMode() == gnmi.SubscriptionList_POLL &&
+		req.GetSubscribe().GetUpdatesOnly()) {
+		return fmt.Errorf("expect SubscribeRequest mode=POLL and updates_only=true,"+
+			" got mode=%s and updates_only=%t", req.GetSubscribe().GetMode(),
+			req.GetSubscribe().GetUpdatesOnly())
+	}
+	// Send initial sync response.
+	if err := stream.Send(syncResponse); err != nil {
+		return err
+	}
+
+	for {
+		// Await for poll trigger request.
+		req, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		if req.GetPoll() == nil {
+			return fmt.Errorf("expect Subscribe POLL trigger request, got %s", req)
+		}
+		// Send one notification.
+		if err := stream.Send(testSubscribeResponse); err != nil {
+			return err
+		}
+		// Mark the end of the poll updates with a sync response.
+		if err := stream.Send(syncResponse); err != nil {
+			return err
+		}
+	}
+}
+
+// eosNativeSubscribeOnce mocks the server Subscribe ONCE behavior.
+func eosNativeSubscribeOnce(stream gnmi.GNMI_SubscribeServer, req *gnmi.SubscribeRequest) error {
+	if !req.GetSubscribe().GetUpdatesOnly() {
+		// Send one notification.
+		if err := stream.Send(testEOSNativeSubscribeResponse); err != nil {
+			return err
+		}
+	}
+	// Mark the end of updates with a sync response.
+	return stream.Send(syncResponse)
+}
+
+// eosNativeSubscribeStream mocks the server Subscribe STREAM behavior.
+func eosNativeSubscribeStream(stream gnmi.GNMI_SubscribeServer) error {
+	// Send one notification.
+	if err := stream.Send(testEOSNativeSubscribeResponse); err != nil {
+		return err
+	}
+	// Mark the end of updates with a sync response.
+	if err := stream.Send(syncResponse); err != nil {
+		return err
+	}
+	// Wait for the gNMIReverse client to close the stream.
+	<-stream.Context().Done()
+	return nil
 }

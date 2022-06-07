@@ -29,10 +29,12 @@ import (
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -250,6 +252,15 @@ func Main() {
 	getSampleIntervalStr := flag.String("get_sample_interval", "",
 		"Interval between periodic Get requests (400ms, 2.5s, 1m, etc.)\n"+
 			"Must be specified for Get and applies to all Get paths.")
+	getModeUsage :=
+		`Operation mode to gather notifications for the GetResponse message.
+  get        Gather notifications using Get.
+  subscribe  Gather notifications using Subscribe.
+             Notifications from the Subscribe sync are bundled into one GetResponse.
+             With Subscribe, individual leaf updates are gathered (instead of
+             a subtree with Get) and timestamps for each leaf are preserved.
+`
+	getMode := flag.String("get_mode", "get", getModeUsage)
 
 	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
 		"Address of collector in the form of [<vrf-name>/]host:port.\n"+
@@ -310,6 +321,10 @@ func Main() {
 		cfg.getSampleInterval = getSampleInterval
 	}
 
+	if !(*getMode == "get" || *getMode == "subscribe") {
+		glog.Fatalf("Get mode %q invalid", *getMode)
+	}
+
 	isSubscribe := len(cfg.subTargetDefined.subs) != 0 || len(cfg.subSample.subs) != 0
 	isGet := len(cfg.getPaths.openconfigPaths) != 0 || len(cfg.getPaths.eosNativePaths) != 0
 
@@ -356,7 +371,12 @@ func Main() {
 		go streamResponses(streamSubscribeResponses(&cfg, destConn, targetConn))
 	}
 	if isGet {
-		go streamResponses(streamGetResponses(&cfg, destConn, targetConn))
+		switch *getMode {
+		case "get":
+			go streamResponses(streamGetResponses(&cfg, destConn, targetConn))
+		case "subscribe":
+			go streamResponses(streamGetResponsesModeSubscribe(&cfg, destConn, targetConn))
+		}
 	}
 	select {} // Wait forever
 }
@@ -412,6 +432,19 @@ func streamGetResponses(cfg *config, destConn, targetConn *grpc.ClientConn) func
 		})
 		eg.Go(func() error {
 			return sampleGet(ctx, cfg, targetConn, c)
+		})
+	}
+}
+
+func streamGetResponsesModeSubscribe(cfg *config, destConn, targetConn *grpc.ClientConn) func(
+	context.Context, *errgroup.Group) {
+	return func(ctx context.Context, eg *errgroup.Group) {
+		c := make(chan *gnmi.GetResponse)
+		eg.Go(func() error {
+			return publishGet(ctx, destConn, c)
+		})
+		eg.Go(func() error {
+			return sampleGetModeSubscribe(ctx, cfg, targetConn, c)
 		})
 	}
 }
@@ -768,4 +801,321 @@ func combineGetResponses(timestamp int64, target string,
 		}
 	}
 	return combinedGetResponse
+}
+
+// sampleGetModeSubscribe performs a Subscribe sync at each sample interval and builds
+// one GetResponse containing all sync notifications to send to the gNMIReverse server.
+func sampleGetModeSubscribe(ctx context.Context, cfg *config, targetConn *grpc.ClientConn,
+	c chan<- *gnmi.GetResponse) error {
+	client := gnmi.NewGNMIClient(targetConn)
+
+	if cfg.username != "" {
+		ctx = metadata.NewOutgoingContext(ctx,
+			metadata.Pairs(
+				"username", cfg.username,
+				"password", cfg.password),
+		)
+	}
+
+	// For OpenConfig paths, keep a Subscribe POLL stream to perform a sync at
+	// each sample interval. Avoids having to initialize a new Subscribe stream
+	// at each sample interval.
+	var openconfigPollStream gnmi.GNMI_SubscribeClient
+	var err error
+	if len(cfg.getPaths.openconfigPaths) > 0 {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		openconfigPollStream, err = initializeSubscribePollStream(
+			ctx, client, cfg.getPaths.openconfigPaths)
+		if err != nil {
+			return err
+		}
+		glog.V(3).Infof("OpenConfig paths: initialized Subscribe POLL stream")
+	}
+
+	// For EOS native paths, Subscribe POLL is not supported.
+	// Subscribe ONCE is supported only on newer EOS releases.
+	// Determine if Subscribe ONCE is supported and
+	// 1. if it is supported, perform a Subscribe ONCE.
+	// 2. if it is not supported, perform a Subscribe STREAM and close
+	//    the stream after a sync response is received, which is sent
+	//    after all initial updates are received.
+	var eosNativeSubscribeNotifsFunc func(context.Context,
+		gnmi.GNMIClient, *gnmi.SubscribeRequest) ([]*gnmi.Notification, error)
+	var eosNativeSubscribeRequest *gnmi.SubscribeRequest
+	if len(cfg.getPaths.eosNativePaths) > 0 {
+		isEOSNativeSubscribeOnceSupported, err := isSubscribeOnceSupported(ctx, client)
+		if err != nil {
+			return err
+		}
+		if isEOSNativeSubscribeOnceSupported {
+			eosNativeSubscribeNotifsFunc = subscribeOnceNotifs
+			eosNativeSubscribeRequest = buildSubscribeOnceRequest(cfg.getPaths.eosNativePaths)
+		} else {
+			eosNativeSubscribeNotifsFunc = subscribeStreamNotifs
+			eosNativeSubscribeRequest = buildSubscribeStreamRequest(cfg.getPaths.eosNativePaths)
+		}
+		glog.V(3).Infof("EOS native paths: subscribe_once_supported=%t subscribe_request=%s",
+			isEOSNativeSubscribeOnceSupported, eosNativeSubscribeRequest)
+	}
+
+	// Set up a ticker for a consistent interval to exclude the additional time taken
+	// for issuing the Subscribe requests and processing the responses.
+	ticker := time.NewTicker(cfg.getSampleInterval)
+	defer ticker.Stop()
+
+	for {
+		// Measure the time taken to process Subscribe notifications.
+		var processingStartTime time.Time
+		if glog.V(5) {
+			processingStartTime = time.Now()
+		}
+
+		// Gather notifications for OpenConfig paths.
+		var openconfigNotifs []*gnmi.Notification
+		if openconfigPollStream != nil {
+			openconfigNotifs, err = subscribePollNotifs(openconfigPollStream)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Gather notifications for EOS native paths.
+		var eosNativeNotifs []*gnmi.Notification
+		if eosNativeSubscribeNotifsFunc != nil {
+			eosNativeNotifs, err = eosNativeSubscribeNotifsFunc(
+				ctx, client, eosNativeSubscribeRequest)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Combine OpenConfig and EOS native notifications into one GetResponse.
+		getResponse := combineNotifs(cfg.targetVal, openconfigNotifs, eosNativeNotifs)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case c <- getResponse:
+		}
+
+		// Wait for the next sample interval.
+		if glog.V(5) {
+			// If the processing time exceeds the sample interval, then
+			// the sample interval is too low.
+			processingTime := time.Since(processingStartTime)
+			glog.Infof("wait: get_sample_interval=%s processing_time=%s ",
+				cfg.getSampleInterval, processingTime)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
+}
+
+// initializeSubscribePollStream initializes a Subscribe stream and issues a Subscribe
+// POLL request and returns the stream.
+func initializeSubscribePollStream(ctx context.Context,
+	client gnmi.GNMIClient, paths []*gnmi.Path) (gnmi.GNMI_SubscribeClient, error) {
+	stream, err := client.Subscribe(ctx, grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	req := buildSubscribePollRequest(paths)
+	glog.V(3).Infof("initialize Subscribe POLL stream: subscribe_request=%s", req)
+	if err := stream.Send(req); err != nil {
+		return nil, err
+	}
+	res, err := stream.Recv()
+	if err != nil {
+		return nil, err
+	}
+	// We expect only a sync response because updates_only=true in the request.
+	if !res.GetSyncResponse() {
+		return nil, fmt.Errorf("failed to initialize Subscribe POLL stream:"+
+			" expected sync response but received %s", res)
+	}
+	return stream, nil
+}
+
+// isSubscribeOnceSupported returns true if a Subscribe ONCE is supported by issuing a
+// Subscribe ONCE request and checking the error code.
+func isSubscribeOnceSupported(ctx context.Context, client gnmi.GNMIClient) (bool, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	failedError := func(err error) error {
+		return fmt.Errorf("failed to determine if EOS native Subscribe ONCE is supported: %s", err)
+	}
+	stream, err := client.Subscribe(ctx, grpc.WaitForReady(true))
+	if err != nil {
+		return false, failedError(err)
+	}
+
+	req := &gnmi.SubscribeRequest{
+		Request: &gnmi.SubscribeRequest_Subscribe{
+			Subscribe: &gnmi.SubscriptionList{
+				Mode: gnmi.SubscriptionList_ONCE,
+				Subscription: []*gnmi.Subscription{{
+					Path: &gnmi.Path{
+						Origin: "eos_native",
+						// Subscribe to a path that is not too large.
+						Elem: []*gnmi.PathElem{
+							{Name: "Kernel"},
+							{Name: "sysinfo"},
+						},
+					},
+				}},
+				UpdatesOnly: true,
+			},
+		},
+	}
+	glog.V(3).Infof("determine if Subscribe ONCE supported: subscribe_request=%s", req)
+	if err := stream.Send(req); err != nil {
+		return false, failedError(err)
+	}
+	if _, err := stream.Recv(); err != nil {
+		// Error code received is unimplemented, so Subscribe ONCE is not supported.
+		if e, ok := status.FromError(err); ok && e.Code() == codes.Unimplemented {
+			return false, nil
+		}
+		return false, failedError(err)
+	}
+	// Received a SubscribeResponse, so Subscribe ONCE is supported.
+	return true, nil
+}
+
+// subscribePollNotifs sends a poll trigger request to the long-lived Subscribe POLL
+// stream and returns list of notifications gathered from the poll trigger sync.
+func subscribePollNotifs(stream gnmi.GNMI_SubscribeClient) ([]*gnmi.Notification, error) {
+	req := &gnmi.SubscribeRequest{
+		Request: &gnmi.SubscribeRequest_Poll{
+			Poll: &gnmi.Poll{},
+		},
+	}
+	return subscribeSyncNotifs(stream, req, gnmi.SubscriptionList_POLL)
+}
+
+// subscribeOnceNotifs performs a Subscribe ONCE and returns a list of notifications
+// gathered from the sync.
+func subscribeOnceNotifs(ctx context.Context,
+	client gnmi.GNMIClient, req *gnmi.SubscribeRequest) ([]*gnmi.Notification, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	stream, err := client.Subscribe(ctx, grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return subscribeSyncNotifs(stream, req, gnmi.SubscriptionList_ONCE)
+}
+
+// subscribeStreamNotifs performs a Subscribe STREAM and returns a list of notifications
+// gathered from the sync. When the sync response is received, indicating that all data
+// paths have been sent at least once, the Subscribe stream is closed.
+func subscribeStreamNotifs(ctx context.Context,
+	client gnmi.GNMIClient, req *gnmi.SubscribeRequest) ([]*gnmi.Notification, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	stream, err := client.Subscribe(ctx, grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return subscribeSyncNotifs(stream, req, gnmi.SubscriptionList_STREAM)
+}
+
+// subscribeSyncNotifs returns a list of notifications gathered from the Subscribe sync.
+func subscribeSyncNotifs(stream gnmi.GNMI_SubscribeClient, req *gnmi.SubscribeRequest,
+	mode gnmi.SubscriptionList_Mode) ([]*gnmi.Notification, error) {
+	if glog.V(9) {
+		glog.Infof("subscribe_mode=%s subscribe_request=%s", mode.String(), req)
+	}
+	if err := stream.Send(req); err != nil {
+		return nil, err
+	}
+
+	var notifs []*gnmi.Notification
+	for {
+		res, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		}
+		if glog.V(9) {
+			glog.Infof("subscribe_mode=%s subscribe_response=%s", mode.String(), res)
+		}
+		if res.GetSyncResponse() {
+			break
+		}
+		notifs = append(notifs, res.GetUpdate())
+	}
+	return notifs, nil
+}
+
+func buildSubscribePollRequest(paths []*gnmi.Path) *gnmi.SubscribeRequest {
+	return &gnmi.SubscribeRequest{
+		Request: &gnmi.SubscribeRequest_Subscribe{
+			Subscribe: &gnmi.SubscriptionList{
+				Mode:         gnmi.SubscriptionList_POLL,
+				Subscription: buildSubscriptions(paths),
+				UpdatesOnly:  true,
+			},
+		},
+	}
+}
+
+func buildSubscribeOnceRequest(paths []*gnmi.Path) *gnmi.SubscribeRequest {
+	return &gnmi.SubscribeRequest{
+		Request: &gnmi.SubscribeRequest_Subscribe{
+			Subscribe: &gnmi.SubscriptionList{
+				Mode:         gnmi.SubscriptionList_ONCE,
+				Subscription: buildSubscriptions(paths),
+			},
+		},
+	}
+}
+
+func buildSubscribeStreamRequest(paths []*gnmi.Path) *gnmi.SubscribeRequest {
+	return &gnmi.SubscribeRequest{
+		Request: &gnmi.SubscribeRequest_Subscribe{
+			Subscribe: &gnmi.SubscriptionList{
+				Mode:         gnmi.SubscriptionList_STREAM,
+				Subscription: buildSubscriptions(paths),
+			},
+		},
+	}
+}
+
+func buildSubscriptions(paths []*gnmi.Path) []*gnmi.Subscription {
+	subscriptions := make([]*gnmi.Subscription, 0, len(paths))
+	for _, path := range paths {
+		subscriptions = append(subscriptions, &gnmi.Subscription{
+			Path: path,
+		})
+	}
+	return subscriptions
+}
+
+// combineNotifs combines the OpenConfig and EOS native notifications into a GetResponse.
+// The target prefix is set for all notifications. For EOS native notifications, the origin
+// prefix is set to "eos_native".
+func combineNotifs(target string, openconfigNotifs []*gnmi.Notification,
+	eosNativeNotifs []*gnmi.Notification) *gnmi.GetResponse {
+	for _, notif := range openconfigNotifs {
+		if notif.Prefix == nil {
+			notif.Prefix = &gnmi.Path{}
+		}
+		notif.Prefix.Target = target
+	}
+	for _, notif := range eosNativeNotifs {
+		if notif.Prefix == nil {
+			notif.Prefix = &gnmi.Path{}
+		}
+		notif.Prefix.Target = target
+		notif.Prefix.Origin = "eos_native"
+	}
+	return &gnmi.GetResponse{
+		Notification: append(openconfigNotifs, eosNativeNotifs...),
+	}
 }

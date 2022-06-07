@@ -23,12 +23,12 @@ type GNMIReverseClient interface {
 	// Publish allows the client to publish gNMI SubscribeResponses to the
 	// collector server. The client is typically run alongside the gNMI target
 	// and forwards SubscribeResponses from the target to the collector server.
-	// The SubscribeRequest is specified by the client.
+	// The request is specified by the client.
 	Publish(ctx context.Context, opts ...grpc.CallOption) (GNMIReverse_PublishClient, error)
 	// PublishGet allows the client to publish gNMI GetResponses to the
 	// collector server. The client is typically run alongside the gNMI target
 	// and forwards GetResponses from the target to the collector server.
-	// The GetRequest and Get sample interval are specified by the client.
+	// The request and sample interval are specified by the client.
 	PublishGet(ctx context.Context, opts ...grpc.CallOption) (GNMIReverse_PublishGetClient, error)
 }
 
@@ -115,12 +115,12 @@ type GNMIReverseServer interface {
 	// Publish allows the client to publish gNMI SubscribeResponses to the
 	// collector server. The client is typically run alongside the gNMI target
 	// and forwards SubscribeResponses from the target to the collector server.
-	// The SubscribeRequest is specified by the client.
+	// The request is specified by the client.
 	Publish(GNMIReverse_PublishServer) error
 	// PublishGet allows the client to publish gNMI GetResponses to the
 	// collector server. The client is typically run alongside the gNMI target
 	// and forwards GetResponses from the target to the collector server.
-	// The GetRequest and Get sample interval are specified by the client.
+	// The request and sample interval are specified by the client.
 	PublishGet(GNMIReverse_PublishGetServer) error
 	mustEmbedUnimplementedGNMIReverseServer()
 }
