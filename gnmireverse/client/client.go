@@ -277,6 +277,11 @@ func Main() {
 
 	flag.Parse()
 
+	// No arguments are expected.
+	if len(flag.Args()) > 0 {
+		glog.Fatalf("unexpected arguments: %s", flag.Args())
+	}
+
 	// If -v is specified, enables gRPC logging at level corresponding to verbosity evel.
 	if glog.V(1) {
 		glogVStr := flag.Lookup("v").Value.String()
