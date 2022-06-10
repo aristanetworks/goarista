@@ -67,9 +67,9 @@ func Do(nsName string, cb Callback) error {
 	// Get the file descriptor to the current namespace
 	currNsFd, err := getNs(selfNsFile)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("File descriptor to current namespace does not exist: %s", err)
+		return fmt.Errorf("File descriptor to current namespace does not exist: %w", err)
 	} else if err != nil {
-		return fmt.Errorf("Failed to open %s: %s", selfNsFile, err)
+		return fmt.Errorf("Failed to open %s: %w", selfNsFile, err)
 	}
 	defer currNsFd.close()
 
@@ -78,7 +78,7 @@ func Do(nsName string, cb Callback) error {
 
 	// Jump to the new network namespace
 	if err := setNsByName(nsName); err != nil {
-		return fmt.Errorf("Failed to set the namespace to %s: %s", nsName, err)
+		return fmt.Errorf("Failed to set the namespace to %s: %w", nsName, err)
 	}
 
 	// Call the given function
@@ -86,8 +86,8 @@ func Do(nsName string, cb Callback) error {
 
 	// Come back to the original namespace
 	if err = setNs(currNsFd); err != nil {
-		return fmt.Errorf("Failed to return to the original namespace: %s (callback returned %v)",
-			err, cbErr)
+		panic(fmt.Errorf("failed to return to original namespace, "+
+			"thread may be stuck in namespace: %s", err))
 	}
 
 	return cbErr
