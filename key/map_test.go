@@ -8,8 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/aristanetworks/goarista/hash"
 )
 
 func (m *Map) debug() string {
@@ -518,7 +521,7 @@ func TestMapKeyString(t *testing.T) {
 	}
 }
 
-func BenchmarkMapGrow(b *testing.B) {
+func BenchmarkMapGrowMapKey(b *testing.B) {
 	keys := make([]Key, 150)
 	for j := 0; j < len(keys); j++ {
 		keys[j] = New(map[string]interface{}{
@@ -538,9 +541,34 @@ func BenchmarkMapGrow(b *testing.B) {
 			}
 		}
 	})
+	b.Run("hash.Map", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			m := hash.New[Key, any](func(a, b Key) bool { return a.Equal(b) }, Hash)
+			for j := 0; j < len(keys); j++ {
+				m.Set(keys[j], "foobar")
+			}
+			if m.Len() != len(keys) {
+				b.Fatal(m)
+			}
+		}
+	})
+	b.Run("hash.Map_presize", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			m := hash.NewSizeHint[Key, any](len(keys),
+				func(a, b Key) bool { return a.Equal(b) }, Hash)
+			for j := 0; j < len(keys); j++ {
+				m.Set(keys[j], "foobar")
+			}
+			if m.Len() != len(keys) {
+				b.Fatal(m)
+			}
+		}
+	})
 }
 
-func BenchmarkMapGet(b *testing.B) {
+func BenchmarkMapGetMapKey(b *testing.B) {
 	keys := make([]Key, 150)
 	for j := 0; j < len(keys); j++ {
 		keys[j] = New(map[string]interface{}{
@@ -555,6 +583,112 @@ func BenchmarkMapGet(b *testing.B) {
 	})
 	b.Run("key.Map", func(b *testing.B) {
 		m := NewMap()
+		for j := 0; j < len(keys); j++ {
+			m.Set(keys[j], "foobar")
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			for _, k := range keysRandomOrder {
+				_, ok := m.Get(k)
+				if !ok {
+					b.Fatal("didn't find key")
+				}
+			}
+		}
+	})
+	b.Run("hash.Map", func(b *testing.B) {
+		m := hash.NewSizeHint[Key, any](len(keys),
+			func(a, b Key) bool { return a.Equal(b) }, Hash)
+		for j := 0; j < len(keys); j++ {
+			m.Set(keys[j], "foobar")
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			for _, k := range keysRandomOrder {
+				_, ok := m.Get(k)
+				if !ok {
+					b.Fatal("didn't find key")
+				}
+			}
+		}
+	})
+}
+
+func BenchmarkMapGrowStringKey(b *testing.B) {
+	keys := make([]Key, 150)
+	for j := 0; j < len(keys); j++ {
+		keys[j] = New(strconv.Itoa(j))
+	}
+	b.Run("key.Map", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			m := NewMap()
+			for j := 0; j < len(keys); j++ {
+				m.Set(keys[j], "foobar")
+			}
+			if m.Len() != len(keys) {
+				b.Fatal(m)
+			}
+		}
+	})
+	b.Run("hash.Map", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			m := hash.New[Key, any](func(a, b Key) bool { return a.Equal(b) }, Hash)
+			for j := 0; j < len(keys); j++ {
+				m.Set(keys[j], "foobar")
+			}
+			if m.Len() != len(keys) {
+				b.Fatal(m)
+			}
+		}
+	})
+	b.Run("hash.Map_presize", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			m := hash.NewSizeHint[Key, any](len(keys),
+				func(a, b Key) bool { return a.Equal(b) }, Hash)
+			for j := 0; j < len(keys); j++ {
+				m.Set(keys[j], "foobar")
+			}
+			if m.Len() != len(keys) {
+				b.Fatal(m)
+			}
+		}
+	})
+}
+
+func BenchmarkMapGetStringKey(b *testing.B) {
+	keys := make([]Key, 150)
+	for j := 0; j < len(keys); j++ {
+		keys[j] = New(strconv.Itoa(j))
+	}
+	keysRandomOrder := make([]Key, len(keys))
+	copy(keysRandomOrder, keys)
+	rand.Shuffle(len(keysRandomOrder), func(i, j int) {
+		keysRandomOrder[i], keysRandomOrder[j] = keysRandomOrder[j], keysRandomOrder[i]
+	})
+	b.Run("key.Map", func(b *testing.B) {
+		m := NewMap()
+		for j := 0; j < len(keys); j++ {
+			m.Set(keys[j], "foobar")
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			for _, k := range keysRandomOrder {
+				_, ok := m.Get(k)
+				if !ok {
+					b.Fatal("didn't find key")
+				}
+			}
+		}
+	})
+	b.Run("hash.Map", func(b *testing.B) {
+		m := hash.NewSizeHint[Key, any](len(keys),
+			func(a, b Key) bool { return a.Equal(b) }, Hash)
 		for j := 0; j < len(keys); j++ {
 			m.Set(keys[j], "foobar")
 		}
