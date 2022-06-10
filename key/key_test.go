@@ -7,6 +7,7 @@ package key_test
 import (
 	"encoding/json"
 	"fmt"
+	"hash/maphash"
 	"strconv"
 	"testing"
 
@@ -22,6 +23,10 @@ type compareMe struct {
 func (c compareMe) Equal(other interface{}) bool {
 	o, ok := other.(compareMe)
 	return ok && c == o
+}
+
+func (c compareMe) String() string {
+	return fmt.Sprintf("compareMe{%d}", c.i)
 }
 
 type customKey struct {
@@ -102,40 +107,40 @@ func TestKeyEqual(t *testing.T) {
 		b:      New(map[string]interface{}{}),
 		result: true,
 	}, {
-		a:      New(map[string]interface{}{"a": 3}),
+		a:      New(map[string]interface{}{"a": uint32(3)}),
 		b:      New(map[string]interface{}{}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": 3}),
-		b:      New(map[string]interface{}{"b": 4}),
+		a:      New(map[string]interface{}{"a": uint32(3)}),
+		b:      New(map[string]interface{}{"b": uint32(4)}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": 4, "b": 5}),
-		b:      New(map[string]interface{}{"a": 4}),
+		a:      New(map[string]interface{}{"a": uint32(4), "b": uint32(5)}),
+		b:      New(map[string]interface{}{"a": uint32(4)}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": 3}),
-		b:      New(map[string]interface{}{"a": 4}),
+		a:      New(map[string]interface{}{"a": uint32(3)}),
+		b:      New(map[string]interface{}{"a": uint32(4)}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": 3}),
-		b:      New(map[string]interface{}{"a": 3}),
+		a:      New(map[string]interface{}{"a": uint32(3)}),
+		b:      New(map[string]interface{}{"a": uint32(3)}),
 		result: true,
 	}, {
-		a:      New(map[string]interface{}{"a": NewMap(New("b"), 3)}),
-		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(3))}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(4))}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": NewMap(New("b"), 4, New("c"), 5)}),
-		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(4), New("c"), uint32(5))}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(4))}),
 		result: false,
 	}, {
-		a:      New(map[string]interface{}{"a": NewMap(New("b"), 4, New("c"), 5)}),
-		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4, New("c"), 5)}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(4), New("c"), uint32(5))}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(4), New("c"), uint32(5))}),
 		result: true,
 	}, {
-		a:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
-		b:      New(map[string]interface{}{"a": NewMap(New("b"), 4)}),
+		a:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(4))}),
+		b:      New(map[string]interface{}{"a": NewMap(New("b"), uint32(4))}),
 		result: true,
 	}, {
 		a:      New(map[string]interface{}{"a": compareMe{i: 3}}),
@@ -216,12 +221,27 @@ func TestKeyEqual(t *testing.T) {
 	}}
 
 	for _, tcase := range tests {
-		if tcase.a.Equal(tcase.b) != tcase.result {
-			t.Errorf("Wrong result for case:\na: %#v\nb: %#v\nresult: %#v",
-				tcase.a,
-				tcase.b,
-				tcase.result)
-		}
+		t.Run(fmt.Sprintf("%s_%s", tcase.a.String(), tcase.b.String()), func(t *testing.T) {
+			if tcase.a.Equal(tcase.b) != tcase.result {
+				t.Errorf("Wrong result for case:\na: %#v\nb: %#v\nresult: %#v",
+					tcase.a,
+					tcase.b,
+					tcase.result)
+			}
+			seed := maphash.MakeSeed()
+			aHash := Hash(seed, tcase.a)
+			bHash := Hash(seed, tcase.b)
+			if tcase.result {
+				if aHash != bHash {
+					t.Errorf("Equal keys have different hash: %x vs. %x", aHash, bHash)
+				}
+			} else {
+				if aHash == bHash {
+					// This should be very unlikely
+					t.Logf("Unequal keys have the same hash: %x", aHash)
+				}
+			}
+		})
 	}
 
 	if New("a").Equal(32) {
