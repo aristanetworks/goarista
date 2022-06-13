@@ -5,6 +5,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
@@ -15,6 +16,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/aristanetworks/glog"
@@ -24,7 +26,22 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	_ "google.golang.org/grpc/encoding/gzip" // Enable gzip encoding for the server.
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
+)
+
+// The debug flag is composed of these flag bits.
+// These flag bits are bitwise OR'ed to select what debug information is printed.
+const (
+	debugSilent             = 1 << iota // Do not print anything.
+	debugGetResponseSummary             // Print GetResponse summary.
+	debugResponseProto                  // Print response protobuf text format.
+	debugUpdates                        // Print update receive and notification times.
+	debugUpdatesTiming                  // Print debugUpdates and update timing calculations.
+	debugUpdatesPaths                   // Print debugUpdates and update paths.
+	debugUpdatesValues                  // Print debugUpdates and update values.
+	debugUpdatesAll         = debugUpdates | debugUpdatesTiming | debugUpdatesPaths |
+		debugUpdatesValues // Print all update information.
 )
 
 // Use log.Logger for thread-safe printing.
@@ -71,7 +88,23 @@ func Main() {
 	keyFile := flag.String("keyfile", "", "path to TLS key file")
 	clientCAFile := flag.String("client_cafile", "",
 		"path to TLS CA file to verify client certificate")
-	debugMode := flag.Bool("debug", false, "enable debug mode")
+
+	debugFlagUsage := `Debug flags. Use bitwise OR to select what to print.
+  -1  Enable all debug flags.
+   1  Silent mode: do not print anything. Any other enabled flag overrides silent mode.
+   2  Print GetResponse summary: receive time, last receive time, response size and
+      number of notifications.
+   4  Print GetResponse/SubscribeResponse protobuf text format.
+   8  Print update receive time and notification time.
+  16  Print update receive time, notification time and update timing calculations: difference
+      between the last receive time of the same update path, difference between the last
+      notification time of the same update path and latency (receive time - notification time).
+  32  Print update receive time, notification time and update path.
+  64  Print update receive time, notification time and update value.
+Example: Use 50 (= 2 | 16 | 32) to print the GetResponse summary and the receive time,
+         notification time, timing calculations and path of updates.`
+	debugFlag := flag.Int("debug", 0, debugFlagUsage)
+
 	flag.Parse()
 
 	var config *tls.Config
@@ -94,7 +127,7 @@ func Main() {
 
 	grpcServer := grpc.NewServer(serverOptions...)
 	s := &server{
-		debugMode: *debugMode,
+		debugFlag: *debugFlag,
 	}
 	gnmireverse.RegisterGNMIReverseServer(grpcServer, s)
 
@@ -108,16 +141,22 @@ func Main() {
 }
 
 type server struct {
+	debugFlag int
 	gnmireverse.UnimplementedGNMIReverseServer
-	debugMode bool
 }
 
 func (s *server) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
+	debugger := newDebugger(stream.Context(), "subscribe", s.debugFlag)
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
 			return err
 		}
+		if s.debugFlag != 0 {
+			debugger.logSubscribeResponse(resp)
+			continue
+		}
+
 		if err := gnmilib.LogSubscribeResponse(resp); err != nil {
 			glog.Error(err)
 		}
@@ -125,14 +164,14 @@ func (s *server) Publish(stream gnmireverse.GNMIReverse_PublishServer) error {
 }
 
 func (s *server) PublishGet(stream gnmireverse.GNMIReverse_PublishGetServer) error {
-	debugGet := &debugGet{}
+	debugger := newDebugger(stream.Context(), "get", s.debugFlag)
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
 			return err
 		}
-		if s.debugMode {
-			debugGet.log(resp)
+		if s.debugFlag != 0 {
+			debugger.logGetResponse(resp)
 			continue
 		}
 
@@ -163,42 +202,172 @@ func (s *server) PublishGet(stream gnmireverse.GNMIReverse_PublishGetServer) err
 	}
 }
 
-type debugGet struct {
-	lastReceiveTime time.Time
-	lastNotifTime   time.Time
+// debugger stores debug information related to responses received from a client.
+type debugger struct {
+	clientAddr       string               // Address of the client sending the response.
+	responseName     string               // Name of the response received.
+	responsesCounter uint64               // Updates of the same response have the same counter.
+	lastResponseTime time.Time            // Time of the last response received.
+	lastUpdateTimes  map[string]time.Time // Map of update paths to the last notification time.
+	logBuffer        strings.Builder      // Resultant log text to be printed.
+	debugFlag        int                  // Debug flag to control what to print.
 }
 
-func (d *debugGet) log(res *gnmi.GetResponse) {
-	// Time in which the GetResponse was received.
+func newDebugger(ctx context.Context, responseName string, debugFlag int) *debugger {
+	var clientAddr string
+	if pr, ok := peer.FromContext(ctx); ok && pr.Addr != nil {
+		clientAddr = pr.Addr.String()
+	}
+	return &debugger{
+		clientAddr:      clientAddr,
+		responseName:    responseName,
+		lastUpdateTimes: make(map[string]time.Time),
+		debugFlag:       debugFlag,
+	}
+}
+
+// logGetResponse prints GetResponse debug information based on
+// the bits of the debug flag.
+func (d *debugger) logGetResponse(res *gnmi.GetResponse) {
+	if d.debugFlag^debugSilent == 0 { // Any other enabled flag overrides silence.
+		return
+	}
 	receiveTime := time.Now().UTC()
+	if d.debugFlag&debugGetResponseSummary != 0 {
+		d.logGetResponseSummary(res, receiveTime)
+	}
+	if d.debugFlag&debugResponseProto != 0 {
+		d.logResponseProto(res)
+	}
+	if d.debugFlag&debugUpdatesAll != 0 {
+		d.logGetResponseNotifs(res, receiveTime)
+	}
+	logger.Printf(d.logBuffer.String())
+	d.logBuffer.Reset()
+	d.lastResponseTime = receiveTime
+	d.responsesCounter++
+}
+
+func (d *debugger) logGetResponseSummary(res *gnmi.GetResponse, receiveTime time.Time) {
+	debugFields := append(
+		d.logPrefixFields(receiveTime),
+		d.logLastReceiveAgoField(receiveTime),
+		fmt.Sprintf("size_bytes=%d", proto.Size(res)),
+		fmt.Sprintf("num_notifs=%d", len(res.GetNotification())),
+	)
+	d.logBuffer.WriteString(strings.Join(debugFields, " "))
+	d.logBuffer.WriteByte('\n')
+}
+
+func (d *debugger) logResponseProto(res fmt.Stringer) {
+	d.logBuffer.WriteString(res.String())
+	d.logBuffer.WriteByte('\n')
+}
+
+func (d *debugger) logGetResponseNotifs(res *gnmi.GetResponse, receiveTime time.Time) {
+	for _, notif := range res.GetNotification() {
+		d.logNotif(notif, receiveTime)
+	}
+}
+
+func (d *debugger) logNotif(notif *gnmi.Notification, receiveTime time.Time) {
+	notifTime := time.Unix(0, notif.GetTimestamp()).UTC()
+	prefix := gnmilib.StrPath(notif.GetPrefix())
+	for _, update := range notif.GetUpdate() {
+		pth := path.Join(prefix, gnmilib.StrPath(update.GetPath()))
+		val := gnmilib.StrValCompactJSON(update.GetVal())
+		d.logUpdate(receiveTime, notifTime, pth, val)
+	}
+}
+
+func (d *debugger) logUpdate(receiveTime time.Time, notifTime time.Time, path, val string) {
+	debugFields := append(
+		d.logPrefixFields(receiveTime),
+		fmt.Sprintf("notif_time=%s", notifTime.Format(time.RFC3339Nano)),
+	)
+	if d.debugFlag&debugUpdatesTiming != 0 {
+		// Difference between the notification time and last notification time.
+		if _, ok := d.lastUpdateTimes[path]; !ok {
+			d.lastUpdateTimes[path] = time.Time{}
+		}
+		lastUpdateTime := d.lastUpdateTimes[path]
+		var lastNotifAgo time.Duration
+		if !lastUpdateTime.IsZero() {
+			lastNotifAgo = notifTime.Sub(lastUpdateTime)
+		}
+		d.lastUpdateTimes[path] = notifTime
+
+		// Difference between the response receive time and notification time.
+		var latency time.Duration
+		if !lastUpdateTime.IsZero() {
+			latency = receiveTime.Sub(lastUpdateTime)
+		}
+
+		debugFields = append(debugFields,
+			d.logLastReceiveAgoField(receiveTime),
+			fmt.Sprintf("last_notif_ago=%s", lastNotifAgo),
+			fmt.Sprintf("latency=%s", latency),
+		)
+	}
+	if d.debugFlag&debugUpdatesPaths != 0 {
+		debugFields = append(debugFields, fmt.Sprintf("path=%s", path))
+	}
+	if d.debugFlag&debugUpdatesValues != 0 {
+		debugFields = append(debugFields, fmt.Sprintf("val=%s", val))
+	}
+	d.logBuffer.WriteString(strings.Join(debugFields, " "))
+	d.logBuffer.WriteByte('\n')
+}
+
+// logSubscribeResponse prints SubscribeResponse debug information based on
+// the bits of the debug flag.
+func (d *debugger) logSubscribeResponse(res *gnmi.SubscribeResponse) {
+	if d.debugFlag^debugSilent == 0 { // Any other enabled flag overrides silence.
+		return
+	}
+	receiveTime := time.Now().UTC()
+	if d.debugFlag&debugResponseProto != 0 {
+		d.logResponseProto(res)
+	}
+	if d.debugFlag&debugUpdatesAll != 0 {
+		d.logSubscribeResponseNotif(res, receiveTime)
+	}
+	logger.Printf(d.logBuffer.String())
+	d.logBuffer.Reset()
+	d.lastResponseTime = receiveTime
+	d.responsesCounter++
+}
+
+func (d *debugger) logSubscribeResponseNotif(res *gnmi.SubscribeResponse, receiveTime time.Time) {
+	if res.GetSyncResponse() {
+		debugFields := d.logPrefixFields(receiveTime)
+		if d.debugFlag&debugUpdatesTiming != 0 {
+			debugFields = append(debugFields, d.logLastReceiveAgoField(receiveTime))
+		}
+		debugFields = append(debugFields, "sync_response=true")
+		d.logBuffer.WriteString(strings.Join(debugFields, " "))
+		d.logBuffer.WriteByte('\n')
+		return
+	}
+	d.logNotif(res.GetUpdate(), receiveTime)
+}
+
+// logPrefixFields returns the base debug prefix fields.
+func (d *debugger) logPrefixFields(receiveTime time.Time) []string {
+	return []string{
+		fmt.Sprintf("client=%s", d.clientAddr),
+		fmt.Sprintf("res=%s", d.responseName),
+		fmt.Sprintf("n=%d", d.responsesCounter),
+		fmt.Sprintf("rx_time=%s", receiveTime.Format(time.RFC3339Nano)),
+	}
+}
+
+// logLastReceiveAgoField returns the debug field of difference between the
+// the response receive time and last response receive time.
+func (d *debugger) logLastReceiveAgoField(receiveTime time.Time) string {
 	var lastReceiveAgo time.Duration
-	if !d.lastReceiveTime.IsZero() {
-		lastReceiveAgo = receiveTime.Sub(d.lastReceiveTime)
+	if !d.lastResponseTime.IsZero() {
+		lastReceiveAgo = receiveTime.Sub(d.lastResponseTime)
 	}
-	d.lastReceiveTime = receiveTime
-
-	// Timestamp of the first notification of the GetResponse.
-	var timestamp int64
-	if len(res.GetNotification()) > 0 {
-		timestamp = res.GetNotification()[0].GetTimestamp()
-	}
-	notifTime := time.Unix(0, timestamp).UTC()
-	var lastNotifAgo time.Duration
-	if !d.lastNotifTime.IsZero() {
-		lastNotifAgo = notifTime.Sub(d.lastNotifTime)
-	}
-	d.lastNotifTime = notifTime
-
-	// Difference between the GetResponse receive time and notification timestamp.
-	latency := receiveTime.Sub(d.lastNotifTime)
-
-	logger.Printf("rx_time=%s notif_time=%s latency=%s"+
-		" last_rx_ago=%s last_notif_ago=%s size_bytes=%d num_notifs=%d",
-		receiveTime.Format(time.RFC3339Nano),
-		notifTime.Format(time.RFC3339Nano),
-		latency,
-		lastReceiveAgo,
-		lastNotifAgo,
-		proto.Size(res),
-		len(res.GetNotification()))
+	return fmt.Sprintf("last_rx_ago=%s", lastReceiveAgo)
 }
