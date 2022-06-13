@@ -10,8 +10,10 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"net"
+	"os"
 	"path"
 	"time"
 
@@ -24,6 +26,9 @@ import (
 	_ "google.golang.org/grpc/encoding/gzip" // Enable gzip encoding for the server.
 	"google.golang.org/protobuf/proto"
 )
+
+// Use log.Logger for thread-safe printing.
+var logger = log.New(os.Stdout, "", 0)
 
 func newTLSConfig(clientCertAuth bool, certFile, keyFile, clientCAFile string) (*tls.Config,
 	error) {
@@ -132,16 +137,27 @@ func (s *server) PublishGet(stream gnmireverse.GNMIReverse_PublishGetServer) err
 		}
 
 		for _, notif := range resp.GetNotification() {
+			notifTime := time.Unix(0, notif.GetTimestamp()).UTC().Format(time.RFC3339Nano)
 			var notifTarget string
 			if target := notif.GetPrefix().GetTarget(); target != "" {
 				notifTarget = " (" + target + ")"
 			}
-			notifTime := time.Unix(0, notif.GetTimestamp()).UTC()
-			fmt.Printf("[%s]%s\n", notifTime.Format(time.RFC3339Nano), notifTarget)
 			prefix := gnmilib.StrPath(notif.GetPrefix())
 			for _, update := range notif.GetUpdate() {
-				fmt.Println(path.Join(prefix, gnmilib.StrPath(update.GetPath())))
-				fmt.Println(gnmilib.StrUpdateVal(update))
+				pathValSeperator := " = "
+				// If the value is a subtree, print the subtree on a new line.
+				if _, ok := update.GetVal().GetValue().(*gnmi.TypedValue_JsonIetfVal); ok {
+					pathValSeperator = "\n"
+				}
+				pth := path.Join(prefix, gnmilib.StrPath(update.GetPath()))
+				val := gnmilib.StrUpdateVal(update)
+				logger.Printf("[%s]%s %s%s%s",
+					notifTime,
+					notifTarget,
+					pth,
+					pathValSeperator,
+					val,
+				)
 			}
 		}
 	}
@@ -176,8 +192,8 @@ func (d *debugGet) log(res *gnmi.GetResponse) {
 	// Difference between the GetResponse receive time and notification timestamp.
 	latency := receiveTime.Sub(d.lastNotifTime)
 
-	fmt.Printf("rx_time=%s notif_time=%s latency=%s"+
-		" last_rx_ago=%s last_notif_ago=%s size_bytes=%d num_notifs=%d\n",
+	logger.Printf("rx_time=%s notif_time=%s latency=%s"+
+		" last_rx_ago=%s last_notif_ago=%s size_bytes=%d num_notifs=%d",
 		receiveTime.Format(time.RFC3339Nano),
 		notifTime.Format(time.RFC3339Nano),
 		latency,
