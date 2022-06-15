@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -191,6 +192,35 @@ func (l *getList) readGetPathsFile(filePath string) {
 	}
 }
 
+func (c *config) parseCredentialsFile(data []byte) error {
+	creds := struct {
+		Username string
+		Password string
+	}{}
+	if err := yaml.UnmarshalStrict(data, &creds); err != nil {
+		return err
+	}
+	// Do not overwrite username from -username flag.
+	if c.username == "" {
+		c.username = creds.Username
+	}
+	// Do not overwrite password from -password flag.
+	if c.password == "" {
+		c.password = creds.Password
+	}
+	return nil
+}
+
+func (c *config) readCredentialsFile(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		glog.Fatalf("failed to read credentials file %q: %s", filePath, err)
+	}
+	if err := c.parseCredentialsFile(data); err != nil {
+		glog.Fatalf("failed to parse credentials file %q: %s", filePath, err)
+	}
+}
+
 type config struct {
 	// target config
 	targetAddr        string
@@ -225,6 +255,13 @@ func Main() {
 		"address of the gNMI target in the form of [<vrf-name>/]address:port")
 	flag.StringVar(&cfg.username, "username", "", "username to authenticate with target")
 	flag.StringVar(&cfg.password, "password", "", "password to authenticate with target")
+	credentialsFileUsage := `Path to file containing username and/or password to` +
+		` authenticate with target, in YAML form of:
+  username: admin
+  password: pass123
+Credentials specified with -username or -password take precedence.`
+	credentialsFile := flag.String("credentials_file", "", credentialsFileUsage)
+
 	flag.StringVar(&cfg.targetVal, "target_value", "",
 		"value to use in the target field of the Subscribe")
 	flag.Var(&cfg.subTargetDefined, "subscribe",
@@ -247,7 +284,7 @@ func Main() {
 		"Arista EOS native origin paths can be specified with the prefix \"eos_native:\".\n"+
 		"For example, eos_native:/Sysdb/hardware\n"+
 		"This option can be repeated multiple times.")
-	getPathsFile := flag.String("get_file", "", "Read file containing a list of paths"+
+	getPathsFile := flag.String("get_file", "", "Path to file containing a list of paths"+
 		" separated by newlines to retrieve periodically using Get.")
 	getSampleIntervalStr := flag.String("get_sample_interval", "",
 		"Interval between periodic Get requests (400ms, 2.5s, 1m, etc.)\n"+
@@ -307,6 +344,10 @@ func Main() {
 
 	if cfg.collectorAddr == "" {
 		glog.Fatal("collector address must be specified")
+	}
+
+	if *credentialsFile != "" {
+		cfg.readCredentialsFile(*credentialsFile)
 	}
 
 	if *getPathsFile != "" {

@@ -150,6 +150,94 @@ func TestSubscriptionList(t *testing.T) {
 	}
 }
 
+func TestParseCredentialsFile(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		config          *config
+		credentialsFile []byte
+		username        string
+		password        string
+		err             bool
+	}{{
+		name:   "empty config, username/password in credentials file",
+		config: &config{},
+		credentialsFile: []byte(`
+username: admin
+password: pass123
+`),
+		username: "admin",
+		password: "pass123",
+	}, {
+		name:   "empty config, only username in credentials file",
+		config: &config{},
+		credentialsFile: []byte(`
+username: admin
+`),
+		username: "admin",
+	}, {
+		name: "username in config, only password in credentials file",
+		config: &config{
+			username: "admin",
+		},
+		credentialsFile: []byte(`
+password: pass123
+`),
+		username: "admin",
+		password: "pass123",
+	}, {
+		name: "username/password in config takes precedence over credentials file",
+		config: &config{
+			username: "admin",
+			password: "pass123",
+		},
+		credentialsFile: []byte(`
+username: bob
+password: secret123
+`),
+		username: "admin",
+		password: "pass123",
+	}, {
+		name: "username/password in config, empty credentials file",
+		config: &config{
+			username: "admin",
+			password: "pass123",
+		},
+		username: "admin",
+		password: "pass123",
+	}, {
+		name:   "username/password in credentials file with newlines, quotes and spaces",
+		config: &config{},
+		credentialsFile: []byte(`
+username: "ad min"
+
+password: pass 123
+`),
+		username: "ad min",
+		password: "pass 123",
+	}, {
+		name:   "unknown field in credentials file",
+		config: &config{},
+		credentialsFile: []byte(`
+username: admin
+password: pass123
+unknown: unknown
+`),
+		err: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.config.parseCredentialsFile(tc.credentialsFile); tc.err != (err != nil) {
+				t.Errorf("want error %t, got error: %s", tc.err, err)
+			}
+			if tc.config.username != tc.username {
+				t.Errorf("want username: %q, got: %q", tc.username, tc.config.username)
+			}
+			if tc.config.password != tc.password {
+				t.Errorf("want password: %q, got: %q", tc.password, tc.config.password)
+			}
+		})
+	}
+}
+
 func TestStreamGetResponses(t *testing.T) {
 	// Set the Get paths list.
 	var cfgGetList getList
