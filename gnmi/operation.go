@@ -513,7 +513,12 @@ func SubscribeErr(ctx context.Context, client pb.GNMIClient, subscribeOptions *S
 			}
 			return err
 		}
-		respChan <- resp
+
+		select {
+		case respChan <- resp:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 
 		// For POLL subscriptions, initiate a poll request by pressing ENTER
 		if subscribeOptions.Mode == "poll" {
