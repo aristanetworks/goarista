@@ -29,6 +29,7 @@ Run the program with the flag `--help` or `-h` to see the full list of options a
 :--------------------------|:-------------------------------------------------------------------------
 `username`                 | Username to authenticate with the target (gNMI server).
 `password`                 | Password to authenticate with the target (gNMI server).
+`credentials_file`         | File containing username and/or password to authenticate with target, in YAML form of:<br/>`username: admin`<br/>`password: pass123`<br/>Credentials specified with `-username` or `-password` take precedence.
 `target_addr`              | Address of the gNMI server running on the device.<br/>- Form: `[vrf/]address:port`<br/>- Example: `default/127.0.0.1:6030`, `mgmt/localhost:9339`
 `target_value`             | Target name to include in the prefix of all responses to identify the device.
 `target_tls_insecure`      | Use TLS connection with the target and do not verify the target certificate. Used if the gNMI server is configured with a TLS certificate and mutual TLS authentication is not enforced.<br/>By default, a plaintext connection is used with the target.
@@ -43,6 +44,7 @@ Run the program with the flag `--help` or `-h` to see the full list of options a
 `get`                      | Path to retrieve using a periodic gNMI Get.<br/>Can be repeated multiple times to specify multiple paths.<br/>Arista EOS native origin paths can be specified with the prefix `eos_native:`. This allows for specifying both OpenConfig and EOS native origin paths.<br/>- Example: `/system/memory`, `eos_native:/Sysdb/hardware`
 `get_file`                 | File containing a list of paths separated by newlines to retrieve periodically using Get.
 `get_sample_interval`      | Interval between periodic Get requests.<br/>- Example: `400ms`, `2.5s`, `1m`
+`get_mode`                 | Operation mode to gather notifications for the `GetResponse` message.<br/>- Default: `get`<br/>- Options:<br/>`get` Gather notifications using Get.<br/>`subscribe` Gather notifications using Subscribe. `Notification` messages from the Subscribe sync are bundled into one `GetResponse`. With Subscribe, individual leaf updates and their respective data source timestamps are gathered (instead of a single subtree and one current timestamp with Get).
 `v`                        | Log level verbosity. Enables gRPC logging.
 
 
@@ -100,6 +102,12 @@ daemon gnmireverse
 /system/memory
 eos_native:/Sysdb/hardware
 ```
+
+### Get with Subscribe
+
+By default, a gNMI Get is issued and the resulting `GetResponse` is streamed. For a non-leaf path, Get typically retrieves the entire subtree as a single JSON value along with one timestamp which is of the current time.
+
+It may be preferable to instead retrieve individual leaf updates under a path. This would be similar to updates received via a Subscribe. The flag `-get_mode subscribe` changes the Get dial-out behavior to retrieve updates using a Subscribe instead of a Get. At each sample interval, `Notification` messages from the Subscribe sync are gathered. All individual leaf updates and their respective data source timestamps are bundled into one `GetResponse` message.
 
 
 ## Collector
