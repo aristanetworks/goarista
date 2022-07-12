@@ -227,6 +227,9 @@ type config struct {
 	username          string
 	password          string
 	targetTLSInsecure bool
+	targetCert        string
+	targetKey         string
+	targetCA          string
 
 	targetVal        string
 	subTargetDefined subscriptionList
@@ -279,6 +282,12 @@ Credentials specified with -username or -password take precedence.`
 	flag.StringVar(&cfg.origin, "origin", "", "value for the origin field of the Subscribe")
 	flag.BoolVar(&cfg.targetTLSInsecure, "target_tls_insecure", false,
 		"use TLS connection with target and do not verify target certificate")
+	flag.StringVar(&cfg.targetCert, "target_certfile", "",
+		"path to TLS certificate file to authenticate with target")
+	flag.StringVar(&cfg.targetKey, "target_keyfile", "",
+		"path to TLS key file to authenticate with target")
+	flag.StringVar(&cfg.targetCA, "target_cafile", "",
+		"path to TLS CA file to verify target (leave empty to use host's root CA set)")
 
 	flag.Var(&cfg.getPaths, "get", "Path to retrieve periodically using Get.\n"+
 		"Arista EOS native origin paths can be specified with the prefix \"eos_native:\".\n"+
@@ -562,7 +571,7 @@ func newTLSConfig(skipVerify bool, certFile, keyFile, caFile string) (*tls.Confi
 	}
 	if certFile != "" {
 		if keyFile == "" {
-			return nil, fmt.Errorf("please provide both -collector_certfile and -collector_keyfile")
+			return nil, fmt.Errorf("please provide both certfile and keyfile")
 		}
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
@@ -620,11 +629,14 @@ func dialTarget(cfg *config) (*grpc.ClientConn, error) {
 	}
 
 	var dialOptions []grpc.DialOption
-	if cfg.targetTLSInsecure {
+	if cfg.targetTLSInsecure || cfg.targetCert != "" || cfg.targetKey != "" || cfg.targetCA != "" {
+		tlsConfig, err := newTLSConfig(cfg.targetTLSInsecure,
+			cfg.targetCert, cfg.targetKey, cfg.targetCA)
+		if err != nil {
+			return nil, fmt.Errorf("error creating TLS config for target: %s", err)
+		}
 		dialOptions = append(dialOptions,
-			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-				InsecureSkipVerify: true,
-			})))
+			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
 		dialOptions = append(dialOptions, grpc.WithInsecure())
 	}
