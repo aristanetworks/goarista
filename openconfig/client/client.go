@@ -12,7 +12,7 @@ import (
 
 	"github.com/aristanetworks/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/openconfig/reference/rpc/openconfig"
+	"github.com/openconfig/gnmi/proto/gnmi"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -25,7 +25,7 @@ type PublishFunc func(addr string, message proto.Message)
 
 // Client is a connected gRPC client
 type Client struct {
-	client openconfig.OpenConfigClient
+	client gnmi.GNMIClient
 	ctx    context.Context
 	device string
 }
@@ -44,7 +44,7 @@ func New(username, password, addr string, opts []grpc.DialOption) *Client {
 		glog.Fatalf("Failed to dial: %s", err)
 	}
 	glog.Infof("Connected to %s", addr)
-	client := openconfig.NewOpenConfigClient(conn)
+	client := gnmi.NewGNMIClient(conn)
 
 	ctx := context.Background()
 	if username != "" {
@@ -60,9 +60,9 @@ func New(username, password, addr string, opts []grpc.DialOption) *Client {
 }
 
 // Get sends a get request and returns the responses
-func (c *Client) Get(path string) []*openconfig.Notification {
-	req := &openconfig.GetRequest{
-		Path: []*openconfig.Path{
+func (c *Client) Get(path string) []*gnmi.Notification {
+	req := &gnmi.GetRequest{
+		Path: []*gnmi.Path{
 			{
 				Element: strings.Split(path, "/"),
 			},
@@ -92,12 +92,12 @@ func (c *Client) Subscribe(wg *sync.WaitGroup, subscriptions []string,
 	defer stream.CloseSend()
 
 	for _, path := range subscriptions {
-		sub := &openconfig.SubscribeRequest{
-			Request: &openconfig.SubscribeRequest_Subscribe{
-				Subscribe: &openconfig.SubscriptionList{
-					Subscription: []*openconfig.Subscription{
+		sub := &gnmi.SubscribeRequest{
+			Request: &gnmi.SubscribeRequest_Subscribe{
+				Subscribe: &gnmi.SubscriptionList{
+					Subscription: []*gnmi.Subscription{
 						{
-							Path: &openconfig.Path{Element: strings.Split(path, "/")},
+							Path: &gnmi.Path{Element: strings.Split(path, "/")},
 						},
 					},
 				},
@@ -120,7 +120,7 @@ func (c *Client) Subscribe(wg *sync.WaitGroup, subscriptions []string,
 			return
 		}
 		switch resp := resp.Response.(type) {
-		case *openconfig.SubscribeResponse_SyncResponse:
+		case *gnmi.SubscribeResponse_SyncResponse:
 			if !resp.SyncResponse {
 				panic("initial sync failed," +
 					" check that you're using a client compatible with the server")
