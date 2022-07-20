@@ -244,6 +244,112 @@ func TestParseElement(t *testing.T) {
 	}
 }
 
+func TestParseKeys(t *testing.T) {
+	// test cases
+	cases := []struct {
+		// name is the name of the test useful if you want to run a single test
+		// from the command line -run TestParseElement/<name>
+		name string
+		// in is the path element to be parsed
+		in string
+		// keys is a map of the expected key value pairs from within the []s in the
+		// `path element.
+		//
+		// For example prefix[ip-prefix=10.0.0.0/24][masklength-range=26..28]
+		// fieldName would be "prefix"
+		// keys would be {"ip-prefix": "10.0.0.0/24", "masklength-range": "26..28"}
+		keys map[string]string
+		// expectedError is the exact error we expect.
+		expectedError error
+	}{{
+		name:          "no_equal_no_close",
+		in:            "[there",
+		expectedError: fmt.Errorf("failed to find '=' in %q", "[there"),
+	}, {
+		name:          "no_equals",
+		in:            "[there]",
+		expectedError: fmt.Errorf("failed to find '=' in %q", "[there]"),
+	}, {
+		name: "no_left_side",
+		in:   "[=there]",
+		keys: map[string]string{"": "there"},
+	}, {
+		name: "no_right_side",
+		in:   "[there=]",
+		keys: map[string]string{"there": ""},
+	}, {
+		name:          "hanging_escape",
+		in:            "[there\\",
+		expectedError: fmt.Errorf("failed to find '=' in %q", "[there\\"),
+	}, {
+		name: "single_name_value",
+		in:   "[there=where]",
+		keys: map[string]string{"there": "where"},
+	}, {
+		name: "single_value_with=",
+		in:   "[there=whe=r=e]",
+		keys: map[string]string{"there": "whe=r=e"},
+	}, {
+		name: "single_value_with=_and_escaped_]",
+		in:   `[there=whe=\]r=e]`,
+		keys: map[string]string{"there": `whe=]r=e`},
+	}, {
+		name: "single_value_with[",
+		in:   "[there=w[[here]",
+		keys: map[string]string{"there": "w[[here"},
+	}, {
+		name:          "value_single_open",
+		in:            "[first=value][",
+		expectedError: fmt.Errorf("failed to find '=' in %q", "["),
+	}, {
+		name:          "value_no_close",
+		in:            "[there=where][somename",
+		expectedError: fmt.Errorf("failed to find '=' in %q", "[somename"),
+	}, {
+		name:          "value_no_equals",
+		in:            "[there=where][somename]",
+		expectedError: fmt.Errorf("failed to find '=' in %q", "[somename]"),
+	}, {
+		name: "no_left_side",
+		in:   "[there=where][=somevalue]",
+		keys: map[string]string{"there": "where", "": "somevalue"},
+	}, {
+		name: "no_right_side",
+		in:   "[there=where][somename=]",
+		keys: map[string]string{"there": "where", "somename": ""},
+	}, {
+		name: "two_name_values",
+		in:   "[there=where][somename=somevalue]",
+		keys: map[string]string{"there": "where", "somename": "somevalue"},
+	}, {
+		name: "three_name_values",
+		in:   "[there=where][somename=somevalue][anothername=value]",
+		keys: map[string]string{"there": "where", "somename": "somevalue",
+			"anothername": "value"},
+	}, {
+		name: "aserisk_value",
+		in:   "[there=*][somename=somevalue][anothername=value]",
+		keys: map[string]string{"there": "*", "somename": "somevalue",
+			"anothername": "value"},
+	}, {
+		name: "escaped =",
+		in:   `[foo\==bar]`,
+		keys: map[string]string{"foo=": "bar"},
+	}}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			keys, err := ParseKeys(tc.in)
+			if !test.DeepEqual(tc.expectedError, err) {
+				t.Fatalf("[%s] expected err %#v, got %#v", tc.name, tc.expectedError, err)
+			}
+			if !test.DeepEqual(tc.keys, keys) {
+				t.Fatalf("[%s] expected output %#v, got %#v", tc.name, tc.keys, keys)
+			}
+		})
+	}
+}
+
 func strToPath(pathStr string) *pb.Path {
 	splitPath := SplitPath(pathStr)
 	path, _ := ParseGNMIElements(splitPath)

@@ -223,18 +223,28 @@ func parseElement(pathElement string) (string, map[string]string, error) {
 		return "", nil, fmt.Errorf("failed to find element name in %q", pathElement)
 	}
 
+	keys, err := ParseKeys(pathElement[keyStart:])
+	if err != nil {
+		return "", nil, err
+	}
+	return name, keys, nil
+
+}
+
+// ParseKeys parses just the keys portion of the stringified elem and returns the map of stringified
+// keys.
+func ParseKeys(keyPart string) (map[string]string, error) {
 	// Look at the keys now.
 	keys := make(map[string]string)
-	keyPart := pathElement[keyStart:]
 	for keyPart != "" {
 		k, v, nextKey, err := parseKey(keyPart)
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 		keys[k] = v
 		keyPart = nextKey
 	}
-	return name, keys, nil
+	return keys, nil
 }
 
 // parseKey returns the key name, key value and the remaining string to be parsed,
