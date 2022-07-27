@@ -161,8 +161,8 @@ func (a *accessTokenCred) GetRequestMetadata(ctx context.Context,
 
 func (a *accessTokenCred) RequireTransportSecurity() bool { return true }
 
-// DialContext connects to a gnmi service and returns a client
-func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
+// DialContextConn connects to a gnmi service and return a client connection
+func DialContextConn(ctx context.Context, cfg *Config) (*grpc.ClientConn, error) {
 	opts := append([]grpc.DialOption(nil), cfg.DialOptions...)
 
 	if !cfg.BDP {
@@ -261,11 +261,15 @@ func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 	)
 
-	grpcconn, err := grpc.DialContext(ctx, cfg.Addr, opts...)
+	return grpc.DialContext(ctx, cfg.Addr, opts...)
+}
+
+// DialContext connects to a gnmi service and returns a client
+func DialContext(ctx context.Context, cfg *Config) (pb.GNMIClient, error) {
+	grpcconn, err := DialContextConn(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %s", err)
 	}
-
 	return pb.NewGNMIClient(grpcconn), nil
 }
 
