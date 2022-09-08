@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -90,18 +89,6 @@ func stringify(key interface{}) string {
 		return key.KeyString()
 	case *Map:
 		return key.KeyString()
-	case map[Key]interface{}:
-		m := make(map[string]interface{}, len(key))
-		for k, v := range key {
-			m[k.String()] = v
-		}
-		keys := SortedKeys(m)
-		for i, k := range keys {
-			keys[i] = escape(k) + "=" + stringify(m[k])
-		}
-		return strings.Join(keys, "_")
-	case *map[Key]interface{}:
-		return stringify(*key)
 	case []interface{}:
 		elements := make([]string, len(key))
 		for i, element := range key {
@@ -123,44 +110,6 @@ func stringify(key interface{}) string {
 	}
 }
 
-// StringifyCollection safely returns a string representation of a
-// map[Key]interface{} that is similar in form to the standard
-// stringification of a map, "map[k1:v1, k2:v2]". This differs from
-// StringifyInterface's handling of a map which emits a string to be
-// used as key in contexts such as JSON objects.
-func StringifyCollection(m map[Key]interface{}) string {
-	type kv struct {
-		key string
-		val string
-	}
-	var length int
-	kvs := make([]kv, 0, len(m))
-	for k, v := range m {
-		element := kv{
-			key: stringifyCollectionHelper(k.Key()),
-			val: stringifyCollectionHelper(v),
-		}
-		kvs = append(kvs, element)
-		length += len(element.key) + len(element.val)
-	}
-	sort.Slice(kvs, func(i, j int) bool {
-		return kvs[i].key < kvs[j].key
-	})
-	var buf strings.Builder
-	buf.Grow(length + len("map[]") + 2*len(kvs) /* room for seperators: ", :" */)
-	buf.WriteString("map[")
-	for i, kv := range kvs {
-		if i > 0 {
-			buf.WriteString(" ")
-		}
-		buf.WriteString(kv.key)
-		buf.WriteByte(':')
-		buf.WriteString(kv.val)
-	}
-	buf.WriteByte(']')
-	return buf.String()
-}
-
 // stringifyCollectionHelper is similar to StringifyInterface, but
 // optimizes for human readability instead of making a unique string
 // key suitable for JSON.
@@ -176,8 +125,6 @@ func stringifyCollectionHelper(val interface{}) string {
 			keys[i] = k + ":" + s
 		}
 		return "map[" + strings.Join(keys, " ") + "]"
-	case map[Key]interface{}:
-		return StringifyCollection(val)
 	case []interface{}:
 		elements := make([]string, len(val))
 		for i, element := range val {

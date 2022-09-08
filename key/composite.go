@@ -12,8 +12,6 @@ func HashInterface(v interface{}) uintptr {
 	switch v := v.(type) {
 	case map[string]interface{}:
 		return hashMapString(v)
-	case map[Key]interface{}:
-		return hashMapKey(v)
 	case []interface{}:
 		return hashSlice(v)
 	case []byte:
@@ -40,21 +38,6 @@ func hashMapString(m map[string]interface{}) uintptr {
 	for k, v := range m {
 		// Use addition so that the order of iteration doesn't matter.
 		h += _strhash(k)
-		h += HashInterface(v)
-	}
-	return h
-}
-
-func hashMapKey(m map[Key]interface{}) uintptr {
-	h := uintptr(31 * (len(m) + 1))
-	for k, v := range m {
-		// Use addition so that the order of iteration doesn't matter.
-		switch k := k.(type) {
-		case interfaceKey:
-			h += _nilinterhash(k.key)
-		case mapKey:
-			h += hashMapString(k)
-		}
 		h += HashInterface(v)
 	}
 	return h

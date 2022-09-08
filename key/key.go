@@ -195,17 +195,6 @@ func keyEqual(a, b interface{}) bool {
 	case map[string]interface{}:
 		b, ok := b.(map[string]interface{})
 		return ok && mapStringEqual(a, b)
-	case map[Key]interface{}:
-		b, ok := b.(map[Key]interface{})
-		if !ok || len(a) != len(b) {
-			return false
-		}
-		for k, av := range a {
-			if bv, ok := b[k]; !ok || !keyEqual(av, bv) {
-				return false
-			}
-		}
-		return true
 	case []interface{}:
 		b, ok := b.([]interface{})
 		return ok && sliceEqual(a, b)
