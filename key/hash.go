@@ -35,7 +35,7 @@ func Hash(seed maphash.Seed, k Key) uint64 {
 	case mapKey:
 		return hashMapKey(seed, v)
 	case interfaceKey:
-		s := _nilinterhash(v.key)
+		s := v.Hash()
 		// Mix up the hash to ensure it covers 64-bits
 		binary.LittleEndian.PutUint64(buf[:8], uint64(s))
 		return hashBytes(seed, buf[:8])

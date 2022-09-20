@@ -155,6 +155,13 @@ func (k interfaceKey) Equal(other interface{}) bool {
 	return ok && keyEqual(k.key, o.Key())
 }
 
+func (k interfaceKey) Hash() uint64 {
+	if h, ok := k.key.(Hashable); ok {
+		return h.Hash()
+	}
+	return uint64(_nilinterhash(k.key))
+}
+
 // Comparable types have an equality-testing method.
 type Comparable interface {
 	// Equal returns true if this object is equal to the other one.
