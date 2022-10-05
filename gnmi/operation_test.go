@@ -33,19 +33,36 @@ func TestNewSetRequest(t *testing.T) {
 		Origin: "openconfig",
 	}
 
-	p4FileContent := "p4_config test"
-	p4TestFile, err := ioutil.TempFile("", "p4TestFile")
-	if err != nil {
-		t.Errorf("cannot create test file for p4_config")
-	}
-	p4Filename := p4TestFile.Name()
+	fileData := []struct {
+		name     string
+		fileName string
+		content  string
+	}{{
+		name:     "p4_config",
+		fileName: "p4TestFile",
+		content:  "p4_config test",
+	}, {
+		name:     "originCLIFileData",
+		fileName: "originCLIFile",
+		content: `enable
+configure
+hostname new`,
+	}}
 
-	defer os.Remove(p4Filename)
-
-	if _, err := p4TestFile.WriteString(p4FileContent); err != nil {
-		t.Errorf("cannot write test file for p4_config")
+	fileNames := make([]string, 2, 2)
+	for i, data := range fileData {
+		f, err := ioutil.TempFile("", data.name)
+		if err != nil {
+			t.Errorf("cannot create test file for %s", data.name)
+		}
+		filename := f.Name()
+		defer os.Remove(filename)
+		fileNames[i] = filename
+		if _, err := f.WriteString(data.content); err != nil {
+			t.Errorf("cannot write test file for %s", data.name)
+		}
+		f.Close()
 	}
-	p4TestFile.Close()
 
 	testCases := map[string]struct {
 		setOps []*Operation
@@ -88,12 +105,12 @@ func TestNewSetRequest(t *testing.T) {
 		},
 		"p4_config": {
 			setOps: []*Operation{{Type: "replace", Origin: "p4_config",
-				Val: p4Filename}},
+				Val: fileNames[0]}},
 			exp: &pb.SetRequest{
 				Replace: []*pb.Update{{
 					Path: pathP4,
 					Val: &pb.TypedValue{
-						Value: &pb.TypedValue_ProtoBytes{ProtoBytes: []byte(p4FileContent)}},
+						Value: &pb.TypedValue_ProtoBytes{ProtoBytes: []byte(fileData[0].content)}},
 				}},
 			},
 		},
@@ -120,6 +137,17 @@ func TestNewSetRequest(t *testing.T) {
 							JsonIetfVal: []byte("true"),
 						},
 					},
+				}},
+			},
+		},
+		"originCLI file": {
+			setOps: []*Operation{{Type: "update", Origin: "cli",
+				Val: fileNames[1]}},
+			exp: &pb.SetRequest{
+				Update: []*pb.Update{{
+					Path: pathCli,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_AsciiVal{AsciiVal: fileData[1].content}},
 				}},
 			},
 		},
@@ -339,7 +367,7 @@ func TestTypedValue(t *testing.T) {
 }
 
 func TestExtractJSON(t *testing.T) {
-	jsonFile, err := ioutil.TempFile("", "extractJSON")
+	jsonFile, err := ioutil.TempFile("", "extractContent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +399,7 @@ func TestExtractJSON(t *testing.T) {
 		"[]":            []byte("[]"),
 	} {
 		t.Run(val, func(t *testing.T) {
-			got := extractJSON(val)
+			got := extractContent(val, "")
 			if !bytes.Equal(exp, got) {
 				t.Errorf("Unexpected diff. Expected: %q Got: %q", exp, got)
 			}

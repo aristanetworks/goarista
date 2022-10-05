@@ -72,9 +72,13 @@ func Capabilities(ctx context.Context, client pb.GNMIClient) error {
 
 // val may be a path to a file or it may be json. First see if it is a
 // file, if so return its contents, otherwise return val
-func extractJSON(val string) []byte {
+func extractContent(val string, origin string) []byte {
 	if jsonBytes, err := ioutil.ReadFile(val); err == nil {
 		return jsonBytes
+	}
+	// for CLI commands we don't need to add the outer quotes
+	if origin == "cli" {
+		return []byte(val)
 	}
 	// Best effort check if the value might a string literal, in which
 	// case wrap it in quotes. This is to allow a user to do:
@@ -291,17 +295,18 @@ func TypedValue(val interface{}) *pb.TypedValue {
 
 // ExtractValue pulls a value out of a gNMI Update, parsing JSON if present.
 // Possible return types:
-//  string
-//  int64
-//  uint64
-//  bool
-//  []byte
-//  float32
-//  *gnmi.Decimal64
-//  json.Number
-//  *any.Any
-//  []interface{}
-//  map[string]interface{}
+//
+//	string
+//	int64
+//	uint64
+//	bool
+//	[]byte
+//	float32
+//	*gnmi.Decimal64
+//	json.Number
+//	*any.Any
+//	[]interface{}
+//	map[string]interface{}
 func ExtractValue(update *pb.Update) (interface{}, error) {
 	var i interface{}
 	var err error
@@ -389,13 +394,13 @@ func update(p *pb.Path, val string) (*pb.Update, error) {
 	switch p.Origin {
 	case "", "openconfig":
 		v = &pb.TypedValue{
-			Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: extractJSON(val)}}
+			Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: extractContent(val, p.Origin)}}
 	case "eos_native":
 		v = &pb.TypedValue{
-			Value: &pb.TypedValue_JsonVal{JsonVal: extractJSON(val)}}
+			Value: &pb.TypedValue_JsonVal{JsonVal: extractContent(val, p.Origin)}}
 	case "cli", "test-regen-cli":
 		v = &pb.TypedValue{
-			Value: &pb.TypedValue_AsciiVal{AsciiVal: val}}
+			Value: &pb.TypedValue_AsciiVal{AsciiVal: string(extractContent(val, p.Origin))}}
 	case "p4_config":
 		b, err := ioutil.ReadFile(val)
 		if err != nil {
