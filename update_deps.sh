@@ -21,7 +21,7 @@ if ! test -x .git/hooks/commit-msg; then
 fi
 
 cd "$(dirname "$0")"
-go get -u ./... && go mod tidy
+go get -u ./... && go mod tidy -go=1.16 && go mod tidy -go=1.17
 git add go.mod go.sum
 
 ./refresh_protos.sh
