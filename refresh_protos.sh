@@ -83,7 +83,7 @@ for filePath in $filePaths; do
       # diffs which _only_ involve updates to the version numbers are deemed not-significant.
       # If the diff is significant, diffExists = 1, else diffExists = 0
       read -r diffExists < <(git --no-pager diff --no-color --unified=0 ./ | grep -Ev \
-      -e "^(\+|-)//\s+protoc( |-gen-go )\s*v[0-9\.]" \
+      -e "^(\+|-)//\s+(-|)\s*protoc(|-gen-go)\s+v[0-9\.]" \
       -e "^(@@|diff|index|--- a/|\+\+\+ b/)" | head -c1 | wc -c)
 
       echo "diffExists is $diffExists"
