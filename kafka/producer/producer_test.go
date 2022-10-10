@@ -53,6 +53,36 @@ func (p *mockAsyncProducer) Errors() <-chan *sarama.ProducerError {
 	return p.errors
 }
 
+func (p *mockAsyncProducer) IsTransactional() bool {
+	panic("Not implemented")
+}
+
+func (p *mockAsyncProducer) TxnStatus() sarama.ProducerTxnStatusFlag {
+	panic("Not implemented")
+}
+
+func (p *mockAsyncProducer) BeginTxn() error {
+	panic("Not implemented")
+}
+
+func (p *mockAsyncProducer) CommitTxn() error {
+	panic("Not implemented")
+}
+
+func (p *mockAsyncProducer) AbortTxn() error {
+	panic("Not implemented")
+}
+
+func (p *mockAsyncProducer) AddOffsetsToTxn(
+	offsets map[string][]*sarama.PartitionOffsetMetadata, groupID string) error {
+	panic("Not implemented")
+}
+
+func (p *mockAsyncProducer) AddMessageToTxn(
+	msg *sarama.ConsumerMessage, groupID string, metadata *string) error {
+	panic("Not implemented")
+}
+
 func newPath(path string) *pb.Path {
 	if path == "" {
 		return nil
