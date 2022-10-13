@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/aristanetworks/goarista/test"
-	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
@@ -171,7 +171,7 @@ func TestStrUpdateVal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	anyMessage := &any.Any{TypeUrl: "gnmi/ModelData", Value: anyBytes}
+	anyMessage := &anypb.Any{TypeUrl: "gnmi/ModelData", Value: anyBytes}
 
 	for name, tc := range map[string]struct {
 		update *pb.Update

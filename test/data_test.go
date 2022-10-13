@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/aristanetworks/goarista/key"
-	pb "github.com/golang/protobuf/ptypes/duration"
+	pb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 type builtinCompare struct {

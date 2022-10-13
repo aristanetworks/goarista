@@ -11,11 +11,12 @@ import (
 	"sync"
 
 	"github.com/aristanetworks/glog"
-	"github.com/golang/protobuf/proto"
 	"github.com/openconfig/gnmi/proto/gnmi"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 const defaultPort = "6030"

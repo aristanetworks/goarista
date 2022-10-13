@@ -1,6 +1,6 @@
 module github.com/aristanetworks/goarista
 
-go 1.17
+go 1.19
 
 require (
 	github.com/Shopify/sarama v1.37.2
@@ -8,15 +8,14 @@ require (
 	github.com/aristanetworks/glog v0.0.0-20220413230315-4bbe49d210b0
 	github.com/aristanetworks/splunk-hec-go v0.3.3
 	github.com/cenkalti/backoff/v4 v4.1.3
-	github.com/golang/protobuf v1.5.2
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
 	github.com/kylelemons/godebug v1.1.0
 	github.com/openconfig/gnmi v0.0.0-20220920173703-480bf53a74d2
 	github.com/prometheus/client_golang v1.13.0
 	github.com/xtaci/kcp-go v5.4.20+incompatible
-	golang.org/x/net v0.0.0-20221004154528-8021a29435af
+	golang.org/x/net v0.0.0-20221012135044-0b7e1fb9d458
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
-	golang.org/x/sys v0.0.0-20221006211917-84dc82d7e875
+	golang.org/x/sys v0.0.0-20221010170243-090e33056c14
 	golang.org/x/tools v0.1.12
 	google.golang.org/grpc v1.50.0
 	google.golang.org/protobuf v1.28.1
@@ -32,6 +31,7 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/garyburd/redigo v1.6.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -44,7 +44,6 @@ require (
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.2 // indirect
 	github.com/klauspost/reedsolomon v1.11.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2 // indirect
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
@@ -54,15 +53,15 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	github.com/rogpeppe/go-internal v1.6.1 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/templexxx/cpufeat v0.0.0-20180724012125-cef66df7f161 // indirect
 	github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/lossyconn v0.0.0-20190602105132-8df528c0c9ae // indirect
-	golang.org/x/crypto v0.0.0-20221010152910-d6f0a8c073c2 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a // indirect
+	golang.org/x/text v0.3.8 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
-	google.golang.org/genproto v0.0.0-20220930163606-c98284e70a91 // indirect
+	google.golang.org/genproto v0.0.0-20221010155953-15ba04fc1c0e // indirect
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
 )

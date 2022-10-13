@@ -14,10 +14,10 @@ import (
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
-	"github.com/golang/protobuf/ptypes/any"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // A metric source.
@@ -185,7 +185,7 @@ func getValue(intf interface{}) (interface{}, string, bool) {
 			return value, "", true
 		}
 		return valFloat, "", true
-	case *any.Any:
+	case *anypb.Any:
 		return value.String(), "", true
 	case []interface{}:
 		glog.V(9).Infof("skipping array value")

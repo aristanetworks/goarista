@@ -12,7 +12,8 @@ import (
 
 	"github.com/aristanetworks/goarista/areflect"
 	"github.com/aristanetworks/goarista/key"
-	"github.com/golang/protobuf/proto" // nolint:staticcheck
+
+	"google.golang.org/protobuf/proto"
 )
 
 var comparableType = reflect.TypeOf((*key.Comparable)(nil)).Elem()
@@ -300,10 +301,11 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 // function is O(N^2) in the size of the input maps.
 //
 // The return is to be interpreted this way:
-//    true, _, _            =>   av == bv
-//    false, key, invalid   =>   the given key wasn't found in bv
-//    false, key, value     =>   the given key had the given value in bv,
-//                               which is different in av
+//
+//	true, _, _            =>   av == bv
+//	false, key, invalid   =>   the given key wasn't found in bv
+//	false, key, value     =>   the given key had the given value in bv,
+//	                           which is different in av
 func complexKeyMapEqual(av, bv reflect.Value,
 	seen map[edge]struct{}) (bool, reflect.Value, reflect.Value) {
 	for _, ka := range av.MapKeys() {
