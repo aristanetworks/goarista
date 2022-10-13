@@ -244,25 +244,63 @@ func sizeof(v reflect.Value, m map[string]uintptr, ptrsTypes map[uintptr]map[str
 //go:linkname typesByString reflect.typesByString
 func typesByString(s string) []unsafe.Pointer
 
+// these types need to be kept in sync with src/runtime/type.go
+type tflag uint8
+type nameOff int32
+type typeOff int32
+
+// needs to be kept in sync with src/runtime/runtime2.go#eface
+type eface struct {
+	_type *_type
+	data  unsafe.Pointer
+}
+
+// needs to be kept in sync with src/runtime/type.go#_type
+type _type struct {
+	size       uintptr
+	ptrdata    uintptr // size of memory prefix holding all pointers
+	hash       uint32
+	tflag      tflag
+	align      uint8
+	fieldAlign uint8
+	kind       uint8
+	// function for comparing objects of this type
+	// (ptr to object A, ptr to object B) -> ==?
+	equal func(unsafe.Pointer, unsafe.Pointer) bool
+	// gcdata stores the GC type data for the garbage collector.
+	// If the KindGCProg bit is set in kind, gcdata is a GC program.
+	// Otherwise it is a ptrmask bitmap. See mbitmap.go for details.
+	gcdata    *byte
+	str       nameOff
+	ptrToThis typeOff
+}
+
+// needs to be kept in sync with src/runtime/type.go#maptype
+type maptype struct {
+	typ    _type
+	key    *_type
+	elem   *_type
+	bucket *_type // internal type representing a hash bucket
+	// function for hashing keys (ptr to key, seed) -> hash
+	hasher     func(unsafe.Pointer, uintptr) uintptr
+	keysize    uint8  // size of key slot
+	elemsize   uint8  // size of elem slot
+	bucketsize uint16 // size of bucket
+	flags      uint32
+}
+
 func sizeofmap(v reflect.Value, seen []block) (uintptr, []block) {
-	// get field typ *rtype of our Value v and store it in an interface
-	var ti interface{} = v.Type()
-	tp := (*unsafe.Pointer)(unsafe.Pointer(&ti))
-	// we know that this pointer rtype point at the begining of struct
-	// mapType defined in /go/src/reflect/type.go, so we can change the underlying
-	// type of the interface to be a pointer to runtime.maptype because it as the
-	// exact same definition as reflect.mapType.
-	*tp = typesByString("*runtime.maptype")[0]
-	maptypev := reflect.ValueOf(ti)
-	maptypev = reflect.Indirect(maptypev)
-	// now we can access field bucketsize in struct maptype
-	bucketsize := maptypev.FieldByName("bucketsize").Uint()
+	// find the size of the buckets used in this map
+	iface := v.Interface()
+	efacev := (*eface)(unsafe.Pointer(&iface))
+	maptypev := (*maptype)(unsafe.Pointer(efacev._type))
+	bucketsize := uint64(maptypev.bucketsize)
+
 	// get hmap
-	var m interface{} = v.Interface()
-	hmap := (*unsafe.Pointer)(unsafe.Pointer(&m))
+	hmap := (*unsafe.Pointer)(unsafe.Pointer(&iface))
 	*hmap = typesByString("*runtime.hmap")[0]
 
-	hmapv := reflect.ValueOf(m)
+	hmapv := reflect.ValueOf(iface)
 	// account for the size of the hmap, buckets and oldbuckets
 	hmapv = reflect.Indirect(hmapv)
 	mapBlock := block{
