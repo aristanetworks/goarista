@@ -7,23 +7,22 @@
 //
 // Example usage:
 //
-//  go test -json | test2influxdb [options...]
+//	go test -json | test2influxdb [options...]
 //
 // Points are written to influxdb with tags:
 //
-//  package
-//  type    "package" for a package result; "test" for a test result
-//  Additional tags set by -tags flag
+//	package
+//	type    "package" for a package result; "test" for a test result
+//	Additional tags set by -tags flag
 //
 // And fields:
 //
-//  test    string  // "NONE" for whole package results
-//  elapsed float64 // in seconds
-//  pass    float64 // 1 for PASS, 0 for FAIL
-//  Additional fields set by -fields flag
+//	test    string  // "NONE" for whole package results
+//	elapsed float64 // in seconds
+//	pass    float64 // 1 for PASS, 0 for FAIL
+//	Additional fields set by -fields flag
 //
 // "test" is a field instead of a tag to reduce cardinality of data.
-//
 package main
 
 import (

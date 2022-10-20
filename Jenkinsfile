@@ -3,8 +3,7 @@ def pipelinevars
 pipeline {
     environment {
         GOCACHE = "/tmp/.gocache"
-        GOPATH = "${WORKSPACE}"
-        GOARISTA = "${GOPATH}/src/github.com/aristanetworks/goarista"
+        GOARISTA = "${WORKSPACE}/src/github.com/aristanetworks/goarista"
         // golangci has its own cache.
         GOLANGCI_LINT_CACHE = "/tmp/.golangci_cache"
         // PATH does not get set inside stages that use docker agents, see
@@ -12,7 +11,7 @@ pipeline {
         // withEnv won't set it either.
         // every sh step inside a container needs to do sh "PATH=${env.PATH} ..."
         // to use this PATH value instead of the PATH set by the docker image.
-        PATH = "PATH=${PATH}:${GOPATH}/bin:/usr/local/go/bin "
+        PATH = "PATH=${PATH}:${WORKSPACE}/bin:/usr/local/go/bin "
     }
     agent { label 'jenkins-agent-cloud' }
     stages {
@@ -20,7 +19,7 @@ pipeline {
             steps {
                 sh "mkdir -p ${GOARISTA}"
                 script {
-                    pipelinevars = load "${GOARISTA}/pipelinevars.groovy"
+                    pipelinevars = load "${WORKSPACE}/pipelinevars.groovy"
                 }
             }
         }

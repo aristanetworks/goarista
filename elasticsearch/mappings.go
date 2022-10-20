@@ -66,7 +66,7 @@ func SetValue(m map[string]interface{}, val interface{}) error {
 	return nil
 }
 
-//  *TypedValue_StringVal
+// *TypedValue_StringVal
 func toStringPtr(val interface{}) *string {
 	if tv, ok := val.(*gnmi.TypedValue_StringVal); ok {
 		return &tv.StringVal
@@ -74,7 +74,7 @@ func toStringPtr(val interface{}) *string {
 	return nil
 }
 
-//	*TypedValue_IntVal, *TypedValue_UintVal
+// *TypedValue_IntVal, *TypedValue_UintVal
 func toLongPtr(val interface{}) *int64 {
 	switch tv := val.(type) {
 	case *gnmi.TypedValue_IntVal:
@@ -87,7 +87,7 @@ func toLongPtr(val interface{}) *int64 {
 	return nil
 }
 
-//	*TypedValue_BoolVal
+// *TypedValue_BoolVal
 func toBoolPtr(val interface{}) *bool {
 	if tv, ok := val.(*gnmi.TypedValue_BoolVal); ok {
 		return &tv.BoolVal
@@ -95,7 +95,7 @@ func toBoolPtr(val interface{}) *bool {
 	return nil
 }
 
-//	*TypedValue_FloatVal, *TypedValue_DecimalVal
+// *TypedValue_FloatVal, *TypedValue_DecimalVal
 func toDoublePtr(val interface{}) *float64 {
 	switch tv := val.(type) {
 	case *gnmi.TypedValue_FloatVal:
@@ -148,7 +148,7 @@ func toValueArray(val interface{}) []*map[string]interface{} {
 	return nil
 }
 
-//	*TypedValue_JsonVal, *TypedValue_JsonIetfVal
+// *TypedValue_JsonVal, *TypedValue_JsonIetfVal
 func toJSONValue(val interface{}) (interface{}, error) {
 	var out interface{}
 	if tv, ok := val.(*gnmi.TypedValue_JsonVal); ok {

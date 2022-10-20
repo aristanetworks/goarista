@@ -34,8 +34,9 @@ func ArbitrationExt(s string) (*gnmi_ext.Extension, error) {
 // values. Input is of the form [<role>:]<election_id>, where election_id is a uint64.
 //
 // Examples:
-//  "1"
-//  "admin:42"
+//
+//	"1"
+//	"admin:42"
 func parseArbitrationString(s string) (string, uint64, error) {
 	tokens := strings.Split(s, ":")
 	switch len(tokens) {

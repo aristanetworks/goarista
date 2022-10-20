@@ -26,11 +26,16 @@ type InfluxDBConnection struct {
 
 // Point represents a datapoint to be written.
 // Measurement:
-//      The measurement to write to
+//
+//	The measurement to write to
+//
 // Tags:
-//      A dictionary of tags in the form string=string
+//
+//	A dictionary of tags in the form string=string
+//
 // Fields:
-//      A dictionary of fields(keys) with their associated values
+//
+//	A dictionary of fields(keys) with their associated values
 type Point struct {
 	Measurement string
 	Tags        map[string]string
@@ -107,11 +112,16 @@ func (conn *InfluxDBConnection) RecordBatchPoints(points []Point) error {
 
 // WritePoint stores a datapoint to the database.
 // Measurement:
-//		The measurement to write to
+//
+//	The measurement to write to
+//
 // Tags:
-//		A dictionary of tags in the form string=string
+//
+//	A dictionary of tags in the form string=string
+//
 // Fields:
-//		A dictionary of fields(keys) with their associated values
+//
+//	A dictionary of fields(keys) with their associated values
 func (conn *InfluxDBConnection) WritePoint(measurement string,
 	tags map[string]string, fields map[string]interface{}) error {
 	return conn.RecordPoint(Point{

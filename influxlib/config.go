@@ -4,13 +4,13 @@
 
 package influxlib
 
-//Connection type.
+// Connection type.
 const (
 	HTTP = "HTTP"
 	UDP  = "UDP"
 )
 
-//InfluxConfig is a configuration struct for influxlib.
+// InfluxConfig is a configuration struct for influxlib.
 type InfluxConfig struct {
 	Hostname        string
 	Port            uint16

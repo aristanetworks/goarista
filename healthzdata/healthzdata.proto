@@ -14,7 +14,7 @@ syntax = "proto3";
 // Opaque data for how the healthcheck is implemented.  This can be any
 // proto defined by the vendor.  This could be the equivalent to outputs
 // like "show tech" or core files or any other diagnostic data.
-// ``
+// ```
 // The size of the message may be large.
 // Ensure that the client is configured to receive large message sizes.
 message HealthzData {
