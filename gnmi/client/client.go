@@ -195,7 +195,10 @@ func Main() {
 			if len(setOps) != 0 {
 				usageAndExit("error: 'get' not allowed after 'merge|replace|delete'")
 			}
-			pathParams, _ := parsereqParams(args[1:], false)
+			pathParams, argsParsed := parsereqParams(args[1:], false)
+			if argsParsed == 0 {
+				usageAndExit("error: missing path")
+			}
 			for _, pathParam := range pathParams {
 				origin := pathParam.origin
 				target := pathParam.target
@@ -235,7 +238,10 @@ func Main() {
 				usageAndExit("error: 'subscribe' not allowed after 'merge|replace|delete'")
 			}
 			var g errgroup.Group
-			pathParams, _ := parsereqParams(args[1:], false)
+			pathParams, argsParsed := parsereqParams(args[1:], false)
+			if argsParsed == 0 {
+				usageAndExit("error: missing path")
+			}
 			for _, pathParam := range pathParams {
 				origin := pathParam.origin
 				target := pathParam.target
@@ -384,12 +390,26 @@ func parsereqParams(args []string, maxOnePath bool) (pathParams []reqParams,
 			}
 			pP.paths = append(pP.paths, arg)
 			if maxOnePath {
-				pathParams = append(pathParams, *pP)
-				return
+				break
 			}
 		}
 	}
+
+	if pP == nil {
+		argsParsed = 0 // no path provided
+		return
+	}
+
 	pathParams = append(pathParams, *pP)
+
+	// validate that all reqParams have a valid path
+	for _, param := range pathParams {
+		if param.paths == nil {
+			argsParsed = 0 // no path provided
+			return
+		}
+	}
+
 	return
 }
 
