@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
@@ -65,6 +66,7 @@ func (c *collector) update(addr string, message proto.Message) {
 
 	device := strings.Split(addr, ":")[0]
 	prefix := gnmi.StrPath(notif.Prefix)
+	timestamp := time.Unix(0, notif.GetTimestamp())
 	// Process deletes first
 	for _, del := range notif.Delete {
 		path := path.Join(prefix, gnmi.StrPath(del))
@@ -124,8 +126,9 @@ func (c *collector) update(addr string, message proto.Message) {
 				m.labels[len(m.labels)-1] = strVal
 			}
 
-			m.metric = prometheus.MustNewConstMetric(m.metric.Desc(), prometheus.GaugeValue,
+			timelessMetric := prometheus.MustNewConstMetric(m.metric.Desc(), prometheus.GaugeValue,
 				floatVal, m.labels...)
+			m.metric = prometheus.NewMetricWithTimestamp(timestamp, timelessMetric)
 			c.m.Unlock()
 			continue
 		}
@@ -154,8 +157,9 @@ func (c *collector) update(addr string, message proto.Message) {
 		c.m.Lock()
 		lm := prometheus.MustNewConstMetric(metric.desc, prometheus.GaugeValue,
 			floatVal, metric.labels...)
+		tlm := prometheus.NewMetricWithTimestamp(timestamp, lm)
 		c.metrics[src] = &labelledMetric{
-			metric:       lm,
+			metric:       tlm,
 			labels:       metric.labels,
 			defaultValue: metric.defaultValue,
 			stringMetric: metric.stringMetric,
