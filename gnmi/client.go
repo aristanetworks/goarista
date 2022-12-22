@@ -13,8 +13,6 @@ import (
 	"math"
 	"net"
 	"os"
-
-	"io/ioutil"
 	"strings"
 
 	"github.com/aristanetworks/goarista/netns"
@@ -56,10 +54,18 @@ func ParseHostnames(list string) ([]string, error) {
 
 // Config is the gnmi.Client config
 type Config struct {
-	Addr         string
-	CAFile       string
-	CertFile     string
-	KeyFile      string
+	Addr string
+
+	// File path to load data or raw cert data. Alternatively, raw data can be provided below.
+	CAFile   string
+	CertFile string
+	KeyFile  string
+
+	// Raw certificate data. If respective file is provided above, that is used instead.
+	CAData   []byte
+	CertData []byte
+	KeyData  []byte
+
 	Password     string
 	Username     string
 	TLS          bool
@@ -190,26 +196,42 @@ func DialContextConn(ctx context.Context, cfg *Config) (*grpc.ClientConn, error)
 		return nil, fmt.Errorf("unsupported compression option: %q", cfg.Compression)
 	}
 
-	if cfg.TLS || cfg.CAFile != "" || cfg.CertFile != "" || cfg.Token != "" {
+	var err error
+	caData := cfg.CAData
+	certData := cfg.CertData
+	keyData := cfg.KeyData
+	if cfg.CAFile != "" {
+		if caData, err = os.ReadFile(cfg.CAFile); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.CertFile != "" {
+		if certData, err = os.ReadFile(cfg.CertFile); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.KeyFile != "" {
+		if keyData, err = os.ReadFile(cfg.KeyFile); err != nil {
+			return nil, err
+		}
+	}
+
+	if cfg.TLS || len(caData) > 0 || len(certData) > 0 || cfg.Token != "" {
 		tlsConfig := &tls.Config{}
-		if cfg.CAFile != "" {
-			b, err := ioutil.ReadFile(cfg.CAFile)
-			if err != nil {
-				return nil, err
-			}
+		if len(caData) > 0 {
 			cp := x509.NewCertPool()
-			if !cp.AppendCertsFromPEM(b) {
+			if !cp.AppendCertsFromPEM(caData) {
 				return nil, fmt.Errorf("credentials: failed to append certificates")
 			}
 			tlsConfig.RootCAs = cp
 		} else {
 			tlsConfig.InsecureSkipVerify = true
 		}
-		if cfg.CertFile != "" {
-			if cfg.KeyFile == "" {
-				return nil, fmt.Errorf("please provide both -certfile and -keyfile")
+		if len(certData) > 0 {
+			if len(keyData) == 0 {
+				return nil, fmt.Errorf("no key provided for client certificate")
 			}
-			cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+			cert, err := tls.X509KeyPair(certData, keyData)
 			if err != nil {
 				return nil, err
 			}
