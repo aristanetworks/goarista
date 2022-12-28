@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -41,13 +42,15 @@ type collector struct {
 	m       sync.Mutex
 	metrics map[source]*labelledMetric
 
-	config *Config
+	config    *Config
+	descRegex *regexp.Regexp
 }
 
-func newCollector(config *Config) *collector {
+func newCollector(config *Config, descRegex *regexp.Regexp) *collector {
 	return &collector{
-		metrics: make(map[source]*labelledMetric),
-		config:  config,
+		metrics:   make(map[source]*labelledMetric),
+		config:    config,
+		descRegex: descRegex,
 	}
 }
 

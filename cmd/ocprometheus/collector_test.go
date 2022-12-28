@@ -138,7 +138,7 @@ metrics:
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	coll := newCollector(cfg)
+	coll := newCollector(cfg, nil)
 
 	notif := &pb.Notification{
 		Prefix: makePath("Sysdb"),
@@ -361,7 +361,7 @@ metrics:
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	coll := newCollector(cfg)
+	coll := newCollector(cfg, nil)
 
 	notif := &pb.Notification{
 		Prefix: makePath("Sysdb"),

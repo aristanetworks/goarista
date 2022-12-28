@@ -10,6 +10,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/aristanetworks/goarista/gnmi"
@@ -21,6 +22,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// regex to match tags in descriptions e.g. "[foo][bar=baz]"
+const defaultDescriptionRegex = `\[([^=\]]+)(=[^]]+)?]`
+
 func main() {
 	// gNMI options
 	gNMIcfg := &gnmi.Config{}
@@ -30,6 +34,8 @@ func main() {
 	flag.StringVar(&gNMIcfg.KeyFile, "keyfile", "", "Path to client TLS private key file")
 	flag.StringVar(&gNMIcfg.Username, "username", "", "Username to authenticate with")
 	flag.StringVar(&gNMIcfg.Password, "password", "", "Password to authenticate with")
+	descRegex := flag.String("description-regex", defaultDescriptionRegex, "custom regex to"+
+		" extract labels from description nodes")
 	flag.BoolVar(&gNMIcfg.TLS, "tls", false, "Enable TLS")
 	subscribePaths := flag.String("subscribe", "/", "Comma-separated list of paths to subscribe to")
 
@@ -61,7 +67,8 @@ func main() {
 	// Add to the subscriptions in the config file.
 	config.addSubscriptions(subscriptions)
 
-	coll := newCollector(config)
+	r := regexp.MustCompile(*descRegex)
+	coll := newCollector(config, r)
 	prometheus.MustRegister(coll)
 	ctx := gnmi.NewContext(context.Background(), gNMIcfg)
 	client, err := gnmi.Dial(gNMIcfg)
