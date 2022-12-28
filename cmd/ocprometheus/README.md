@@ -42,3 +42,23 @@ ocprometheus -addr <switch-hostname>:6042 -config sampleconfig.yml
 
 For more usage examples and a detailed demo please visit:
 https://eos.arista.com/streaming-eos-telemetry-states-to-prometheus/
+
+### Dynamic label extraction
+
+This feature can be enabled by passing the `-enable-description-labels` flag. Paths where labels can be extracted from are defined in the configuration file, e.g.
+
+```yaml
+description-label-subscriptions:
+        - /interfaces/interface/state/description
+        - /network-instances/network-instance/protocols/protocol/static-routes/static/state/description
+```
+
+These paths are used to dynamically retrieve labels from other nodes. The default regex used is `\[([^=\]]+)(=[^]]+)?]`.
+It finds the nearest list node and adds these labels to any nodes under that list node.
+
+For example, with the example subscriptions above, if we got the following description `[baz][foo=bar]` on the path
+`interfaces/interface[name=Ethernet4]/state/description`, it will add the labels `baz=1` and `foo=bar` to all metrics
+under `interfaces/interface[name=Ethernet4]`, e.g. interfaces/interface[name=Ethernet4]/state/counter/in-pkts will have
+these labels attached to it. The description regex can be changed by passing the `-description-regex <regex>` flag.
+
+These labels will update dynamically as the descriptions change on the box.
