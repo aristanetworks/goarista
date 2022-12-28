@@ -8,10 +8,12 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/aristanetworks/goarista/gnmi"
 
@@ -36,6 +38,8 @@ func main() {
 	flag.StringVar(&gNMIcfg.Password, "password", "", "Password to authenticate with")
 	descRegex := flag.String("description-regex", defaultDescriptionRegex, "custom regex to"+
 		" extract labels from description nodes")
+	enableDynDescs := flag.Bool("enable-description-labels", false, "disable attaching additional "+
+		"labels extracted from description nodes to closest list node children")
 	flag.BoolVar(&gNMIcfg.TLS, "tls", false, "Enable TLS")
 	subscribePaths := flag.String("subscribe", "/", "Comma-separated list of paths to subscribe to")
 
@@ -67,7 +71,10 @@ func main() {
 	// Add to the subscriptions in the config file.
 	config.addSubscriptions(subscriptions)
 
-	r := regexp.MustCompile(*descRegex)
+	var r *regexp.Regexp
+	if *enableDynDescs {
+		r = regexp.MustCompile(*descRegex)
+	}
 	coll := newCollector(config, r)
 	prometheus.MustRegister(coll)
 	ctx := gnmi.NewContext(context.Background(), gNMIcfg)
@@ -77,6 +84,18 @@ func main() {
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
+	if *enableDynDescs {
+		// wait for initial sync to complete before continuing
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			if err := subscribeDescriptions(gCtx, client, coll, wg); err != nil {
+				glog.Error(err)
+			}
+		}()
+		wg.Wait()
+	}
+
 	for origin, paths := range config.subsByOrigin {
 		subscribeOptions := &gnmi.SubscribeOptions{
 			Mode:       "stream",
@@ -90,9 +109,7 @@ func main() {
 		})
 	}
 	http.Handle(*url, promhttp.Handler())
-	go func() error {
-		return http.ListenAndServe(*listenaddr, nil)
-	}()
+	go http.ListenAndServe(*listenaddr, nil)
 	if err := g.Wait(); err != nil {
 		glog.Fatal(err)
 	}
@@ -108,4 +125,43 @@ func handleSubscription(ctx context.Context, client pb.GNMIClient,
 		}
 	}()
 	return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan)
+}
+
+// subscribe to the descriptions nodes provided. It will parse the labels out based on the
+// default/user defined regex and store it in a map keyed by nearest lsit node.
+func subscribeDescriptions(ctx context.Context, client pb.GNMIClient, coll *collector,
+	wg *sync.WaitGroup) error {
+	subscribeOptions := &gnmi.SubscribeOptions{
+		Mode:       "stream",
+		StreamMode: "target_defined",
+		Paths:      [][]string{{".../state/description"}},
+	}
+	respChan := make(chan *pb.SubscribeResponse)
+
+	go coll.handleDescriptionNodes(ctx, respChan, wg)
+
+	return gnmi.SubscribeErr(ctx, client, subscribeOptions, respChan)
+}
+
+// gets the nearest list node from the path, e.g. a/b[foo=bar]/c will return
+// a/b[foo=bar]
+func getNearestList(p *pb.Path) (*pb.Path, error) {
+	elms := p.GetElem()
+	var keyLoc int
+	for keyLoc = len(elms) - 1; keyLoc != 0; keyLoc-- {
+		if len(elms[keyLoc].GetKey()) == 0 {
+			continue
+		}
+		// support can be added for this if needs be, for now skip it for simplicity.
+		if len(elms[keyLoc].GetKey()) > 1 {
+			return nil, fmt.Errorf("skipping additional labels as it has multiple keys present "+
+				"for path %s", p)
+		}
+		break
+	}
+	if keyLoc == 0 {
+		return nil, fmt.Errorf("unable to find nearest list nodes for path %s", p)
+	}
+	p.Elem = p.GetElem()[:keyLoc+1]
+	return p, nil
 }

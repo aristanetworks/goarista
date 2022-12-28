@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/context"
 	"math"
 	"path"
 	"regexp"
@@ -15,11 +16,14 @@ import (
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
+	gnmiUtils "github.com/aristanetworks/goarista/gnmi"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
+
+var labelRegex = regexp.MustCompile(`[a-zA-Z0-9_-]+`)
 
 // A metric source.
 type source struct {
@@ -42,16 +46,104 @@ type collector struct {
 	m       sync.Mutex
 	metrics map[source]*labelledMetric
 
-	config    *Config
-	descRegex *regexp.Regexp
+	config            *Config
+	descRegex         *regexp.Regexp
+	descriptionLabels map[string]map[string]string
 }
 
 func newCollector(config *Config, descRegex *regexp.Regexp) *collector {
 	return &collector{
-		metrics:   make(map[source]*labelledMetric),
-		config:    config,
-		descRegex: descRegex,
+		metrics:           make(map[source]*labelledMetric),
+		config:            config,
+		descriptionLabels: make(map[string]map[string]string),
+		descRegex:         descRegex,
 	}
+}
+
+// adds the label data to the map from the inital sync. No need to lock the map as we are not
+// processing updates yet.
+func (c *collector) addInitialDescriptionData(p *pb.Path, val string) {
+	labels := extractLabelsFromDesc(val, c.descRegex)
+	if len(labels) == 0 {
+		return
+	}
+	c.descriptionLabels[gnmiUtils.StrPath(p)] = labels
+}
+
+// gets updates from the descriptin nodes and updates the map accordingly.
+func (c *collector) handleDescriptionNodes(ctx context.Context,
+	respChan chan *pb.SubscribeResponse, wg *sync.WaitGroup) {
+	var syncReceived bool
+	defer func() {
+		if !syncReceived {
+			wg.Done()
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case r := <-respChan:
+			// if syncResponse has been received then start subscribing to metric paths
+			if r.GetSyncResponse() {
+				syncReceived = true
+				wg.Done()
+				continue
+			}
+
+			notif := r.GetUpdate()
+			prefix := notif.GetPrefix()
+
+			var err error
+			if !syncReceived {
+				// only updates will be present before syncResponse has been received
+				for _, update := range notif.GetUpdate() {
+					p := gnmi.JoinPaths(prefix, update.Path)
+					p, err = getNearestList(p)
+					if err != nil {
+						glog.V(9).Infof("failed to parse description tags, got %s", err)
+						continue
+					}
+					c.addInitialDescriptionData(p, update.GetVal().GetStringVal())
+				}
+				continue
+			}
+		}
+	}
+}
+
+// using the default/user defined regex it extracts the labels from the description node value
+func extractLabelsFromDesc(desc string, re *regexp.Regexp) map[string]string {
+	labels := make(map[string]string)
+	matches := re.FindAllStringSubmatch(desc, -1)
+	glog.V(8).Infof("matched the following groups using the provided regex: %v", matches)
+
+	if len(matches) > 2 {
+		glog.V(8).Infof("received more than 2 match groups, got %v", matches)
+	}
+	for _, match := range matches {
+		if match[2] == "" {
+			if labelRegex.FindString(match[1]) != match[1] {
+				glog.V(9).Infof("label %s did not match allowed regex "+
+					"%s", match[1], labelRegex.String())
+				continue
+			}
+			labels[match[1]] = "1"
+			glog.V(9).Infof("found label %s=1", match[1])
+			continue
+		}
+
+		match[2] = match[2][1:] // remove the equals sign
+		if labelRegex.FindString(match[2]) != match[2] {
+			glog.V(9).Infof("label %s did not match allowed regex %s",
+				match[2], labelRegex.String())
+			continue
+		}
+		labels[match[1]] = match[2]
+		glog.V(9).Infof("found label %s%s", match[1], match[2])
+	}
+	return labels
 }
 
 // Process a notification and update or create the corresponding metrics.

@@ -5,8 +5,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/aristanetworks/goarista/gnmi"
@@ -424,4 +427,150 @@ metrics:
 		t.Errorf("Mismatched metrics: %v", test.Diff(expMetrics, coll.metrics))
 	}
 
+}
+
+func TestDescriptionTags(t *testing.T) {
+	config := []byte(`
+devicelabels:
+        10.1.1.1:
+                lab1: val1
+                lab2: val2
+        '*':
+                lab1: val3
+                lab2: val4
+subscriptions:
+        - /Sysdb/environment/cooling/status
+        - /Sysdb/environment/power/status
+        - /Sysdb/bridging/igmpsnooping/forwarding/forwarding/status
+metrics:
+        - name: fanName
+          path: /Sysdb/environment/cooling/status/fan/name
+          help: Fan Name
+          valuelabel: name
+          defaultvalue: 2.5
+        - name: intfCounter
+          path: /Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter
+          help: Per-Interface Bytes/Errors/Discards Counters
+        - name: fanSpeed
+          path: /Sysdb/environment/cooling/status/fan/speed/value
+          help: Fan Speed
+        - name: igmpSnoopingInf
+          path: /Sysdb/igmpsnooping/vlanStatus/(?P<vlan>.+)/ethGroup/(?P<mac>.+)/intf/(?P<intf>.+)
+          help: IGMP snooping status`)
+	cfg, err := parseConfig(config)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	r := regexp.MustCompile(defaultDescriptionRegex)
+
+	for _, tc := range []struct {
+		name     string
+		resp     *pb.SubscribeResponse
+		expDescs map[string]map[string]string
+	}{{
+		name:     "no description leafs present",
+		expDescs: make(map[string]map[string]string),
+	}, {
+		name: "add successful interface description node",
+		resp: makeResponse(&pb.Notification{
+			Update: []*pb.Update{{
+				Path: makePath("interfaces/interface[name=Ethernet1]/state/description"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{StringVal: "[baz][bar=foo]"},
+				},
+			}},
+		}),
+		expDescs: map[string]map[string]string{
+			"/interfaces/interface[name=Ethernet1]": {
+				"baz": "1",
+				"bar": "foo",
+			},
+		},
+	}, {
+		name: "leaf found with no data",
+		resp: makeResponse(&pb.Notification{
+			Update: []*pb.Update{{
+				Path: makePath("interfaces/interface[name=Ethernet1]/state/description"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{StringVal: "hello"},
+				},
+			}},
+		}),
+		expDescs: make(map[string]map[string]string),
+	}, {
+		name: "leaf found with invalid regex value group found",
+		resp: makeResponse(&pb.Notification{
+			Update: []*pb.Update{{
+				Path: makePath("interfaces/interface[name=Ethernet1]/state/description"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{StringVal: "[foo=bar=baz]"},
+				},
+			}},
+		}),
+		expDescs: make(map[string]map[string]string),
+	}, {
+		name: "leaf found with invalid regex key group found",
+		resp: makeResponse(&pb.Notification{
+			Update: []*pb.Update{{
+				Path: makePath("interfaces/interface[name=Ethernet1]/state/description"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{StringVal: "[fo!oo]"},
+				},
+			}},
+		}),
+		expDescs: make(map[string]map[string]string),
+	}, {
+		name: "add successful peer group description node",
+		resp: makeResponse(&pb.Notification{
+			Update: []*pb.Update{{
+				Path: makePath("/network-instances/network-instance[name=default]/protocols/prot" +
+					"ocol[protocol=bgp]/bgp/peer-groups/peer-group[name=foo]/state/description"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{StringVal: "[baz][bar=foo]"},
+				},
+			}},
+		}),
+		expDescs: map[string]map[string]string{
+			"/network-instances/network-instance[name=default]/protocols/protocol" +
+				"[protocol=bgp]/bgp/peer-groups/peer-group[name=foo]": {
+				"baz": "1",
+				"bar": "foo",
+			},
+		},
+	}, {
+		name: "path with no list key",
+		resp: makeResponse(&pb.Notification{
+			Update: []*pb.Update{{
+				Path: makePath("/system/config/description"),
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{StringVal: "[baz][bar=foo]"},
+				},
+			}},
+		}),
+		expDescs: make(map[string]map[string]string),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			coll := newCollector(cfg, r)
+
+			ctx := context.Background()
+			respCh := make(chan *pb.SubscribeResponse)
+			wg := &sync.WaitGroup{}
+			wg.Add(1)
+
+			go coll.handleDescriptionNodes(ctx, respCh, wg)
+			if tc.resp != nil {
+				respCh <- tc.resp
+			}
+			respCh <- &pb.SubscribeResponse{
+				Response: &pb.SubscribeResponse_SyncResponse{SyncResponse: true},
+			}
+			wg.Wait()
+
+			if !test.DeepEqual(tc.expDescs, coll.descriptionLabels) {
+				t.Fatalf("unexpected description labels, expected %s, got %s",
+					tc.expDescs, coll.descriptionLabels)
+			}
+		})
+	}
 }
