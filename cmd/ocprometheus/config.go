@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/aristanetworks/glog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +28,9 @@ type Config struct {
 
 	// Subscribed paths by their origin
 	subsByOrigin map[string][]string
+
+	//DescSubs  paths used
+	DescriptionLabelSubscriptions []string `yaml:"description-label-subscriptions,omitempty"`
 }
 
 // MetricDef is the representation of a metric definiton in the config file.
@@ -87,6 +91,15 @@ func parseConfig(cfg []byte) (*Config, error) {
 
 	config.subsByOrigin = make(map[string][]string)
 	config.addSubscriptions(config.Subscriptions)
+	descNodes := config.DescriptionLabelSubscriptions[:0]
+	for _, p := range config.DescriptionLabelSubscriptions {
+		if !strings.HasSuffix(p, "description") {
+			glog.V(2).Infof("skipping %s as it is not a description node", p)
+			continue
+		}
+		descNodes = append(descNodes, p)
+	}
+	config.DescriptionLabelSubscriptions = descNodes
 
 	for _, def := range config.Metrics {
 		def.re = regexp.MustCompile(def.Path)

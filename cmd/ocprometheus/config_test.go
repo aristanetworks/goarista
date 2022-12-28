@@ -30,6 +30,10 @@ devicelabels:
 subscriptions:
         - /Sysdb/environment/cooling/status
         - /Sysdb/environment/power/status
+description-label-subscriptions:
+        - /interfaces/interface/state/description
+        - /network-instances/network-instance/protocols/protocol/state/description
+        - /interfaces/interface/invalid
 metrics:
         - name: fanName
           path: /Sysdb/environment/cooling/status/fan/name
@@ -57,6 +61,8 @@ metrics:
 					"/Sysdb/environment/cooling/status",
 					"/Sysdb/environment/power/status",
 				},
+				DescriptionLabelSubscriptions: []string{"/interfaces/interface/state/description",
+					"/network-instances/network-instance/protocols/protocol/state/description"},
 				Metrics: []*MetricDef{
 					{
 						Path: "/Sysdb/environment/cooling/status/fan/name",

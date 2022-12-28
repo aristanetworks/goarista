@@ -89,7 +89,8 @@ func main() {
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
 		go func() {
-			if err := subscribeDescriptions(gCtx, client, coll, wg); err != nil {
+			if err := subscribeDescriptions(gCtx, client, config.DescriptionLabelSubscriptions,
+				coll, wg); err != nil {
 				glog.Error(err)
 			}
 		}()
@@ -129,12 +130,23 @@ func handleSubscription(ctx context.Context, client pb.GNMIClient,
 
 // subscribe to the descriptions nodes provided. It will parse the labels out based on the
 // default/user defined regex and store it in a map keyed by nearest lsit node.
-func subscribeDescriptions(ctx context.Context, client pb.GNMIClient, coll *collector,
-	wg *sync.WaitGroup) error {
+func subscribeDescriptions(ctx context.Context, client pb.GNMIClient, paths []string,
+	coll *collector, wg *sync.WaitGroup) error {
+	if len(paths) == 0 {
+		glog.V(9).Info("not subscribing to any description nodes as no paths found")
+		wg.Done()
+		return nil
+	}
+	var splitPaths [][]string
+	for _, p := range paths {
+		splitP := strings.Split(strings.TrimPrefix(p, "/"), "/")
+		splitPaths = append(splitPaths, splitP)
+	}
+
 	subscribeOptions := &gnmi.SubscribeOptions{
 		Mode:       "stream",
 		StreamMode: "target_defined",
-		Paths:      [][]string{{".../state/description"}},
+		Paths:      splitPaths,
 	}
 	respChan := make(chan *pb.SubscribeResponse)
 
