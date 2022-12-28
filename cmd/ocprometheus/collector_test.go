@@ -55,6 +55,7 @@ func makeMetrics(cfg *Config, expValues map[source]float64, notification *pb.Not
 				labels...),
 			labels:       labels,
 			defaultValue: metric.defaultValue,
+			floatVal:     v,
 			stringMetric: metric.stringMetric,
 		}
 	}

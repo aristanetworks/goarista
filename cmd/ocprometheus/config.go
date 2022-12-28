@@ -55,10 +55,17 @@ type MetricDef struct {
 	stringMetric bool
 
 	// This map contains the metric descriptors for this metric for each device.
-	devDesc map[string]*prometheus.Desc
+	devDesc map[string]*promDesc
 
 	// This is the default metric descriptor for devices that don't have explicit descs.
-	desc *prometheus.Desc
+	desc *promDesc
+}
+
+type promDesc struct {
+	fqName        string
+	help          string
+	varLabels     []string
+	devPermLabels map[string]string // required labels
 }
 
 // metricValues contains the values used in updating a metric
@@ -99,15 +106,25 @@ func parseConfig(cfg []byte) (*Config, error) {
 		// Create a default descriptor only if there aren't any per-device labels,
 		// or if it's explicitly declared
 		if len(config.DeviceLabels) == 0 || len(config.DeviceLabels["*"]) > 0 {
-			def.desc = prometheus.NewDesc(def.Name, def.Help, labelNames, config.DeviceLabels["*"])
+			def.desc = &promDesc{
+				fqName:        def.Name,
+				help:          def.Help,
+				varLabels:     labelNames,
+				devPermLabels: config.DeviceLabels["*"],
+			}
 		}
 		// Add per-device descriptors
-		def.devDesc = make(map[string]*prometheus.Desc)
+		def.devDesc = make(map[string]*promDesc)
 		for device, labels := range config.DeviceLabels {
 			if device == "*" {
 				continue
 			}
-			def.devDesc[device] = prometheus.NewDesc(def.Name, def.Help, labelNames, labels)
+			def.devDesc[device] = &promDesc{
+				fqName:        def.Name,
+				help:          def.Help,
+				varLabels:     labelNames,
+				devPermLabels: labels,
+			}
 		}
 	}
 
@@ -123,10 +140,13 @@ func (c *Config) getMetricValues(s source) *metricValues {
 			if def.ValueLabel != "" {
 				groups = append(groups, def.ValueLabel)
 			}
-			desc, ok := def.devDesc[s.addr]
+			promdescVal, ok := def.devDesc[s.addr]
 			if !ok {
-				desc = def.desc
+				promdescVal = def.desc
 			}
+
+			desc := prometheus.NewDesc(promdescVal.fqName, promdescVal.help, promdescVal.varLabels,
+				promdescVal.devPermLabels)
 			return &metricValues{desc: desc, labels: groups[1:], defaultValue: def.DefaultValue,
 				stringMetric: def.stringMetric}
 		}
@@ -140,11 +160,13 @@ func (c *Config) getAllDescs(ch chan<- *prometheus.Desc) {
 	for _, def := range c.Metrics {
 		// Default descriptor might not be present
 		if def.desc != nil {
-			ch <- def.desc
+			ch <- prometheus.NewDesc(def.desc.fqName, def.desc.help,
+				def.desc.varLabels, def.desc.devPermLabels)
 		}
 
 		for _, desc := range def.devDesc {
-			ch <- desc
+			ch <- prometheus.NewDesc(desc.fqName, desc.help,
+				desc.varLabels, desc.devPermLabels)
 		}
 	}
 }

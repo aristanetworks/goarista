@@ -32,6 +32,7 @@ type labelledMetric struct {
 	metric       prometheus.Metric
 	labels       []string
 	defaultValue float64
+	floatVal     float64
 	stringMetric bool
 }
 
@@ -126,6 +127,7 @@ func (c *collector) update(addr string, message proto.Message) {
 
 			m.metric = prometheus.MustNewConstMetric(m.metric.Desc(), prometheus.GaugeValue,
 				floatVal, m.labels...)
+			m.floatVal = floatVal
 			c.m.Unlock()
 			continue
 		}
@@ -156,6 +158,7 @@ func (c *collector) update(addr string, message proto.Message) {
 			floatVal, metric.labels...)
 		c.metrics[src] = &labelledMetric{
 			metric:       lm,
+			floatVal:     floatVal,
 			labels:       metric.labels,
 			defaultValue: metric.defaultValue,
 			stringMetric: metric.stringMetric,

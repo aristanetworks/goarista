@@ -67,16 +67,26 @@ metrics:
 						ValueLabel:   "name",
 						DefaultValue: 25,
 						stringMetric: true,
-						devDesc: map[string]*prometheus.Desc{
-							"10.1.1.1": prometheus.NewDesc("fanName",
-								"Fan Name",
-								[]string{"name"},
-								prometheus.Labels{"lab1": "val1", "lab2": "val2"}),
+						devDesc: map[string]*promDesc{
+							"10.1.1.1": {
+								fqName:    "fanName",
+								help:      "Fan Name",
+								varLabels: []string{"name"},
+								devPermLabels: map[string]string{
+									"lab1": "val1",
+									"lab2": "val2",
+								},
+							},
 						},
-						desc: prometheus.NewDesc("fanName",
-							"Fan Name",
-							[]string{"name"},
-							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
+						desc: &promDesc{
+							fqName:    "fanName",
+							help:      "Fan Name",
+							varLabels: []string{"name"},
+							devPermLabels: map[string]string{
+								"lab1": "val3",
+								"lab2": "val4",
+							},
+						},
 					},
 					{
 						Path: "/Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter",
@@ -84,28 +94,40 @@ metrics:
 							"/Sysdb/(lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter"),
 						Name: "intfCounter",
 						Help: "Per-Interface Bytes/Errors/Discards Counters",
-						devDesc: map[string]*prometheus.Desc{
-							"10.1.1.1": prometheus.NewDesc("intfCounter",
-								"Per-Interface Bytes/Errors/Discards Counters",
-								[]string{"unnamedLabel1", "intf"},
-								prometheus.Labels{"lab1": "val1", "lab2": "val2"}),
+						devDesc: map[string]*promDesc{
+							"10.1.1.1": {
+								fqName:        "intfCounter",
+								help:          "Per-Interface Bytes/Errors/Discards Counters",
+								varLabels:     []string{"unnamedLabel1", "intf"},
+								devPermLabels: map[string]string{"lab1": "val1", "lab2": "val2"},
+							},
 						},
-						desc: prometheus.NewDesc("intfCounter",
-							"Per-Interface Bytes/Errors/Discards Counters",
-							[]string{"unnamedLabel1", "intf"},
-							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
+						desc: &promDesc{
+							fqName:        "intfCounter",
+							help:          "Per-Interface Bytes/Errors/Discards Counters",
+							varLabels:     []string{"unnamedLabel1", "intf"},
+							devPermLabels: map[string]string{"lab1": "val3", "lab2": "val4"},
+						},
 					},
 					{
 						Path: "/Sysdb/environment/cooling/fan/speed/value",
 						re:   regexp.MustCompile("/Sysdb/environment/cooling/fan/speed/value"),
 						Name: "fanSpeed",
 						Help: "Fan Speed",
-						devDesc: map[string]*prometheus.Desc{
-							"10.1.1.1": prometheus.NewDesc("fanSpeed", "Fan Speed", []string{},
-								prometheus.Labels{"lab1": "val1", "lab2": "val2"}),
+						devDesc: map[string]*promDesc{
+							"10.1.1.1": {
+								fqName:        "fanSpeed",
+								help:          "Fan Speed",
+								varLabels:     []string{},
+								devPermLabels: map[string]string{"lab1": "val1", "lab2": "val2"},
+							},
 						},
-						desc: prometheus.NewDesc("fanSpeed", "Fan Speed", []string{},
-							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
+						desc: &promDesc{
+							fqName:        "fanSpeed",
+							help:          "Fan Speed",
+							varLabels:     []string{},
+							devPermLabels: map[string]string{"lab1": "val3", "lab2": "val4"},
+						},
 					},
 				},
 				subsByOrigin: map[string][]string{
@@ -150,11 +172,16 @@ metrics:
 							"/Sysdb/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter"),
 						Name:    "intfCounter",
 						Help:    "Per-Interface Bytes/Errors/Discards Counters",
-						devDesc: map[string]*prometheus.Desc{},
-						desc: prometheus.NewDesc("intfCounter",
-							"Per-Interface Bytes/Errors/Discards Counters",
-							[]string{"intf"},
-							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
+						devDesc: map[string]*promDesc{},
+						desc: &promDesc{
+							fqName:    "intfCounter",
+							help:      "Per-Interface Bytes/Errors/Discards Counters",
+							varLabels: []string{"intf"},
+							devPermLabels: map[string]string{
+								"lab1": "val3",
+								"lab2": "val4",
+							},
+						},
 					},
 					{
 						Path: "/Sysdb/environment/cooling/fan/speed/value",
@@ -162,9 +189,15 @@ metrics:
 							"/Sysdb/environment/cooling/fan/speed/value"),
 						Name:    "fanSpeed",
 						Help:    "Fan Speed",
-						devDesc: map[string]*prometheus.Desc{},
-						desc: prometheus.NewDesc("fanSpeed", "Fan Speed", []string{},
-							prometheus.Labels{"lab1": "val3", "lab2": "val4"}),
+						devDesc: map[string]*promDesc{},
+						desc: &promDesc{
+							fqName: "fanSpeed",
+							help:   "Fan Speed",
+							devPermLabels: map[string]string{
+								"lab1": "val3",
+								"lab2": "val4",
+							},
+						},
 					},
 				},
 				subsByOrigin: map[string][]string{
@@ -209,11 +242,16 @@ metrics:
 							"/Sysdb/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter"),
 						Name: "intfCounter",
 						Help: "Per-Interface Bytes/Errors/Discards Counters",
-						devDesc: map[string]*prometheus.Desc{
-							"10.1.1.1": prometheus.NewDesc("intfCounter",
-								"Per-Interface Bytes/Errors/Discards Counters",
-								[]string{"intf"},
-								prometheus.Labels{"lab1": "val1", "lab2": "val2"}),
+						devDesc: map[string]*promDesc{
+							"10.1.1.1": {
+								fqName:    "intfCounter",
+								help:      "Per-Interface Bytes/Errors/Discards Counters",
+								varLabels: []string{"intf"},
+								devPermLabels: map[string]string{
+									"lab1": "val1",
+									"lab2": "val2",
+								},
+							},
 						},
 					},
 					{
@@ -222,9 +260,15 @@ metrics:
 							"/Sysdb/environment/cooling/fan/speed/value"),
 						Name: "fanSpeed",
 						Help: "Fan Speed",
-						devDesc: map[string]*prometheus.Desc{
-							"10.1.1.1": prometheus.NewDesc("fanSpeed", "Fan Speed", []string{},
-								prometheus.Labels{"lab1": "val1", "lab2": "val2"}),
+						devDesc: map[string]*promDesc{
+							"10.1.1.1": {
+								fqName: "fanSpeed",
+								help:   "Fan Speed",
+								devPermLabels: map[string]string{
+									"lab1": "val1",
+									"lab2": "val2",
+								},
+							},
 						},
 					},
 				},
@@ -263,10 +307,12 @@ metrics:
 							"/Sysdb/(?:lag|slice/phy/.+)/intfCounterDir/(?P<intf>.+)/intfCounter"),
 						Name:    "intfCounter",
 						Help:    "Per-Interface Bytes/Errors/Discards Counters",
-						devDesc: map[string]*prometheus.Desc{},
-						desc: prometheus.NewDesc("intfCounter",
-							"Per-Interface Bytes/Errors/Discards Counters",
-							[]string{"intf"}, prometheus.Labels{}),
+						devDesc: map[string]*promDesc{},
+						desc: &promDesc{
+							fqName:    "intfCounter",
+							help:      "Per-Interface Bytes/Errors/Discards Counters",
+							varLabels: []string{"intf"},
+						},
 					},
 					{
 						Path: "/Sysdb/environment/cooling/fan/speed/value",
@@ -274,11 +320,9 @@ metrics:
 							"/Sysdb/environment/cooling/fan/speed/value"),
 						Name:    "fanSpeed",
 						Help:    "Fan Speed",
-						devDesc: map[string]*prometheus.Desc{},
-						desc: prometheus.NewDesc("fanSpeed", "Fan Speed", []string{},
-							prometheus.Labels{}),
-					},
-				},
+						devDesc: map[string]*promDesc{},
+						desc:    &promDesc{fqName: "fanSpeed", help: "Fan Speed"},
+					}},
 				subsByOrigin: map[string][]string{
 					"": []string{
 						"/Sysdb/environment/cooling/status",
