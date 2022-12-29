@@ -71,6 +71,43 @@ func (c *collector) addInitialDescriptionData(p *pb.Path, val string) {
 }
 
 // gets updates from the descriptin nodes and updates the map accordingly.
+func (c *collector) deleteDescriptionTags(p *pb.Path) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	strP := gnmiUtils.StrPath(p)
+	delete(c.descriptionLabels, strP)
+	for s, m := range c.metrics {
+		if !strings.Contains(s.path, strP) {
+			continue
+		}
+
+		metric := c.config.getMetricValues(s, c.descriptionLabels)
+		lm := prometheus.MustNewConstMetric(metric.desc, prometheus.GaugeValue, m.floatVal,
+			metric.labels...)
+		c.metrics[s].metric = lm
+	}
+}
+
+func (c *collector) updateDescriptionTags(p *pb.Path, val string) {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	strP := gnmiUtils.StrPath(p)
+	labels := extractLabelsFromDesc(val, c.descRegex)
+	c.descriptionLabels[strP] = labels
+
+	for s, m := range c.metrics {
+		if !strings.Contains(s.path, strP) {
+			continue
+		}
+
+		met := c.config.getMetricValues(s, c.descriptionLabels)
+		lm := prometheus.MustNewConstMetric(met.desc, prometheus.GaugeValue, m.floatVal,
+			met.labels...)
+		c.metrics[s].metric = lm
+	}
+}
+
 func (c *collector) handleDescriptionNodes(ctx context.Context,
 	respChan chan *pb.SubscribeResponse, wg *sync.WaitGroup) {
 	var syncReceived bool
@@ -108,6 +145,27 @@ func (c *collector) handleDescriptionNodes(ctx context.Context,
 					c.addInitialDescriptionData(p, update.GetVal().GetStringVal())
 				}
 				continue
+			}
+
+			// sync received, update data and regen tags if required.
+			for _, d := range notif.GetDelete() {
+				p := gnmi.JoinPaths(prefix, d)
+				p, err = getNearestList(p)
+				if err != nil {
+					glog.V(9).Infof("failed to parse description tags, got %s", err)
+					continue
+				}
+				c.deleteDescriptionTags(p)
+			}
+
+			for _, u := range notif.GetUpdate() {
+				p := gnmi.JoinPaths(prefix, u.Path)
+				p, err = getNearestList(p)
+				if err != nil {
+					glog.V(9).Infof("failed to parse description tags, got %s", err)
+					continue
+				}
+				c.updateDescriptionTags(p, u.GetVal().GetStringVal())
 			}
 		}
 	}
@@ -227,12 +285,12 @@ func (c *collector) update(addr string, message proto.Message) {
 			continue
 		}
 
-		c.m.Unlock()
 		// Get the descriptor and labels for this source
-		metric := c.config.getMetricValues(src)
+		metric := c.config.getMetricValues(src, c.descriptionLabels)
 		if metric == nil || metric.desc == nil {
 			glog.V(8).Infof("Ignoring unmatched update %v at %s:%s with value %+v",
 				update, device, path, value)
+			c.m.Unlock()
 			continue
 		}
 
@@ -248,7 +306,6 @@ func (c *collector) update(addr string, message proto.Message) {
 		}
 
 		// Save the metric and labels in the cache
-		c.m.Lock()
 		lm := prometheus.MustNewConstMetric(metric.desc, prometheus.GaugeValue,
 			floatVal, metric.labels...)
 		c.metrics[src] = &labelledMetric{

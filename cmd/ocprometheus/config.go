@@ -11,7 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	gnmiUtils "github.com/aristanetworks/goarista/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v2"
 )
 
@@ -147,7 +149,8 @@ func parseConfig(cfg []byte) (*Config, error) {
 // Returns a struct containing the descriptor corresponding to the device and path, labels
 // extracted from the path, the default value for the metric and if it accepts string values.
 // If the device and path doesn't match any metrics, returns nil.
-func (c *Config) getMetricValues(s source) *metricValues {
+func (c *Config) getMetricValues(s source,
+	descriptionLabels map[string]map[string]string) *metricValues {
 	for _, def := range c.Metrics {
 		if groups := def.re.FindStringSubmatch(s.path); groups != nil {
 			if def.ValueLabel != "" {
@@ -158,14 +161,33 @@ func (c *Config) getMetricValues(s source) *metricValues {
 				promdescVal = def.desc
 			}
 
+			permLabels := make(map[string]string)
+			maps.Copy(permLabels, promdescVal.devPermLabels)
+
+			closestListParent := findClosestList(s.path)
+			if labels, ok := descriptionLabels[closestListParent]; ok {
+				maps.Copy(permLabels, labels)
+			}
 			desc := prometheus.NewDesc(promdescVal.fqName, promdescVal.help, promdescVal.varLabels,
-				promdescVal.devPermLabels)
+				permLabels)
 			return &metricValues{desc: desc, labels: groups[1:], defaultValue: def.DefaultValue,
 				stringMetric: def.stringMetric}
 		}
 	}
 
 	return nil
+}
+
+func findClosestList(s string) string {
+	vals := gnmiUtils.SplitPath(s)
+	for i := len(vals) - 2; i >= 0; i-- {
+		// simple heuristic to determine if we have a list node instead of converting string
+		//  to gNMI path
+		if strings.Contains(vals[i], "[") {
+			return "/" + strings.Join(vals[:i+1], "/")
+		}
+	}
+	return ""
 }
 
 // Sends all the descriptors to the channel.

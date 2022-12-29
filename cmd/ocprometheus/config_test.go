@@ -419,9 +419,9 @@ metrics:
 			labels: nil,
 		},
 	}
-
+	descLabels := make(map[string]map[string]string)
 	for i, c := range tCases {
-		metric := cfg.getMetricValues(c.src)
+		metric := cfg.getMetricValues(c.src, descLabels)
 		if metric == nil {
 			// Avoids error from trying to access metric.desc when metric is nil
 			metric = &metricValues{}
