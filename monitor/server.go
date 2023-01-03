@@ -84,6 +84,8 @@ func (s *server) Run(serveMux *http.ServeMux) {
 func (s *server) Serve(serveMux *http.ServeMux) error {
 	serveMux.HandleFunc("/debug", debugHandler)
 	serveMux.HandleFunc("/debug/histograms", histogramHandler)
+	// for example, to set glog verbosity to 5: curl localhost:6060/debug/loglevel?glog=5
+	serveMux.HandleFunc("/debug/loglevel", setLogVerbosity)
 
 	var listener net.Listener
 	err := netns.Do(s.vrfName, func() error {
