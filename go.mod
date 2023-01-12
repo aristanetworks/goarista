@@ -6,6 +6,7 @@ require (
 	github.com/Shopify/sarama v1.37.2
 	github.com/aristanetworks/fsnotify v1.4.6
 	github.com/aristanetworks/glog v0.0.0-20220413230315-4bbe49d210b0
+	github.com/aristanetworks/gomap v0.0.0-20221202231013-8a1e4f265de7
 	github.com/aristanetworks/splunk-hec-go v0.3.3
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
@@ -61,6 +62,7 @@ require (
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/lossyconn v0.0.0-20190602105132-8df528c0c9ae // indirect
 	golang.org/x/crypto v0.4.0 // indirect
+	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561 // indirect
 	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect

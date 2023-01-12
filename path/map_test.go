@@ -208,10 +208,9 @@ func countNodes(m *Map) int {
 	}
 	count := 1
 	count += countNodes(m.wildcard)
-	_ = m.children.Iter(func(_, child interface{}) error {
-		count += countNodes(child.(*Map))
-		return nil
-	})
+	for it := m.children.Iter(); it.Next(); {
+		count += countNodes(it.Elem())
+	}
 	return count
 }
 
@@ -492,13 +491,14 @@ func benchmarkPathMap(pathLength, pathDepth int, b *testing.B) {
 	root := &Map{}
 	m := root
 	for _, element := range path {
-		m.children = key.NewMap()
+		m.children = newKeyMap[any]()
 		for _, word := range words {
 			m.children.Set(word, &Map{})
 		}
 		next, _ := m.children.Get(element)
-		m = next.(*Map)
+		m = next
 	}
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		root.Visit(path, func(v interface{}) error { return nil })

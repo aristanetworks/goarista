@@ -10,23 +10,19 @@ import (
 	"strings"
 
 	"github.com/aristanetworks/goarista/key"
+	"github.com/aristanetworks/gomap"
 )
 
 // Map associates paths to values. It allows wildcards. A Map
 // is primarily used to register handlers with paths that can
 // be easily looked up each time a path is updated.
-type Map struct {
-	val      interface{}
-	ok       bool
-	wildcard *Map
-	children *key.Map
-}
+type Map = MapOf[any]
 
 // VisitorFunc is a function that handles the value associated
 // with a path in a Map. Note that only the value is passed in
 // as an argument since the path can be stored inside the value
 // if needed.
-type VisitorFunc func(v interface{}) error
+type VisitorFunc func(v any) error
 
 type visitType int
 
@@ -37,18 +33,28 @@ const (
 	children
 )
 
+// MapOf associates paths to values of type T. It allows wildcards. A
+// Map is primarily used to register handlers with paths that can be
+// easily looked up each time a path is updated.
+type MapOf[T any] struct {
+	val      T
+	ok       bool
+	wildcard *MapOf[T]
+	children *gomap.Map[key.Key, *MapOf[T]]
+}
+
 // Visit calls a function fn for every value in the Map
 // that is registered with a match of a path p. In the
 // general case, time complexity is linear with respect
 // to the length of p but it can be as bad as O(2^len(p))
 // if there are a lot of paths with wildcards registered.
-func (m *Map) Visit(p key.Path, fn VisitorFunc) error {
+func (m *MapOf[T]) Visit(p key.Path, fn func(v T) error) error {
 	return m.visit(match, p, fn)
 }
 
 // VisitPrefixes calls a function fn for every value in the
 // Map that is registered with a prefix of a path p.
-func (m *Map) VisitPrefixes(p key.Path, fn VisitorFunc) error {
+func (m *MapOf[T]) VisitPrefixes(p key.Path, fn func(v T) error) error {
 	return m.visit(prefix, p, fn)
 }
 
@@ -56,17 +62,17 @@ func (m *Map) VisitPrefixes(p key.Path, fn VisitorFunc) error {
 // registerd with a path that is prefixed by p. This method
 // can be used to visit every registered path if p is the
 // empty path (or root path) which prefixes all paths.
-func (m *Map) VisitPrefixed(p key.Path, fn VisitorFunc) error {
+func (m *MapOf[T]) VisitPrefixed(p key.Path, fn func(v T) error) error {
 	return m.visit(suffix, p, fn)
 }
 
 // VisitChildren calls fn for every child for every node that
 // matches the provided path.
-func (m *Map) VisitChildren(p key.Path, fn VisitorFunc) error {
+func (m *MapOf[T]) VisitChildren(p key.Path, fn func(v T) error) error {
 	return m.visit(children, p, fn)
 }
 
-func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
+func (m *MapOf[T]) visit(typ visitType, p key.Path, fn func(v T) error) error {
 	for i, element := range p {
 		if m.ok && typ == prefix {
 			if err := fn(m.val); err != nil {
@@ -82,16 +88,15 @@ func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
 		if !ok {
 			return nil
 		}
-		m = next.(*Map)
+		m = next
 	}
 	if typ == children {
-		if err := m.children.Iter(func(_, next interface{}) error {
-			if next.(*Map).ok {
-				return fn(next.(*Map).val)
+		for it := m.children.Iter(); it.Next(); {
+			if it.Elem().ok {
+				if err := fn(it.Elem().val); err != nil {
+					return err
+				}
 			}
-			return nil
-		}); err != nil {
-			return err
 		}
 		return nil
 	}
@@ -104,7 +109,7 @@ func (m *Map) visit(typ visitType, p key.Path, fn VisitorFunc) error {
 	return fn(m.val)
 }
 
-func (m *Map) visitSubtree(fn VisitorFunc) error {
+func (m *MapOf[T]) visitSubtree(fn func(v T) error) error {
 	if m.ok {
 		if err := fn(m.val); err != nil {
 			return err
@@ -115,13 +120,16 @@ func (m *Map) visitSubtree(fn VisitorFunc) error {
 			return err
 		}
 	}
-	return m.children.Iter(func(_, next interface{}) error {
-		return next.(*Map).visitSubtree(fn)
-	})
+	for it := m.children.Iter(); it.Next(); {
+		if err := it.Elem().visitSubtree(fn); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // IsEmpty returns true if no paths have been registered, false otherwise.
-func (m *Map) IsEmpty() bool {
+func (m *MapOf[T]) IsEmpty() bool {
 	return m.wildcard == nil && m.children.Len() == 0 && !m.ok
 }
 
@@ -129,44 +137,49 @@ func (m *Map) IsEmpty() bool {
 // path p. If there is no exact match for p, Get returns nil
 // and false. If p has an exact match and it is set to true,
 // Get returns nil and true.
-func (m *Map) Get(p key.Path) (interface{}, bool) {
+func (m *MapOf[T]) Get(p key.Path) (T, bool) {
+	var zeroT T
 	for _, element := range p {
 		if element.Equal(Wildcard) {
 			if m.wildcard == nil {
-				return nil, false
+				return zeroT, false
 			}
 			m = m.wildcard
 			continue
 		}
 		next, ok := m.children.Get(element)
 		if !ok {
-			return nil, false
+			return zeroT, false
 		}
-		m = next.(*Map)
+		m = next
 	}
 	return m.val, m.ok
 }
 
+func newKeyMap[T any]() *gomap.Map[key.Key, *MapOf[T]] {
+	return gomap.New[key.Key, *MapOf[T]](func(a, b key.Key) bool { return a.Equal(b) }, key.Hash)
+}
+
 // Set registers a path p with a value. If the path was already
 // registered with a value it returns false and true otherwise.
-func (m *Map) Set(p key.Path, v interface{}) bool {
+func (m *MapOf[T]) Set(p key.Path, v T) bool {
 	for _, element := range p {
 		if element.Equal(Wildcard) {
 			if m.wildcard == nil {
-				m.wildcard = &Map{}
+				m.wildcard = &MapOf[T]{}
 			}
 			m = m.wildcard
 			continue
 		}
 		if m.children == nil {
-			m.children = key.NewMap()
+			m.children = newKeyMap[T]()
 		}
 		next, ok := m.children.Get(element)
 		if !ok {
-			next = &Map{}
+			next = &MapOf[T]{}
 			m.children.Set(element, next)
 		}
-		m = next.(*Map)
+		m = next
 	}
 	set := !m.ok
 	m.val, m.ok = v, true
@@ -175,8 +188,8 @@ func (m *Map) Set(p key.Path, v interface{}) bool {
 
 // Delete unregisters the value registered with a path. It
 // returns true if a value was deleted and false otherwise.
-func (m *Map) Delete(p key.Path) bool {
-	maps := make([]*Map, len(p)+1)
+func (m *MapOf[T]) Delete(p key.Path) bool {
+	maps := make([]*MapOf[T], len(p)+1)
 	for i, element := range p {
 		maps[i] = m
 		if element.Equal(Wildcard) {
@@ -190,10 +203,11 @@ func (m *Map) Delete(p key.Path) bool {
 		if !ok {
 			return false
 		}
-		m = next.(*Map)
+		m = next
 	}
 	deleted := m.ok
-	m.val, m.ok = nil, false
+	var zeroT T
+	m.val, m.ok = zeroT, false
 	maps[len(p)] = m
 
 	// Remove any empty maps.
@@ -207,19 +221,19 @@ func (m *Map) Delete(p key.Path) bool {
 		if element.Equal(Wildcard) {
 			parent.wildcard = nil
 		} else {
-			parent.children.Del(element)
+			parent.children.Delete(element)
 		}
 	}
 	return deleted
 }
 
-func (m *Map) String() string {
+func (m *MapOf[T]) String() string {
 	var b strings.Builder
 	m.write(&b, "")
 	return b.String()
 }
 
-func (m *Map) write(b *strings.Builder, indent string) {
+func (m *MapOf[T]) write(b *strings.Builder, indent string) {
 	if m.ok {
 		b.WriteString(indent)
 		fmt.Fprintf(b, "Val: %v", m.val)
@@ -231,10 +245,9 @@ func (m *Map) write(b *strings.Builder, indent string) {
 		m.wildcard.write(b, indent+"  ")
 	}
 	children := make([]key.Key, 0, m.children.Len())
-	_ = m.children.Iter(func(k, v interface{}) error {
-		children = append(children, k.(key.Key))
-		return nil
-	})
+	for it := m.children.Iter(); it.Next(); {
+		children = append(children, it.Key())
+	}
 	sort.Slice(children, func(i, j int) bool {
 		return children[i].String() < children[j].String()
 	})
@@ -243,6 +256,6 @@ func (m *Map) write(b *strings.Builder, indent string) {
 		child, _ := m.children.Get(key)
 		b.WriteString(indent)
 		fmt.Fprintf(b, "Child %q:\n", key.String())
-		child.(*Map).write(b, indent+"  ")
+		child.write(b, indent+"  ")
 	}
 }
