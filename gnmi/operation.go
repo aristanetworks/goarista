@@ -278,6 +278,8 @@ func TypedValue(val interface{}) *pb.TypedValue {
 		return &pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: v}}
 	case float64:
 		return &pb.TypedValue{Value: &pb.TypedValue_DoubleVal{DoubleVal: v}}
+	case []byte:
+		return &pb.TypedValue{Value: &pb.TypedValue_BytesVal{BytesVal: v}}
 	case []interface{}:
 		gnmiElems := make([]*pb.TypedValue, len(v))
 		for i, elem := range v {
