@@ -361,6 +361,10 @@ func TestTypedValue(t *testing.T) {
 			in:  []byte("foo"),
 			exp: &pb.TypedValue{Value: &pb.TypedValue_BytesVal{BytesVal: []byte("foo")}},
 		},
+		"typed val": {
+			in:  &pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: "foo"}},
+			exp: &pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: "foo"}},
+		},
 	} {
 		t.Run(tname, func(t *testing.T) {
 			if got := TypedValue(tcase.in); !test.DeepEqual(got, tcase.exp) {

@@ -250,6 +250,8 @@ func TypedValue(val interface{}) *pb.TypedValue {
 	// key.Map
 	// ... etc
 	switch v := val.(type) {
+	case *pb.TypedValue:
+		return v
 	case string:
 		return &pb.TypedValue{Value: &pb.TypedValue_StringVal{StringVal: v}}
 	case int:
