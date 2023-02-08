@@ -166,7 +166,7 @@ func TestMapGet(t *testing.T) {
 		v    interface{}
 		ok   bool
 	}{{
-		path: key.Path{},
+		path: nil,
 		v:    0,
 		ok:   true,
 	}, {
@@ -198,6 +198,88 @@ func TestMapGet(t *testing.T) {
 		if v != tc.v || ok != tc.ok {
 			t.Errorf("Test case %v: Expected (v: %v, ok: %t), Got (v: %v, ok: %t)",
 				tc.path, tc.v, tc.ok, v, ok)
+		}
+	}
+}
+
+func TestMapGetLongestPrefix(t *testing.T) {
+	regularMap := Map{}
+	regularMap.Set(key.Path{}, 33)
+	regularMap.Set(key.Path{key.New("a"), key.New("b")}, -132)
+	regularMap.Set(key.Path{key.New("a"), key.New("b"), key.New("c")}, 111)
+	regularMap.Set(key.Path{key.New("z")}, 203)
+	regularMap.Set(key.Path{key.New("z"), key.New("zz")}, -24)
+
+	emptyMap := Map{}
+
+	testCases := []struct {
+		mp          Map
+		path        key.Path
+		nearestPath key.Path
+		v           interface{}
+		ok          bool
+	}{{
+		mp:          regularMap,
+		path:        key.Path{},
+		nearestPath: key.Path{},
+		v:           33,
+		ok:          true,
+	}, {
+		mp:          regularMap,
+		path:        key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")},
+		nearestPath: key.Path{key.New("a"), key.New("b"), key.New("c")},
+		v:           111,
+		ok:          true,
+	}, {
+		mp:          regularMap,
+		path:        key.Path{key.New("a"), key.New("b")},
+		nearestPath: key.Path{key.New("a"), key.New("b")},
+		v:           -132,
+		ok:          true,
+	}, {
+		mp:          regularMap,
+		path:        key.Path{key.New("z"), key.New("a"), key.New("b"), key.New("z")},
+		nearestPath: key.Path{key.New("z")},
+		v:           203,
+		ok:          true,
+	}, {
+		mp:          regularMap,
+		path:        key.Path{key.New("baz"), key.New("qux")},
+		nearestPath: nil,
+		v:           nil,
+		ok:          false,
+	}, {
+		mp:          regularMap,
+		path:        key.Path{key.New("c"), key.New("a")},
+		nearestPath: nil,
+		v:           nil,
+		ok:          false,
+	}, {
+		mp:          emptyMap,
+		path:        key.Path{},
+		nearestPath: nil,
+		v:           nil,
+		ok:          true,
+	}, {
+		mp:          emptyMap,
+		path:        key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")},
+		nearestPath: nil,
+		v:           nil,
+		ok:          false,
+	}}
+
+	for _, tc := range testCases {
+		nearestPath, v, ok := tc.mp.GetLongestPrefix(tc.path)
+		if ok != tc.ok {
+			t.Errorf("Test case %v: Expected Ok: %v, got ok: %v", tc, tc.ok, ok)
+		}
+		if !nearestPath.Equal(tc.nearestPath) {
+			t.Errorf("Test case %v: Expected nearestPath: %v,"+
+				" got nearestPath: %v", tc, tc.nearestPath, nearestPath)
+		}
+		if v != tc.v {
+			t.Errorf("Test case %v: Expected value: %v, got value: %v",
+				tc, tc.v, v)
 		}
 	}
 }
