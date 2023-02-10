@@ -23,28 +23,38 @@ func setGlogV(v string) error {
 	return nil
 }
 
+func logErr(w http.ResponseWriter, err string, code int) {
+	err = fmt.Sprintf("loglevel error: %v (code %v)", err, code)
+	glog.Error(err)
+	http.Error(w, err, code)
+}
+
 func setLogVerbosity(w http.ResponseWriter, r *http.Request) {
-	usage := fmt.Sprintf("\nusage: curl -XPOST %s?glog=<glog verbosity>", r.URL.Path)
-	if r.Method != "POST" {
-		http.Error(w, "only supports POST method"+usage, http.StatusBadRequest)
+	if r.Method != http.MethodPost {
+		logErr(w, "only supports POST method", http.StatusBadRequest)
 		return
 	}
 
-	opts := r.URL.Query()
+	if err := r.ParseForm(); err != nil {
+		logErr(w, "could not parse form: "+err.Error(), http.StatusBadRequest)
+		return
+
+	}
+	opts := r.Form
 	didUpdate := false
 
 	// set glog verbosity
 	gv := opts.Get("glog")
 	if gv != "" {
 		if err := setGlogV(gv); err != nil {
-			http.Error(w, err.Error()+usage, http.StatusBadRequest)
+			logErr(w, "could not set glog: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 		didUpdate = true
 	}
 
 	if !didUpdate {
-		http.Error(w, "bad request: no update"+usage, http.StatusBadRequest)
+		logErr(w, "bad request: no change", http.StatusBadRequest)
 		return
 	}
 
