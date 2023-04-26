@@ -175,7 +175,7 @@ func (m *MapOf[T]) GetLongestPrefix(p key.Path) (key.Path, T, bool) {
 		}
 		m = next
 	}
-	return p, m.val, true // whole path in pathmap
+	return p, m.val, m.ok // whole path in pathmap
 }
 
 func newKeyMap[T any]() *gomap.Map[key.Key, *MapOf[T]] {

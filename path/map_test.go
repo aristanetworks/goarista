@@ -259,7 +259,7 @@ func TestMapGetLongestPrefix(t *testing.T) {
 		path:        key.Path{},
 		nearestPath: nil,
 		v:           nil,
-		ok:          true,
+		ok:          false,
 	}, {
 		mp:          emptyMap,
 		path:        key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")},
