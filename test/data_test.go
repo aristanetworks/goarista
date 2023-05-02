@@ -7,6 +7,8 @@ package test
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -59,6 +61,24 @@ type myStringError string
 func (e myStringError) Error() string {
 	return string(e)
 }
+
+type hasFunc struct {
+	f func()
+}
+
+func someFunction()      {}
+func someOtherFunction() {}
+
+func generateFunc() func() {
+	return func() {}
+}
+
+// both of these functions are generated, but will both will be assigned distinct anonymous names,
+// for example:
+// generatedFuncA would be github.com/aristanetworks/goarista/test.init.func1
+// generatedFuncB would be github.com/aristanetworks/goarista/test.init.func2
+var generatedFuncA = generateFunc()
+var generatedFuncB = generateFunc()
 
 func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 	var deepEqualNullMapString map[string]interface{}
@@ -528,5 +548,37 @@ func getDeepEqualTests(t *testing.T) []deepEqualTestCase {
 		a:    pb.Duration{Seconds: 1},
 		b:    []interface{}{"foo", uint32(42)},
 		diff: "expected a durationpb.Duration but got a []interface {}",
+	}, {
+		a: &hasFunc{},
+		b: &hasFunc{},
+	}, {
+		a: &hasFunc{f: someFunction},
+		b: &hasFunc{f: someFunction},
+	}, {
+		a: &hasFunc{},
+		b: &hasFunc{f: someFunction},
+		diff: fmt.Sprintf("attributes \"f\" are different: type func():"+
+			" (func())(nil) with name \"\" cannot be compared to %#v with name %q,"+
+			" functions must be exactly equal or nil",
+			reflect.ValueOf(someFunction),
+			runtime.FuncForPC(reflect.ValueOf(someFunction).Pointer()).Name()),
+	}, {
+		a: &hasFunc{f: someFunction},
+		b: &hasFunc{f: someOtherFunction},
+		diff: fmt.Sprintf("attributes \"f\" are different: type func(): %#v with name %q"+
+			" cannot be compared to %#v with name %q, functions must be exactly equal or nil",
+			reflect.ValueOf(someFunction),
+			runtime.FuncForPC(reflect.ValueOf(someFunction).Pointer()).Name(),
+			reflect.ValueOf(someOtherFunction),
+			runtime.FuncForPC(reflect.ValueOf(someOtherFunction).Pointer()).Name()),
+	}, {
+		a: &hasFunc{f: generatedFuncA},
+		b: &hasFunc{f: generatedFuncB},
+		diff: fmt.Sprintf("attributes \"f\" are different: type func(): %#v with name %q"+
+			" cannot be compared to %#v with name %q, functions must be exactly equal or nil",
+			reflect.ValueOf(generatedFuncA),
+			runtime.FuncForPC(reflect.ValueOf(generatedFuncA).Pointer()).Name(),
+			reflect.ValueOf(generatedFuncB),
+			runtime.FuncForPC(reflect.ValueOf(generatedFuncB).Pointer()).Name()),
 	}}
 }

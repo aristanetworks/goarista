@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -209,9 +210,13 @@ func diffImpl(a, b interface{}, seen map[edge]struct{}) string {
 		if ac, bc := av.Complex(), bv.Complex(); ac != bc {
 			return fmt.Sprintf("%s(%f) != %s(%f)", av.Type().Name(), ac, bv.Type().Name(), bc)
 		}
-
+	case reflect.Func:
+		return fmt.Sprintf("type %T: %#[1]v with name %q cannot"+
+			" be compared to %#[3]v with name %q, functions must be exactly equal or nil",
+			a, runtime.FuncForPC(av.Pointer()).Name(), b, runtime.FuncForPC(bv.Pointer()).Name())
 	default:
-		return fmt.Sprintf("Unknown or unsupported type: %T: %#v", a, a)
+		return fmt.Sprintf("Unknown or unsupported type: %T: %#[1]v", a)
+
 	}
 
 	return ""

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"math"
 	"reflect"
+	"runtime"
 	"time"
 
 	"github.com/aristanetworks/goarista/areflect"
@@ -290,7 +291,22 @@ func genericDeepEqual(a, b interface{}, seen map[edge]struct{}) bool {
 			}
 		}
 		return true
+	case reflect.Func:
+		if av.IsNil() != bv.IsNil() {
+			return false
+		}
+		if av.IsNil() {
+			return true
+		}
+		// if both of these are functions, compare their full names
+		return runtime.FuncForPC(av.Pointer()).Name() ==
+			runtime.FuncForPC(bv.Pointer()).Name()
 	default:
+		// Incomparable types cannot be compared with DeepEqual.
+		// To skip comparisons, tag the type with `deepequal:"ignore"`
+		if !av.Type().Comparable() || !bv.Type().Comparable() {
+			return false
+		}
 		// Other the basic types.
 		return a == b
 	}
