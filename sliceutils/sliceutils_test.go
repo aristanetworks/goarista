@@ -26,3 +26,13 @@ func TestToAnySlice(t *testing.T) {
 	}
 
 }
+
+func TestSortedStringKeys(t *testing.T) {
+	in := map[string]any{"b": "1", "aaaa": 2, "aaa": 3}
+	got := SortedStringKeys(in)
+	exp := []string{"aaa", "aaaa", "b"}
+	if d := test.Diff(exp, got); d != "" {
+		t.Fatalf("expected %#v, got %#v, diff %s", exp, got, d)
+	}
+
+}
