@@ -257,9 +257,37 @@ func TestStrUpdateVal(t *testing.T) {
 		"DecimalVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
 				Value: &pb.TypedValue_DecimalVal{
-					DecimalVal: &pb.Decimal64{Digits: 314, Precision: 2},
+					DecimalVal: &pb.Decimal64{Digits: 3014, Precision: 3},
 				}}},
-			exp: "3.14",
+			exp: "3.014",
+		},
+		"DecimalValWithLeadingZeros": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_DecimalVal{
+					DecimalVal: &pb.Decimal64{Digits: 314, Precision: 6},
+				}}},
+			exp: "0.000314",
+		},
+		"DecimalValWithLeadingZerosInFraction": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_DecimalVal{
+					DecimalVal: &pb.Decimal64{Digits: 3000141, Precision: 6},
+				}}},
+			exp: "3.000141",
+		},
+		"DecimalValWithZeroPrecision": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_DecimalVal{
+					DecimalVal: &pb.Decimal64{Digits: 314, Precision: 0},
+				}}},
+			exp: "314.0",
+		},
+		"DecimalValWithNegativeFraction": {
+			update: &pb.Update{Val: &pb.TypedValue{
+				Value: &pb.TypedValue_DecimalVal{
+					DecimalVal: &pb.Decimal64{Digits: -314, Precision: 3},
+				}}},
+			exp: "-0.314",
 		},
 		"LeafListVal": {
 			update: &pb.Update{Val: &pb.TypedValue{
