@@ -220,10 +220,19 @@ func strDecimal64(d *pb.Decimal64) string {
 	} else {
 		i = d.Digits
 	}
+	format := "%d.%0*d"
 	if frac < 0 {
+		if i == 0 {
+			// The integer part doesn't provide the necessary minus sign.
+			format = "-" + format
+		}
 		frac = -frac
 	}
-	return fmt.Sprintf("%d.%d", i, frac)
+	p := int(d.Precision)
+	if p == 0 {
+		p = 1 // No trailing decimal point
+	}
+	return fmt.Sprintf(format, i, int(d.Precision), frac)
 }
 
 // strLeafList builds a human-readable form of a leaf-list. e.g. [1, 2, 3] or [a, b, c]
