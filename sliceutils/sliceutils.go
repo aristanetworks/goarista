@@ -4,7 +4,9 @@
 
 package sliceutils
 
-import "sort"
+import (
+	"golang.org/x/exp/slices"
+)
 
 // ToAnySlice takes a []T, and converts it into a []any.
 // This is a common conversion when a function expects a []any but the calling code has a []T, with
@@ -25,6 +27,6 @@ func SortedStringKeys[T any](m map[string]T) []string {
 	for key := range m {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	return keys
 }
