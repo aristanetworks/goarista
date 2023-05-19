@@ -22,6 +22,8 @@ import (
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/gnmi/proto/gnmi_ext"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -102,6 +104,10 @@ func Main() {
 		"  'throughput' : print number of notifications sent in a second\n"+
 		"  'clog' : start a subscribe and then don't read any of the responses")
 
+	keepaliveTimeStr := flag.String("keepalive_time", "", "Keepalive ping interval. "+
+		"After inactivity of this duration, ping the server (30s, 2m, etc. Default 10s). "+
+		"10s is the minimum value allowed. If a value less than 10s is supplied, 10s will be used")
+
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, help)
 		flag.PrintDefaults()
@@ -168,6 +174,18 @@ func Main() {
 			}
 			histExt = gnmi.HistoryRangeExtension(s, e)
 		}
+	}
+
+	if *keepaliveTimeStr != "" {
+		var keepaliveTime time.Duration
+		var err error
+		if keepaliveTime, err = time.ParseDuration(*keepaliveTimeStr); err != nil {
+			usageAndExit(fmt.Sprintf("error: keepalive time (%s) invalid", *keepaliveTimeStr))
+		}
+
+		timeout := time.Duration(keepaliveTime * time.Second)
+		cfg.DialOptions = append(cfg.DialOptions,
+			grpc.WithKeepaliveParams(keepalive.ClientParameters{Time: timeout}))
 	}
 
 	args := flag.Args()
