@@ -14,11 +14,11 @@ import (
 
 func setGlogV(v string) error {
 	// SetVGlobal silently errors Atoi, lets return that instead.
-	_, err := strconv.Atoi(v)
+	n, err := strconv.Atoi(v)
 	if err != nil {
 		return fmt.Errorf("setGlogV: invalid int: %q", v)
 	}
-	glog.SetVGlobal(v)
+	glog.SetVGlobal(glog.Level(n))
 	glog.Infof("monitor: set glog verbosity to %v", v)
 	return nil
 }
