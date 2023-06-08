@@ -322,7 +322,11 @@ func Main() {
 			op.Path = gnmi.SplitPath(pathParams[0].paths[0])
 			op.Origin = pathParams[0].origin
 			op.Target = pathParams[0].target
-			if op.Type != "delete" {
+			if op.Type == "delete" {
+				// set i to be right before the next arg that needs to be processed
+				i--
+			} else {
+				// no need for i-- since the value of update/replace is right before the next arg
 				if len(args) == i {
 					usageAndExit("error: missing JSON or FILEPATH to data")
 				}
