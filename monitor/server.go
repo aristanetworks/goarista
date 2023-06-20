@@ -29,6 +29,7 @@ type server struct {
 	vrfName string
 	// Server name e.g. host[:port]
 	serverName string
+	loglevel   *logsetSrv
 }
 
 // NewServer creates a new server struct
@@ -40,6 +41,7 @@ func NewServer(address string) Server {
 	return &server{
 		vrfName:    vrfName,
 		serverName: addr,
+		loglevel:   newLogsetSrv(),
 	}
 }
 
@@ -85,7 +87,7 @@ func (s *server) Serve(serveMux *http.ServeMux) error {
 	serveMux.HandleFunc("/debug", debugHandler)
 	serveMux.HandleFunc("/debug/histograms", histogramHandler)
 	// for example, to set glog verbosity to 5: curl localhost:6060/debug/loglevel?glog=5
-	serveMux.HandleFunc("/debug/loglevel", setLogVerbosity)
+	serveMux.Handle("/debug/loglevel", s.loglevel)
 
 	var listener net.Listener
 	err := netns.Do(s.vrfName, func() error {
