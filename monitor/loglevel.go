@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -158,12 +159,32 @@ func (v glogUpdater) Apply() (func(), error) {
 }
 
 const glogV = "glog"
+const glogVModule = "glog-vmodule"
+
+type vModuleUpdater struct {
+	v string
+}
+
+func (v vModuleUpdater) Apply() (func(), error) {
+	prev, err := glog.SetVModule(v.v)
+	if err != nil {
+		return nil, err
+	}
+	return func() {
+		// nothing we can do if we error now, just log it
+		if _, err := glog.SetVModule(prev); err != nil {
+			glog.Errorf("loglevel: cannot reset VModule: %v", err)
+		}
+	}, nil
+}
 
 type loglevelReq struct {
 	reset        bool
 	resetTimeout time.Duration         // duration change should be active
 	updates      map[string]logUpdater // log type as a string -> updater to apply change
 }
+
+var vModuleRegexp = regexp.MustCompile(`^(.*[0-9]+,?)+$`)
 
 func parseLoglevelReq(r *http.Request) (loglevelReq, error) {
 	if r.Method != http.MethodPost {
@@ -201,6 +222,17 @@ func parseLoglevelReq(r *http.Request) (loglevelReq, error) {
 			return loglevelReq{}, fmt.Errorf("invalid glog argument: %v", err)
 		}
 		ll.updates[glogV] = glogUpdater{v: glog.Level(v)}
+	}
+
+	// parse glog-vmodule options
+	if setVModule := opts.Get(glogVModule); setVModule != "" {
+		// would be nice to be able to parse ahead of time in glog
+		// for now just use a basic regex
+		if !vModuleRegexp.MatchString(setVModule) {
+			return loglevelReq{}, fmt.Errorf(
+				"invalid glog-vmodule argument: should match regex: %v", vModuleRegexp)
+		}
+		ll.updates[glogVModule] = vModuleUpdater{v: setVModule}
 	}
 
 	if len(ll.updates) == 0 {

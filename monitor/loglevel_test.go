@@ -54,9 +54,10 @@ func hasUpdate[T comparable](t *testing.T, req loglevelReq, key string, want *T)
 
 func TestRequestParsing(t *testing.T) {
 	tcases := map[string]struct {
-		req      *http.Request
-		wantErr  string
-		wantGlog *glogUpdater
+		req         *http.Request
+		wantErr     string
+		wantGlog    *glogUpdater
+		wantVModule *vModuleUpdater
 	}{
 		"GET": {
 			req:     req("GET"),
@@ -104,6 +105,28 @@ func TestRequestParsing(t *testing.T) {
 			req:      req("POST", glogV, "3", "timeout", "1s"),
 			wantGlog: &glogUpdater{v: 3},
 		},
+
+		// vmodule parsing
+		"invalid vmodule": {
+			req:     req("POST", glogVModule, "not valid"),
+			wantErr: "invalid glog-vmodule argument",
+		},
+		"invalid vmodule 2": {
+			req:     req("POST", glogVModule, "x="),
+			wantErr: "invalid glog-vmodule argument",
+		},
+		"invalid vmodule 3": {
+			req:     req("POST", glogVModule, "x=09,asdf"),
+			wantErr: "invalid glog-vmodule argument",
+		},
+		"valid vmodule": {
+			req:         req("POST", glogVModule, "x=09,y=100,x/y/z=0"),
+			wantVModule: &vModuleUpdater{v: "x=09,y=100,x/y/z=0"},
+		},
+		"valid vmodule that should not work": {
+			req:         req("POST", glogVModule, "invalid:;path:-_=10"),
+			wantVModule: &vModuleUpdater{v: "invalid:;path:-_=10"},
+		},
 	}
 
 	for name, tcase := range tcases {
@@ -117,6 +140,7 @@ func TestRequestParsing(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			hasUpdate(t, req, glogV, tcase.wantGlog)
+			hasUpdate(t, req, glogVModule, tcase.wantVModule)
 
 		})
 	}
@@ -149,6 +173,47 @@ func TestGlogLogset(t *testing.T) {
 		}
 		if v := glog.VGlobal(); v != 1 {
 			t.Fatalf("expected glog %v, got %v", v, 1)
+		}
+	})
+}
+
+func TestVModuleSet(t *testing.T) {
+	t.Run("updater", func(t *testing.T) {
+		// reset vmodule at end of test
+		prev, err := glog.SetVModule("prev=99")
+		if err != nil {
+			t.Fatalf("vmodule call failed: %v", err)
+		}
+		defer glog.SetVModule(prev)
+		updater := vModuleUpdater{v: "next=100"}
+		resetter, err := updater.Apply()
+		if err != nil {
+			t.Fatalf("error applying vmodule update: %v", err)
+		}
+		if got := glog.VModule(); got != "next=100" {
+			t.Fatalf("vmodule should be 'next=100', got %#v", got)
+		}
+		resetter()
+		if got := glog.VModule(); got != "prev=99" {
+			t.Fatalf("vmodule should be 'prev=99', got %#v", got)
+		}
+
+	})
+	t.Run("request", func(t *testing.T) {
+		// reset vmodule at end of test
+		prev, err := glog.SetVModule("")
+		if err != nil {
+			t.Fatalf("vmodule call failed: %v", err)
+		}
+		defer glog.SetVModule(prev)
+		// make request
+		ls := newLogsetSrv()
+		resp := call(t, ls, req("POST", glogVModule, "y=001"))
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected status 200, wanted %v", resp.StatusCode)
+		}
+		if v := glog.VModule(); v != "y=1" {
+			t.Fatalf("expected vmodule x=001, got %q", v)
 		}
 	})
 }
