@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -31,16 +32,17 @@ import (
 var help = `Usage of gnmi:
 gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
-  get ((origin=ORIGIN) (target=TARGET) PATH+)+
+  get ((encoding=ENCODING) (origin=ORIGIN) (target=TARGET) PATH+)+
   subscribe ((origin=ORIGIN) (target=TARGET) PATH+)+ 
   ((update|replace (origin=ORIGIN) (target=TARGET) PATH JSON|FILE) |
    (delete (origin=ORIGIN) (target=TARGET) PATH))+
 `
 
 type reqParams struct {
-	origin string
-	target string
-	paths  []string
+	encoding string
+	origin   string
+	target   string
+	paths    []string
 }
 
 func usageAndExit(s string) {
@@ -218,32 +220,11 @@ func Main() {
 				usageAndExit("error: missing path")
 			}
 			for _, pathParam := range pathParams {
-				origin := pathParam.origin
-				target := pathParam.target
-				paths := pathParam.paths
-
-				req, err := gnmi.NewGetRequest(gnmi.SplitPaths(paths), origin)
+				req, err := newGetRequest(pathParam, *dataTypeStr)
 				if err != nil {
-					glog.Fatal(err)
+					usageAndExit("error: " + err.Error())
 				}
-				if target != "" {
-					if req.Prefix == nil {
-						req.Prefix = &pb.Path{}
-					}
-					req.Prefix.Target = target
-				}
-				switch strings.ToLower(*dataTypeStr) {
-				case "", "all":
-					req.Type = pb.GetRequest_ALL
-				case "config":
-					req.Type = pb.GetRequest_CONFIG
-				case "state":
-					req.Type = pb.GetRequest_STATE
-				case "operational":
-					req.Type = pb.GetRequest_OPERATIONAL
-				default:
-					usageAndExit(fmt.Sprintf("error: invalid data type (%s)", *dataTypeStr))
-				}
+
 				err = gnmi.GetWithRequest(ctx, client, req)
 				if err != nil {
 					glog.Fatal(err)
@@ -261,22 +242,12 @@ func Main() {
 				usageAndExit("error: missing path")
 			}
 			for _, pathParam := range pathParams {
-				origin := pathParam.origin
-				target := pathParam.target
-				paths := pathParam.paths
-
-				respChan := make(chan *pb.SubscribeResponse)
-				subOptions := new(gnmi.SubscribeOptions)
-				*subOptions = *subscribeOptions
-				subOptions.Origin = origin
-				subOptions.Target = target
-				subOptions.Paths = gnmi.SplitPaths(paths)
-				if histExt != nil {
-					subOptions.Extensions = []*gnmi_ext.Extension{{
-						Ext: histExt,
-					}}
+				subOptions, err := newSubscribeOptions(pathParam, histExt, subscribeOptions)
+				if err != nil {
+					usageAndExit("error: " + err.Error())
 				}
 
+				respChan := make(chan *pb.SubscribeResponse)
 				g.Go(func() error {
 					return gnmi.SubscribeErr(ctx, client, subOptions, respChan)
 				})
@@ -295,7 +266,7 @@ func Main() {
 					// Don't read any subscription updates
 					g.Wait()
 				case "":
-					go processSubscribeResponses(origin, respChan)
+					go processSubscribeResponses(pathParam.origin, respChan)
 
 				default:
 					usageAndExit(fmt.Sprintf("unknown debug option: %q", *debugMode))
@@ -306,33 +277,14 @@ func Main() {
 			}
 			return
 		case "update", "replace", "delete":
-			// ok if no args, if arbitration was specified
-			if len(args) == i+1 && *arbitrationStr == "" {
-				usageAndExit("error: missing path")
+			j, op, err := newSetOperation(i, args, *arbitrationStr)
+			if err != nil {
+				usageAndExit("error: " + err.Error())
 			}
-			op := &gnmi.Operation{
-				Type: args[i],
+			if op != nil {
+				setOps = append(setOps, op)
 			}
-			i++
-			if len(args) <= i {
-				break
-			}
-			pathParams, argsParsed := parsereqParams(args[i:], true)
-			i += argsParsed
-			op.Path = gnmi.SplitPath(pathParams[0].paths[0])
-			op.Origin = pathParams[0].origin
-			op.Target = pathParams[0].target
-			if op.Type == "delete" {
-				// set i to be right before the next arg that needs to be processed
-				i--
-			} else {
-				// no need for i-- since the value of update/replace is right before the next arg
-				if len(args) == i {
-					usageAndExit("error: missing JSON or FILEPATH to data")
-				}
-				op.Val = args[i]
-			}
-			setOps = append(setOps, op)
+			i = j
 		default:
 			usageAndExit(fmt.Sprintf("error: unknown operation %q", args[i]))
 		}
@@ -350,6 +302,145 @@ func Main() {
 		glog.Fatal(err)
 	}
 
+}
+
+func newSetOperation(
+	index int,
+	args []string,
+	arbitrationStr string) (int, *gnmi.Operation, error) {
+
+	// ok if no args, if arbitration was specified
+	if len(args) == index+1 && arbitrationStr == "" {
+		return 0, nil, errors.New("missing path")
+	}
+
+	op := &gnmi.Operation{
+		Type: args[index],
+	}
+	index++
+	if len(args) <= index {
+		return index, nil, nil
+	}
+
+	pathParams, argsParsed := parsereqParams(args[index:], true)
+	index += argsParsed
+
+	// process update | replace | delete request one at a time
+	pathParam := pathParams[0]
+
+	// check that encoding is not set
+	if pathParam.encoding != "" {
+		return 0, nil, fmt.Errorf("encoding option is not supported for '%s'", op.Type)
+	}
+
+	if len(pathParam.paths) == 0 {
+		return 0, nil, fmt.Errorf("missing path for '%s'", op.Type)
+	}
+
+	op.Path = gnmi.SplitPath(pathParam.paths[0])
+	op.Origin = pathParam.origin
+	op.Target = pathParam.target
+	if op.Type == "delete" {
+		// set index to be right before the next arg that needs to be processed
+		index--
+	} else {
+		// no need for index-- since the value of update/replace is right before the next arg
+		if len(args) == index {
+			return 0, nil, errors.New("missing JSON or FILEPATH to data")
+		}
+		op.Val = args[index]
+	}
+
+	return index, op, nil
+}
+
+func newSubscribeOptions(
+	pathParam reqParams,
+	histExt *gnmi_ext.Extension_History,
+	subscribeOptions *gnmi.SubscribeOptions) (*gnmi.SubscribeOptions, error) {
+
+	origin := pathParam.origin
+	target := pathParam.target
+	paths := pathParam.paths
+	encoding := pathParam.encoding
+
+	// check that encoding is not set
+	if encoding != "" {
+		return nil, errors.New("encoding option is not supported for 'subscribe'")
+	}
+
+	subOptions := new(gnmi.SubscribeOptions)
+	*subOptions = *subscribeOptions
+	subOptions.Origin = origin
+	subOptions.Target = target
+	subOptions.Paths = gnmi.SplitPaths(paths)
+	if histExt != nil {
+		subOptions.Extensions = []*gnmi_ext.Extension{{
+			Ext: histExt,
+		}}
+	}
+
+	return subOptions, nil
+}
+
+func newGetRequest(pathParam reqParams, dataTypeStr string) (*pb.GetRequest, error) {
+	origin := pathParam.origin
+	target := pathParam.target
+	paths := pathParam.paths
+	encoding := pathParam.encoding
+
+	req, err := gnmi.NewGetRequest(gnmi.SplitPaths(paths), origin)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	// set target
+	if target != "" {
+		if req.Prefix == nil {
+			req.Prefix = &pb.Path{}
+		}
+		req.Prefix.Target = target
+	}
+
+	// set type
+	switch strings.ToLower(dataTypeStr) {
+	case "", "all":
+		req.Type = pb.GetRequest_ALL
+	case "config":
+		req.Type = pb.GetRequest_CONFIG
+	case "state":
+		req.Type = pb.GetRequest_STATE
+	case "operational":
+		req.Type = pb.GetRequest_OPERATIONAL
+	default:
+		return nil, fmt.Errorf("invalid data type (%s)", dataTypeStr)
+	}
+
+	// set encoding
+	switch en := strings.ToLower(encoding); en {
+	case "ascii":
+		req.Encoding = pb.Encoding_ASCII
+	case "json":
+		req.Encoding = pb.Encoding_JSON
+	case "json_ietf":
+		req.Encoding = pb.Encoding_JSON_IETF
+	case "proto":
+		req.Encoding = pb.Encoding_PROTO
+	case "bytes":
+		req.Encoding = pb.Encoding_BYTES
+	case "":
+	default:
+		return nil, fmt.Errorf(
+			`invalid encoding '%s'
+Supported encodings are (case insensitive):
+- JSON
+- Bytes
+- Proto
+- ASCII
+- JSON_IETF`, en)
+	}
+
+	return req, nil
 }
 
 func processSubscribeResponses(origin string, respChan chan *pb.SubscribeResponse) {
@@ -384,55 +475,72 @@ func parseTarget(s string) (string, bool) {
 	return parseStringOpt(s, "target")
 }
 
-func parsereqParams(args []string, maxOnePath bool) (pathParams []reqParams,
-	argsParsed int) {
-	var pP *reqParams = nil
-	//
+func parseEncoding(s string) (string, bool) {
+	return parseStringOpt(s, "encoding")
+}
+
+func parsereqParams(args []string, maxOnePath bool) ([]reqParams, int) {
+	var pathParam *reqParams = new(reqParams)
+	var pathParams []reqParams
+	var argsParsed int
+
+	//           [[ Some Considerations ]]
+	// - No need to follow encoding - origin - target - path as names are specified.
+	// - PATHS+ still mark the end of a pathParam
+	// - only path is required and everything else is optional
+	// - there can be one or more paths
+	// - there can be zero or one encoding, origin, and target.
+
+	var isOriginSet bool
+	var isTargetSet bool
+	var isEncodingSet bool
+
+	// check if the current config forms a pathParam
+	// If yes, reset all the trackers and add it to pathParams
+	// otherwise, don't do anything
+	var checkGroup = func(isItemSet bool) {
+		if isItemSet || len(pathParam.paths) > 0 {
+			isOriginSet = false
+			isTargetSet = false
+			isEncodingSet = false
+			pathParams = append(pathParams, *pathParam)
+			pathParam = new(reqParams)
+		}
+	}
+
 	for _, arg := range args {
 		argsParsed++
 		if o, ok := parseOrigin(arg); ok {
-			// Either this is the first Origin-Target-Path or a subsequent one
-			if pP == nil {
-				pP = new(reqParams)
-			} else {
-				// Subsequent one, save the last set
-				pathParams = append(pathParams, *pP)
-				pP = new(reqParams)
-			}
-			pP.origin = o
-		} else if t, ok := parseTarget(arg); ok { // if this is target , assume origin has been set
-			if pP == nil {
-				pP = new(reqParams)
-			}
-			pP.target = t
+			checkGroup(isOriginSet)
+			pathParam.origin = o
+			isOriginSet = true
+		} else if t, ok := parseTarget(arg); ok {
+			checkGroup(isTargetSet)
+			pathParam.target = t
+			isTargetSet = true
+		} else if e, ok := parseEncoding(arg); ok {
+			checkGroup(isEncodingSet)
+			pathParam.encoding = e
+			isEncodingSet = true
 		} else {
-			// Its the path, origin may or may not be set
-			if pP == nil {
-				pP = new(reqParams)
-			}
-			pP.paths = append(pP.paths, arg)
+			pathParam.paths = append(pathParam.paths, arg)
 			if maxOnePath {
 				break
 			}
 		}
 	}
 
-	if pP == nil {
-		argsParsed = 0 // no path provided
-		return
-	}
-
-	pathParams = append(pathParams, *pP)
+	// The last pathParam wasn't added, add it now
+	pathParams = append(pathParams, *pathParam)
 
 	// validate that all reqParams have a valid path
 	for _, param := range pathParams {
 		if param.paths == nil {
-			argsParsed = 0 // no path provided
-			return
+			return pathParams, 0 // no path provided
 		}
 	}
 
-	return
+	return pathParams, argsParsed
 }
 
 func printLatencyStats(s *pb.SubscribeResponse) {
