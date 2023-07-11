@@ -20,6 +20,11 @@ func TestParseValue(t *testing.T) { // Because parsing JSON sucks.
 			Value: &pb.TypedValue_JsonVal{JsonVal: []byte(v)},
 		}
 	}
+	newDoubleVal := func(v float64) *pb.TypedValue {
+		return &pb.TypedValue{
+			Value: &pb.TypedValue_DoubleVal{DoubleVal: v},
+		}
+	}
 
 	testcases := []struct {
 		input          *pb.TypedValue
@@ -30,6 +35,8 @@ func TestParseValue(t *testing.T) { // Because parsing JSON sucks.
 		{newJSONVal("-42"), staticValueMap, []interface{}{int64(-42)}},
 		{newJSONVal("42.42"), staticValueMap, []interface{}{float64(42.42)}},
 		{newJSONVal("-42.42"), staticValueMap, []interface{}{float64(-42.42)}},
+		{newDoubleVal(42.42), staticValueMap, []interface{}{float64(42.42)}},
+		{newDoubleVal(-42.42), staticValueMap, []interface{}{float64(-42.42)}},
 		{newJSONVal(`"foo"`), staticValueMap, []interface{}(nil)},
 		{newJSONVal("9223372036854775807"), staticValueMap, []interface{}{int64(math.MaxInt64)}},
 		{newJSONVal("-9223372036854775808"), staticValueMap, []interface{}{int64(math.MinInt64)}},

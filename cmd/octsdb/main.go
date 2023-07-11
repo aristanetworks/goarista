@@ -178,7 +178,7 @@ func parseValue(update *pb.Update, staticValueMap map[string]int64) []interface{
 		return []interface{}{value}
 	case uint64:
 		return []interface{}{value}
-	case float32:
+	case float32, float64:
 		return []interface{}{value}
 	case *pb.Decimal64:
 		val := gnmi.DecimalToFloat(value)
@@ -195,7 +195,7 @@ func parseValue(update *pb.Update, staticValueMap map[string]int64) []interface{
 				value[i] = val
 			case uint64:
 				value[i] = val
-			case float32:
+			case float32, float64:
 				value[i] = val
 			case *pb.Decimal64:
 				v := gnmi.DecimalToFloat(val)
