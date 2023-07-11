@@ -7,12 +7,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/context"
 	"math"
 	"path"
 	"regexp"
 	"strings"
 	"sync"
+
+	"golang.org/x/net/context"
 
 	"github.com/aristanetworks/glog"
 	"github.com/aristanetworks/goarista/gnmi"
@@ -328,6 +329,8 @@ func getValue(intf interface{}) (interface{}, string, bool) {
 		return float64(value), "", true
 	case float32:
 		return float64(value), "", true
+	case float64:
+		return intf, "", true
 	case *pb.Decimal64:
 		val := gnmi.DecimalToFloat(value)
 		if math.IsInf(val, 0) || math.IsNaN(val) {

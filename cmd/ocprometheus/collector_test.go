@@ -771,3 +771,50 @@ metrics:
 		})
 	}
 }
+
+func TestParseValue(t *testing.T) {
+	for _, tc := range []struct {
+		input     *pb.TypedValue
+		expVal    interface{}
+		expSuffix string
+		expOK     bool
+	}{
+		{&pb.TypedValue{Value: &pb.TypedValue_JsonVal{JsonVal: []byte("42.42")}},
+			float64(42.42),
+			"",
+			true},
+		{&pb.TypedValue{Value: &pb.TypedValue_JsonVal{JsonVal: []byte("-42.42")}},
+			float64(-42.42),
+			"",
+			true},
+		{&pb.TypedValue{Value: &pb.TypedValue_DoubleVal{DoubleVal: 42.42}},
+			float64(42.42),
+			"",
+			true},
+		{&pb.TypedValue{Value: &pb.TypedValue_DoubleVal{DoubleVal: -42.42}},
+			float64(-42.42),
+			"",
+			true},
+		{&pb.TypedValue{Value: &pb.TypedValue_FloatVal{FloatVal: 42.25}},
+			float64(42.25),
+			"",
+			true},
+		{&pb.TypedValue{Value: &pb.TypedValue_UintVal{UintVal: 42}},
+			float64(42),
+			"",
+			true},
+	} {
+		t.Run("", func(t *testing.T) {
+			gotVal, gotSuffix, gotOK := parseValue(&pb.Update{Val: tc.input})
+			if gotOK != tc.expOK {
+				t.Errorf("expected OK: %t, got: %t", tc.expOK, gotOK)
+			}
+			if gotSuffix != tc.expSuffix {
+				t.Errorf("expected suffix: %q, got: %q", tc.expSuffix, gotSuffix)
+			}
+			if gotVal != tc.expVal {
+				t.Errorf("expected val: %#v, got: %#v", tc.expVal, gotVal)
+			}
+		})
+	}
+}
