@@ -35,7 +35,7 @@ func main() {
 	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
 
 	// Program options
-	subscribePaths := flag.String("paths", "/", "Comma-separated list of paths to subscribe to")
+	subscribePaths := flag.String("paths", "", "Comma-separated list of paths to subscribe to")
 
 	tsdbFlag := flag.String("tsdb", "",
 		"Address of the OpenTSDB server where to push telemetry to")
@@ -64,11 +64,9 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	// Ignore the default "subscribe-to-everything" subscription of the
-	// -subscribe flag.
-	subscriptions := strings.Split(*subscribePaths, ",")
-	if subscriptions[0] == "" {
-		subscriptions = subscriptions[1:]
+	var subscriptions []string
+	if *subscribePaths != "" {
+		subscriptions = strings.Split(*subscribePaths, ",")
 	}
 	// Add the subscriptions from the config file.
 	subscriptions = append(subscriptions, config.Subscriptions...)
