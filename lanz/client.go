@@ -15,8 +15,8 @@ import (
 	"time"
 
 	pb "github.com/aristanetworks/goarista/lanz/proto"
+	"github.com/aristanetworks/goarista/logger"
 
-	"github.com/aristanetworks/glog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -51,6 +51,7 @@ type client struct {
 	timeout   time.Duration
 	backoff   time.Duration
 	conn      ConnectReadCloser
+	log       logger.Logger
 }
 
 // New creates a new client with default TCP connection to the LANZ server.
@@ -59,6 +60,7 @@ func New(opts ...Option) Client {
 		stop:    make(chan struct{}),
 		timeout: defaultConnectTimeout,
 		backoff: defaultConnectBackoff,
+		log:     logger.Std,
 	}
 
 	for _, opt := range opts {
@@ -112,12 +114,10 @@ func (c *client) Run(ch chan<- *pb.LanzRecord) {
 				case <-c.stop:
 					return
 				default:
-					glog.V(1).Infof("Can't connect to LANZ server: %v", err)
 					time.Sleep(c.backoff)
 					continue
 				}
 			}
-			glog.V(1).Infof("Connected successfully to LANZ server: %v", c.addr)
 			c.setConnected(true)
 			if err := c.read(bufio.NewReader(c.conn), ch); err != nil {
 				select {
@@ -125,7 +125,7 @@ func (c *client) Run(ch chan<- *pb.LanzRecord) {
 					return
 				default:
 					if err != io.EOF && err != io.ErrUnexpectedEOF {
-						glog.Errorf("Error receiving LANZ events: %v", err)
+						c.log.Errorf("Error receiving LANZ events: %v", err)
 					}
 					c.setConnected(false)
 					time.Sleep(c.backoff)
