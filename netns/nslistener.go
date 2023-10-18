@@ -7,6 +7,7 @@ package netns
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -15,20 +16,19 @@ import (
 	"time"
 
 	"github.com/aristanetworks/fsnotify"
-	"github.com/aristanetworks/goarista/dscp"
 	"github.com/aristanetworks/goarista/logger"
 )
 
-var makeListener = func(nsName string, addr *net.TCPAddr, tos byte, l logger.Logger) (net.Listener,
-	error) {
+type ListenerCreator func() (net.Listener, error)
+
+var makeListener = func(nsName string, listenerCreator ListenerCreator) (net.Listener, error) {
 	var listener net.Listener
 	err := Do(nsName, func() error {
 		var err error
-		listener, err = dscp.ListenTCPWithTOSLogger(addr, tos, l)
+		listener, err = listenerCreator()
 		return err
 	})
 	return listener, err
-
 }
 
 func accept(listener net.Listener, conns chan<- net.Conn, logger logger.Logger) {
@@ -57,15 +57,15 @@ func (l *nsListener) waitForMount() bool {
 // and in case it gets deleted and recreated it will automatically bind to the newly created
 // namespace.
 type nsListener struct {
-	listener net.Listener
-	watcher  *fsnotify.Watcher
-	nsName   string
-	nsFile   string
-	addr     *net.TCPAddr
-	tos      byte
-	done     chan struct{}
-	conns    chan net.Conn
-	logger   logger.Logger
+	listener        net.Listener
+	watcher         *fsnotify.Watcher
+	nsName          string
+	nsFile          string
+	addr            *net.TCPAddr
+	done            chan struct{}
+	conns           chan net.Conn
+	logger          logger.Logger
+	listenerCreator ListenerCreator
 }
 
 func (l *nsListener) tearDown() {
@@ -82,7 +82,7 @@ func (l *nsListener) setUp() bool {
 		l.logger.Infof("Can't watch the file (will try again): %v", err)
 		return false
 	}
-	listener, err := makeListener(l.nsName, l.addr, l.tos, l.logger)
+	listener, err := makeListener(l.nsName, l.listenerCreator)
 	if err != nil {
 		l.logger.Infof("Can't create TCP listener (will try again): %v", err)
 		return false
@@ -142,16 +142,19 @@ func (l *nsListener) setupWatch() error {
 	return nil
 }
 
-func newNSListenerWithDir(nsDir, nsName string, addr *net.TCPAddr, tos byte,
-	logger logger.Logger) (net.Listener, error) {
+func newNSListenerWithDir(nsDir, nsName string, addr *net.TCPAddr, logger logger.Logger,
+	listenerCreator ListenerCreator) (net.Listener, error) {
+	if listenerCreator == nil {
+		return nil, fmt.Errorf("newNSListenerWithDir received nil listenerCreator")
+	}
 	l := &nsListener{
-		nsName: nsName,
-		nsFile: filepath.Join(nsDir, nsName),
-		addr:   addr,
-		tos:    tos,
-		done:   make(chan struct{}),
-		conns:  make(chan net.Conn),
-		logger: logger,
+		nsName:          nsName,
+		nsFile:          filepath.Join(nsDir, nsName),
+		addr:            addr,
+		done:            make(chan struct{}),
+		conns:           make(chan net.Conn),
+		logger:          logger,
+		listenerCreator: listenerCreator,
 	}
 	if err := l.setupWatch(); err != nil {
 		return nil, err
