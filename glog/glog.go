@@ -7,16 +7,19 @@ package glog
 import "github.com/aristanetworks/glog"
 
 // Glog is an empty type that allows to pass glog as a logger, implementing logger.Logger
-type Glog struct{}
+type Glog struct {
+	// default value of glog.Level is 0
+	infoLevel glog.Level
+}
 
 // Info logs at the info level
 func (g *Glog) Info(args ...interface{}) {
-	glog.Info(args...)
+	glog.V(g.infoLevel).Info(args...)
 }
 
 // Infof logs at the info level, with format
 func (g *Glog) Infof(format string, args ...interface{}) {
-	glog.Infof(format, args...)
+	glog.V(g.infoLevel).Infof(format, args...)
 }
 
 // Error logs at the error level
