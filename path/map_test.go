@@ -203,84 +203,248 @@ func TestMapGet(t *testing.T) {
 }
 
 func TestMapGetLongestPrefix(t *testing.T) {
-	regularMap := Map{}
-	regularMap.Set(key.Path{}, 33)
-	regularMap.Set(key.Path{key.New("a"), key.New("b")}, -132)
-	regularMap.Set(key.Path{key.New("a"), key.New("b"), key.New("c")}, 111)
-	regularMap.Set(key.Path{key.New("z")}, 203)
-	regularMap.Set(key.Path{key.New("z"), key.New("zz")}, -24)
+	type testMap struct {
+		pathMap Map
+		expectedValues map[string]interface{}
+	}
+	makeMap := func(paths []string) (result testMap) {
+		result.expectedValues = make(map[string]interface{})
 
-	emptyMap := Map{}
+		nextValue := uint32(1)
+		for _, path := range paths {
+			result.pathMap.Set(FromString(path), nextValue)
+			result.expectedValues[path] = nextValue
+			nextValue++
+		}
+
+		return
+	}
+
+	regularMap := makeMap([]string{
+		"/",
+		"/a",
+		"/a/b",
+		"/a/b/c/d",
+		"/a/b/c/d/e",
+		"/r/s",
+		"/r/s/t",
+		"/u/v",
+	})
+
+	noEntryAtRootMap := makeMap([]string{
+		"/r/s",
+		"/r/s/t",
+		"/u/v",
+	})
+
+	rootOnlyMap := makeMap([]string{"/"})
+
+	emptyMap := makeMap(nil)
 
 	testCases := []struct {
-		mp          Map
-		path        key.Path
-		nearestPath key.Path
-		v           interface{}
+		name        string
+		mp          testMap
+		path        string
 		ok          bool
-	}{{
-		mp:          regularMap,
-		path:        key.Path{},
-		nearestPath: key.Path{},
-		v:           33,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")},
-		nearestPath: key.Path{key.New("a"), key.New("b"), key.New("c")},
-		v:           111,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("a"), key.New("b")},
-		nearestPath: key.Path{key.New("a"), key.New("b")},
-		v:           -132,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("z"), key.New("a"), key.New("b"), key.New("z")},
-		nearestPath: key.Path{key.New("z")},
-		v:           203,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("baz"), key.New("qux")},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("c"), key.New("a")},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}, {
-		mp:          emptyMap,
-		path:        key.Path{},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}, {
-		mp:          emptyMap,
-		path:        key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}}
+		nearestPath string
+	}{
+		// Test calling GetLongestPrefixed on the root path in various situations.
+		{
+			name:        "exact match, descendents, root path",
+			mp:          regularMap,
+			path:        "/",
+			ok:          true,
+			nearestPath: "/",
+		},
+		{
+			name:        "no exact match, descendents, root path",
+			mp:          noEntryAtRootMap,
+			path:        "/",
+			ok:          false,
+			nearestPath: "",
+		},
+		{
+			name:        "exact match, no descendents, root path",
+			mp:          rootOnlyMap,
+			path:        "/",
+			ok:          true,
+			nearestPath: "/",
+		},
+		{
+			name:        "no exact match, no descendents, root path",
+			mp:          emptyMap,
+			path:        "/",
+			ok:          false,
+			nearestPath: "",
+		},
+
+		// Test calling GetLongestPrefixed on the non-root paths with non-root
+		// ancestor entries.
+		{
+			name:        "exact match, descendents, ancestor",
+			mp:          regularMap,
+			path:        "/a/b/c/d",
+			ok:          true,
+			nearestPath: "/a/b/c/d",
+		},
+		{
+			name:        "no exact match, descendents, ancestor",
+			mp:          regularMap,
+			path:        "/a/b/c",
+			ok:          true,
+			nearestPath: "/a/b",
+		},
+		{
+			name:        "exact match, no descendents, ancestor",
+			mp:          regularMap,
+			path:        "/a/b/c/d/e",
+			ok:          true,
+			nearestPath: "/a/b/c/d/e",
+		},
+		// When considering divergent paths (i.e. paths p where the path map has
+		// neither an entry associated with p nor any entry associated with a
+		// descendent path of p), they may diverge from the map nodes at a node
+		// representing an entry or they may diverge from a node representing a
+		// non-entry.
+		{
+			name:        "no exact match, no descendents, ancestor, stray at internal "+
+			             "entry",
+			mp:          regularMap,
+			path:        "/a/b/f",
+			ok:          true,
+			nearestPath: "/a/b",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor, stray at leaf "+
+			             "entry",
+			mp:          regularMap,
+			path:        "/a/b/c/d/e/f",
+			ok:          true,
+			nearestPath: "/a/b/c/d/e",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor, stray at internal "+
+			             "non-entry",
+			mp:          regularMap,
+			path:        "/a/b/c/f",
+			ok:          true,
+			nearestPath: "/a/b",
+		},
+
+		// Test calling GetLongestPrefixed on the non-root paths with root ancestor
+		// entries.
+		{
+			name:        "exact match, descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/r/s",
+			ok:          true,
+			nearestPath: "/r/s",
+		},
+		{
+			name:        "no exact match, descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/r",
+			ok:          true,
+			nearestPath: "/",
+		},
+		{
+			name:        "exact match, no descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/u/v",
+			ok:          true,
+			nearestPath: "/u/v",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/x/y/z",
+			ok:          true,
+			nearestPath: "/",
+		},
+
+		// Test calling GetLongestPrefixed on the non-root paths with no ancestor
+		// entries.
+		{
+			name:        "exact match, descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/r/s",
+			ok:          true,
+			nearestPath: "/r/s",
+		},
+		{
+			name:        "no exact match, descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/r",
+			ok:          false,
+			nearestPath: "",
+		},
+		{
+			name:        "exact match, no descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/u/v",
+			ok:          true,
+			nearestPath: "/u/v",
+		},
+		{
+			name:        "no exact match, no descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/x/y/z",
+			ok:          false,
+			nearestPath: "",
+		},
+	}
 
 	for _, tc := range testCases {
-		nearestPath, v, ok := tc.mp.GetLongestPrefix(tc.path)
-		if ok != tc.ok {
-			t.Errorf("Test case %v: Expected Ok: %v, got ok: %v", tc, tc.ok, ok)
-		}
-		if !nearestPath.Equal(tc.nearestPath) {
-			t.Errorf("Test case %v: Expected nearestPath: %v,"+
-				" got nearestPath: %v", tc, tc.nearestPath, nearestPath)
-		}
-		if v != tc.v {
-			t.Errorf("Test case %v: Expected value: %v, got value: %v",
-				tc, tc.v, v)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			if !tc.ok && tc.nearestPath != "" {
+				t.Fatalf(
+					"Test case %q expects ok == false but has a configured "+
+					"nearestPath value of %q. Please clear this.",
+					tc.name,
+					tc.nearestPath,
+				)
+			}
+
+			inputPath := FromString(tc.path)
+
+			t.Logf("Running GetLongestPrefix with %v", inputPath)
+			nearestPath, v, ok := tc.mp.pathMap.GetLongestPrefix(inputPath)
+
+			if ok != tc.ok {
+				t.Errorf("Unexpected ok value; expected:%v actual:%v", tc.ok, ok)
+			}
+
+			if !ok {
+				if !Equal(nearestPath, nil) {
+					t.Errorf("Unexpected non-empty nearestPath: %v", nearestPath)
+				}
+				if v != nil {
+					t.Errorf("Unexpected non-nil (zero-value) value: %v", v)
+				}
+			} else {
+				expectedNearestPath := FromString(tc.nearestPath)
+				if !Equal(nearestPath, expectedNearestPath) {
+					t.Errorf(
+						"Unexpected nearestPath; expected:%v actual:%v",
+						expectedNearestPath,
+						nearestPath,
+					)
+				}
+
+				expectedValue := tc.mp.expectedValues[tc.nearestPath]
+				if v != expectedValue {
+					t.Errorf(
+						"Unexpected entry value; expected:%v actual:%v",
+						expectedValue,
+						v,
+					)
+				}
+			}
+
+			if t.Failed() {
+				t.Logf("Failed with test case: %+v", tc)
+			}
+		})
 	}
 }
 

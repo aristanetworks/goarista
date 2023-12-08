@@ -156,26 +156,43 @@ func (m *MapOf[T]) Get(p key.Path) (T, bool) {
 	return m.val, m.ok
 }
 
-// GetLongestPrefix returns the longest prefix of p in the pathmap
-// and its value. If the first component of p is not in the pathmap
-// (ie: p is malformed), returns a nil path, default value and false
-// Otherwise returns the longest prefix of p in the pathMap (which
-// be p itself), its value and true
+// GetLongestPrefix determines the longest prefix of p for which an entry exists
+// within the path map. If such a prefix exists, this function returns the prefix
+// path, its associated value, and true. Otherwise, this functions a nil path, the
+// default value, and false.
 func (m *MapOf[T]) GetLongestPrefix(p key.Path) (key.Path, T, bool) {
-	var zeroT T
+	hasOk := m.ok
+	prefixLen := 0
+	lastOkM := m
+
+	currNode, ok := m, true
 	for i, element := range p {
-		next, ok := m.children.Get(element)
-		if !ok && i == 0 {
-			// malformed path where first component not in pathmap
-			return nil, zeroT, false
-		}
+		currNode, ok = currNode.children.Get(element)
 		if !ok {
-			// return longest prefix found so far
-			return p[:i], m.val, true
+			// Next path element from p does not have an associated map node; return
+			// values corresponding to the longest prefix (with an entry in the map)
+			// visited thus far.
+			break
 		}
-		m = next
+
+		if currNode.ok {
+			// Found a new entry with a longer prefix; record the details for returning
+			// after the loop.
+			hasOk = true
+			prefixLen = i+1
+			lastOkM = currNode
+		}
 	}
-	return p, m.val, m.ok // whole path in pathmap
+
+	// If no prefix of p has an associated entry within the path map, return zero
+	// values.
+	if !hasOk {
+		var zeroT T
+		return nil, zeroT, false
+	}
+
+	// Otherwise, return the longest prefix found with an associated value.
+	return p[:prefixLen], lastOkM.val, true
 }
 
 func newKeyMap[T any]() *gomap.Map[key.Key, *MapOf[T]] {
