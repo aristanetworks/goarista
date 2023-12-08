@@ -203,84 +203,280 @@ func TestMapGet(t *testing.T) {
 }
 
 func TestMapGetLongestPrefix(t *testing.T) {
-	regularMap := Map{}
-	regularMap.Set(key.Path{}, 33)
-	regularMap.Set(key.Path{key.New("a"), key.New("b")}, -132)
-	regularMap.Set(key.Path{key.New("a"), key.New("b"), key.New("c")}, 111)
-	regularMap.Set(key.Path{key.New("z")}, 203)
-	regularMap.Set(key.Path{key.New("z"), key.New("zz")}, -24)
+	type testMap struct {
+		pathMap Map
+		expectedValues map[string]interface{}
+	}
+	makeMap := func(paths []string) (result testMap) {
+		result.expectedValues = make(map[string]interface{})
 
-	emptyMap := Map{}
+		nextValue := uint32(1)
+		for _, path := range paths {
+			result.pathMap.Set(FromString(path), nextValue)
+			result.expectedValues[path] = nextValue
+			nextValue++
+		}
+
+		return
+	}
+
+	regularMap := makeMap([]string{
+		"/",
+		"/a",
+		"/a/b",
+		"/a/b/c/d",
+		"/a/b/c/d/e",
+		"/r/s",
+		"/r/s/t",
+		"/u/v",
+	})
+
+	noEntryAtRootMap := makeMap([]string{
+		"/r/s",
+		"/r/s/t",
+		"/u/v",
+	})
+
+	rootOnlyMap := makeMap([]string{"/"})
+
+	emptyMap := makeMap(nil)
 
 	testCases := []struct {
-		mp          Map
-		path        key.Path
-		nearestPath key.Path
-		v           interface{}
+		name        string
+		mp          testMap
+		path        string
 		ok          bool
-	}{{
-		mp:          regularMap,
-		path:        key.Path{},
-		nearestPath: key.Path{},
-		v:           33,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")},
-		nearestPath: key.Path{key.New("a"), key.New("b"), key.New("c")},
-		v:           111,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("a"), key.New("b")},
-		nearestPath: key.Path{key.New("a"), key.New("b")},
-		v:           -132,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("z"), key.New("a"), key.New("b"), key.New("z")},
-		nearestPath: key.Path{key.New("z")},
-		v:           203,
-		ok:          true,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("baz"), key.New("qux")},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}, {
-		mp:          regularMap,
-		path:        key.Path{key.New("c"), key.New("a")},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}, {
-		mp:          emptyMap,
-		path:        key.Path{},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}, {
-		mp:          emptyMap,
-		path:        key.Path{key.New("a"), key.New("b"), key.New("c"), key.New("d")},
-		nearestPath: nil,
-		v:           nil,
-		ok:          false,
-	}}
+		longestPath string
+	}{
+		// The root path
+		{
+			name:        "exact match, descendents, root path",
+			mp:          regularMap,
+			path:        "/",
+			ok:          true,
+			longestPath: "/",
+		},
+		{
+			name:        "no exact match, descendents, root path",
+			mp:          noEntryAtRootMap,
+			path:        "/",
+			ok:          false,
+			longestPath: "",
+		},
+		{
+			name:        "exact match, no descendents, root path",
+			mp:          rootOnlyMap,
+			path:        "/",
+			ok:          true,
+			longestPath: "/",
+		},
+		{
+			name:        "no exact match, no descendents, root path",
+			mp:          emptyMap,
+			path:        "/",
+			ok:          false,
+			longestPath: "",
+		},
+
+		// Non-root paths when the path map has entries associated with shorter
+		// prefixes
+		{
+			name:        "exact match, descendents, ancestor",
+			mp:          regularMap,
+			path:        "/a/b/c/d",
+			ok:          true,
+			longestPath: "/a/b/c/d",
+		},
+		{
+			name:        "no exact match, descendents, ancestor",
+			mp:          regularMap,
+			path:        "/a/b/c",
+			ok:          true,
+			longestPath: "/a/b",
+		},
+		{
+			name:        "exact match, no descendents, ancestor",
+			mp:          regularMap,
+			path:        "/a/b/c/d/e",
+			ok:          true,
+			longestPath: "/a/b/c/d/e",
+		},
+		// When considering divergent paths (i.e. paths p where the path map has
+		// neither an entry associated with p nor any entry associated with a
+		// descendent path of p), they may diverge from the map nodes at a node
+		// representing an entry or they may diverge from a node representing a
+		// non-entry.
+		{
+			name:        "no exact match, no descendents, ancestor, stray from "+
+			             "internal entry",
+			mp:          regularMap,
+			path:        "/a/b/f",
+			ok:          true,
+			longestPath: "/a/b",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor, stray two entries "+
+			             "from internal entry",
+			mp:          regularMap,
+			path:        "/a/b/f/g",
+			ok:          true,
+			longestPath: "/a/b",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor, stray from leaf "+
+			             "entry",
+			mp:          regularMap,
+			path:        "/a/b/c/d/e/f",
+			ok:          true,
+			longestPath: "/a/b/c/d/e",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor, stray two entries "+
+			             "from leaf entry",
+			mp:          regularMap,
+			path:        "/a/b/c/d/e/f/g",
+			ok:          true,
+			longestPath: "/a/b/c/d/e",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor, stray from "+
+			             "internal non-entry",
+			mp:          regularMap,
+			path:        "/a/b/c/f",
+			ok:          true,
+			longestPath: "/a/b",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor, stray two entries "+
+			             "from internal non-entry",
+			mp:          regularMap,
+			path:        "/a/b/c/f",
+			ok:          true,
+			longestPath: "/a/b",
+		},
+
+		// Non-root paths when the path map has no entries associated with shorter
+		// prefixes except for an entry associated with the root path
+		{
+			name:        "exact match, descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/r/s",
+			ok:          true,
+			longestPath: "/r/s",
+		},
+		{
+			name:        "no exact match, descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/r",
+			ok:          true,
+			longestPath: "/",
+		},
+		{
+			name:        "exact match, no descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/u/v",
+			ok:          true,
+			longestPath: "/u/v",
+		},
+		{
+			name:        "no exact match, no descendents, ancestor is root",
+			mp:          regularMap,
+			path:        "/x/y/z",
+			ok:          true,
+			longestPath: "/",
+		},
+
+		// Non-root paths when the path map has no entries associated with shorter
+		// prefixes
+		{
+			name:        "exact match, descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/r/s",
+			ok:          true,
+			longestPath: "/r/s",
+		},
+		{
+			name:        "no exact match, descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/r",
+			ok:          false,
+			longestPath: "",
+		},
+		{
+			name:        "exact match, no descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/u/v",
+			ok:          true,
+			longestPath: "/u/v",
+		},
+		{
+			name:        "no exact match, no descendents, no ancestor",
+			mp:          noEntryAtRootMap,
+			path:        "/x/y/z",
+			ok:          false,
+			longestPath: "",
+		},
+	}
 
 	for _, tc := range testCases {
-		nearestPath, v, ok := tc.mp.GetLongestPrefix(tc.path)
-		if ok != tc.ok {
-			t.Errorf("Test case %v: Expected Ok: %v, got ok: %v", tc, tc.ok, ok)
-		}
-		if !nearestPath.Equal(tc.nearestPath) {
-			t.Errorf("Test case %v: Expected nearestPath: %v,"+
-				" got nearestPath: %v", tc, tc.nearestPath, nearestPath)
-		}
-		if v != tc.v {
-			t.Errorf("Test case %v: Expected value: %v, got value: %v",
-				tc, tc.v, v)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			// Ensure single canonical representation of test case struct.
+			if !tc.ok && tc.longestPath != "" {
+				t.Fatalf(
+					"Test case %q expects ok == false but has a configured "+
+					"longestPath value of %q. Please clear this.",
+					tc.name,
+					tc.longestPath,
+				)
+			}
+
+			// Dump details of test case for easy access on failure.
+			defer func() {
+				if t.Failed() {
+					t.Logf("Failed with test case: %+v", tc)
+				}
+			}()
+
+			inputPath := FromString(tc.path)
+
+			t.Logf("Running GetLongestPrefix with %v", inputPath)
+			longestPrefix, v, ok := tc.mp.pathMap.GetLongestPrefix(inputPath)
+
+			if ok != tc.ok {
+				t.Fatalf("Unexpected ok value; expected:%v actual:%v", tc.ok, ok)
+			}
+
+			if !ok {
+				if !Equal(longestPrefix, nil) {
+					// Note: path.Equal([]key.Key{}, nil) == true.
+					t.Errorf("Unexpected non-empty longestPrefix: %v", longestPrefix)
+				}
+				if v != nil {
+					t.Errorf(
+						"Expected zero-value (nil); received unexpected value: %v",
+						v,
+					)
+				}
+			} else {
+				expectedlongestPrefix := FromString(tc.longestPath)
+				if !Equal(longestPrefix, expectedlongestPrefix) {
+					t.Errorf(
+						"Unexpected longestPrefix; expected:%v actual:%v",
+						expectedlongestPrefix,
+						longestPrefix,
+					)
+				}
+
+				expectedValue := tc.mp.expectedValues[tc.longestPath]
+				if v != expectedValue {
+					t.Errorf(
+						"Unexpected entry value; expected:%v actual:%v",
+						expectedValue,
+						v,
+					)
+				}
+			}
+		})
 	}
 }
 
