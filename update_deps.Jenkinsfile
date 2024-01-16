@@ -25,7 +25,7 @@ pipeline {
                             credentialsId: credentials
                         sh "git config user.name 'Arista Jenkins'"
                         sh "git config user.email jenkins@arista.com"
-                        sh "scp -o BatchMode=yes -p -P 29418 jenkins@gerrit.corp.arista.io:hooks/commit-msg .git/hooks/"
+                        sh "mkdir -p `git rev-parse --git-dir`/hooks/ && curl -Lo `git rev-parse --git-dir`/hooks/commit-msg https://gerrit.corp.arista.io/tools/hooks/commit-msg && chmod +x `git rev-parse --git-dir`/hooks/commit-msg"
                     }
                 }
                 script {
