@@ -7,6 +7,7 @@ package netns
 import (
 	"errors"
 	"net"
+	"sync"
 
 	"github.com/aristanetworks/goarista/dscp"
 	"github.com/aristanetworks/goarista/logger"
@@ -47,6 +48,7 @@ func accept(listener net.Listener, conns chan<- net.Conn, logger logger.Logger) 
 // created namespace.
 type nsListener struct {
 	listener        net.Listener
+	listenerMutex   sync.Mutex
 	nsWatcher       NsWatcher
 	nsName          string
 	addr            *net.TCPAddr
@@ -56,6 +58,8 @@ type nsListener struct {
 }
 
 func (l *nsListener) NetNsTeardown() {
+	l.listenerMutex.Lock()
+	defer l.listenerMutex.Unlock()
 	if l.listener != nil {
 		l.logger.Info("Destroying listener")
 		l.listener.Close()
@@ -64,6 +68,8 @@ func (l *nsListener) NetNsTeardown() {
 }
 
 func (l *nsListener) NetNsOperation() error {
+	l.listenerMutex.Lock()
+	defer l.listenerMutex.Unlock()
 	listener, err := l.listenerCreator()
 	l.listener = listener
 	return err
@@ -120,6 +126,8 @@ func (l *nsListener) Close() error {
 
 // Addr returns the local address of the listener.
 func (l *nsListener) Addr() net.Addr {
+	l.listenerMutex.Lock()
+	defer l.listenerMutex.Unlock()
 	if l.listener != nil {
 		return l.listener.Addr()
 	} else {
