@@ -5,30 +5,30 @@
 package netns
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"io"
 	"net"
-	"sync"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
-	"github.com/aristanetworks/goarista/dscp"
+	"github.com/aristanetworks/fsnotify"
 	"github.com/aristanetworks/goarista/logger"
 )
 
 type ListenerCreator func() (net.Listener, error)
 
-func defaultListenerCreator(addr *net.TCPAddr, tos byte, logger logger.Logger) ListenerCreator {
-	return func() (net.Listener, error) {
-		return dscp.ListenTCPWithTOSLogger(addr, tos, logger)
-	}
-}
-
-type NSListenerOption func(*nsListener)
-
-// WithCustomListener makes it so the ListenerCreator passed in is called to create the internal
-// net.Listener. If this isn't used, a dscp.ListenTCPWithTOSLogger is created
-func WithCustomListener(lc ListenerCreator) NSListenerOption {
-	return func(l *nsListener) {
-		l.listenerCreator = lc
-	}
+var makeListener = func(nsName string, listenerCreator ListenerCreator) (net.Listener, error) {
+	var listener net.Listener
+	err := Do(nsName, func() error {
+		var err error
+		listener, err = listenerCreator()
+		return err
+	})
+	return listener, err
 }
 
 func accept(listener net.Listener, conns chan<- net.Conn, logger logger.Logger) {
@@ -36,30 +36,39 @@ func accept(listener net.Listener, conns chan<- net.Conn, logger logger.Logger) 
 		c, err := listener.Accept()
 		if err != nil {
 			logger.Infof("Accept error: %v", err)
-			close(conns)
 			return
 		}
 		conns <- c
 	}
 }
 
-// nsListener is a net.Listener that binds to a specific network namespace when it becomes
-// available and in case it gets deleted and recreated it will automatically bind to the newly
-// created namespace.
+func (l *nsListener) waitForMount() bool {
+	for !hasMount(l.nsFile, l.logger) {
+		time.Sleep(time.Second)
+		if _, err := os.Stat(l.nsFile); err != nil {
+			l.logger.Infof("error stating %s: %v", l.nsFile, err)
+			return false
+		}
+	}
+	return true
+}
+
+// nsListener is a net.Listener that binds to a specific network namespace when it becomes available
+// and in case it gets deleted and recreated it will automatically bind to the newly created
+// namespace.
 type nsListener struct {
 	listener        net.Listener
-	listenerMutex   sync.Mutex
-	nsWatcher       NsWatcher
+	watcher         *fsnotify.Watcher
 	nsName          string
+	nsFile          string
 	addr            *net.TCPAddr
+	done            chan struct{}
 	conns           chan net.Conn
 	logger          logger.Logger
 	listenerCreator ListenerCreator
 }
 
-func (l *nsListener) NetNsTeardown() {
-	l.listenerMutex.Lock()
-	defer l.listenerMutex.Unlock()
+func (l *nsListener) tearDown() {
 	if l.listener != nil {
 		l.logger.Info("Destroying listener")
 		l.listener.Close()
@@ -67,44 +76,89 @@ func (l *nsListener) NetNsTeardown() {
 	}
 }
 
-func (l *nsListener) NetNsOperation() error {
-	l.listenerMutex.Lock()
-	defer l.listenerMutex.Unlock()
-	listener, err := l.listenerCreator()
-	l.listener = listener
-	return err
-}
-
-func (l *nsListener) NetNsOperationSuccess() {
-	l.conns = make(chan net.Conn)
-	go accept(l.listener, l.conns, l.logger)
-}
-
-var newNsWatcher = func(nsName string, logger logger.Logger,
-	netNsOperator NetNsOperator) (NsWatcher, error) {
-	return NewNsWatcher(nsName, logger, netNsOperator)
-}
-
-func newNSListener(nsName string, addr *net.TCPAddr, tos byte, logger logger.Logger,
-	options ...NSListenerOption) (net.Listener, error) {
-
-	l := &nsListener{
-		nsName: nsName,
-		addr:   addr,
-		logger: logger,
+func (l *nsListener) setUp() bool {
+	l.logger.Infof("Creating listener in namespace %v", l.nsName)
+	if err := l.watcher.Add(l.nsFile); err != nil {
+		l.logger.Infof("Can't watch the file (will try again): %v", err)
+		return false
 	}
-	for _, opt := range options {
-		opt(l)
-	}
-	if l.listenerCreator == nil {
-		l.listenerCreator = defaultListenerCreator(addr, tos, logger)
-	}
-
-	nsWatcher, err := newNsWatcher(nsName, logger, l)
+	listener, err := makeListener(l.nsName, l.listenerCreator)
 	if err != nil {
+		l.logger.Infof("Can't create TCP listener (will try again): %v", err)
+		return false
+	}
+	l.listener = listener
+	go accept(l.listener, l.conns, l.logger)
+	return true
+}
+
+func (l *nsListener) watch() {
+	var mounted bool
+	if hasMount(l.nsFile, l.logger) {
+		mounted = l.setUp()
+	}
+
+	for {
+		select {
+		case <-l.done:
+			l.tearDown()
+			go func() {
+				// Drain the events, otherwise closing the watcher will get stuck
+				for range l.watcher.Events {
+				}
+			}()
+			l.watcher.Close()
+			close(l.conns)
+			return
+		case ev := <-l.watcher.Events:
+			if ev.Name != l.nsFile {
+				continue
+			}
+			if ev.Op&fsnotify.Create == fsnotify.Create {
+				if mounted || !l.waitForMount() {
+					continue
+				}
+				mounted = l.setUp()
+			}
+			if ev.Op&fsnotify.Remove == fsnotify.Remove {
+				l.tearDown()
+				mounted = false
+			}
+		}
+	}
+}
+
+func (l *nsListener) setupWatch() error {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	if err = w.Add(filepath.Dir(l.nsFile)); err != nil {
+		return err
+	}
+
+	l.watcher = w
+	go l.watch()
+	return nil
+}
+
+func newNSListenerWithDir(nsDir, nsName string, addr *net.TCPAddr, logger logger.Logger,
+	listenerCreator ListenerCreator) (net.Listener, error) {
+	if listenerCreator == nil {
+		return nil, fmt.Errorf("newNSListenerWithDir received nil listenerCreator")
+	}
+	l := &nsListener{
+		nsName:          nsName,
+		nsFile:          filepath.Join(nsDir, nsName),
+		addr:            addr,
+		done:            make(chan struct{}),
+		conns:           make(chan net.Conn),
+		logger:          logger,
+		listenerCreator: listenerCreator,
+	}
+	if err := l.setupWatch(); err != nil {
 		return nil, err
 	}
-	l.nsWatcher = nsWatcher
 
 	return l, nil
 }
@@ -117,32 +171,49 @@ func (l *nsListener) Accept() (net.Conn, error) {
 	return nil, errors.New("listener closed")
 }
 
-// Close closes the listener. This MUST be called before the nslistener is garbage collected or
-// watchers will be leaked
+// Close closes the listener.
 func (l *nsListener) Close() error {
-	l.nsWatcher.Close()
+	close(l.done)
 	return nil
 }
 
 // Addr returns the local address of the listener.
 func (l *nsListener) Addr() net.Addr {
-	l.listenerMutex.Lock()
-	defer l.listenerMutex.Unlock()
-	if l.listener != nil {
-		return l.listener.Addr()
-	} else {
-		return l.addr
-	}
+	return l.addr
 }
 
-// NewNSListener creates a new net.Listener bound to a network namespace. If the default
-// ListenerCreator is used, the listening socket will be bound to the specified local address and
-// will have the specified tos.
-//
-// NewNSListener supports the following configuration options:
-//
-//	WithCustomListener - function used to create the listener
-func NewNSListener(nsName string, addr *net.TCPAddr, tos byte, logger logger.Logger,
-	options ...NSListenerOption) (net.Listener, error) {
-	return newNSListener(nsName, addr, tos, logger, options...)
+func hasMountInProcMounts(r io.Reader, mountPoint string) bool {
+	// Kernels up to 3.18 export the namespace via procfs and later ones via nsfs
+	fsTypes := map[string]bool{"proc": true, "nsfs": true}
+
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		l := scanner.Text()
+		comps := strings.SplitN(l, " ", 3)
+		if len(comps) != 3 || !fsTypes[comps[0]] {
+			continue
+		}
+		if comps[1] == mountPoint {
+			return true
+		}
+	}
+
+	return false
+}
+
+func getNsDirFromProcMounts(r io.Reader) (string, error) {
+	// Newer EOS versions mount netns under /run
+	dirs := map[string]bool{"/var/run/netns": true, "/run/netns": true}
+
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		l := scanner.Text()
+		comps := strings.SplitN(l, " ", 3)
+		if len(comps) != 3 || !dirs[comps[1]] {
+			continue
+		}
+		return comps[1], nil
+	}
+
+	return "", errors.New("can't find the netns mount dir")
 }
