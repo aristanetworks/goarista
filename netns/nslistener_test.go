@@ -84,7 +84,7 @@ func TestNSListener(t *testing.T) {
 	}
 
 	logger := &glog.Glog{}
-	l, err := newNSListener("", nil, logger, mockListenerCreator)
+	l, err := NewNSListener("", nil, 0, logger, WithCustomListener(mockListenerCreator))
 	if err != nil {
 		t.Fatalf("Can't create mock listener: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestNSListenerClose(t *testing.T) {
 	}
 
 	logger := &glog.Glog{}
-	l, err := newNSListener("", nil, logger, mockListenerCreator)
+	l, err := NewNSListener("", nil, 0, logger, WithCustomListener(mockListenerCreator))
 	if err != nil {
 		t.Fatalf("Can't create mock listener: %v", err)
 	}
