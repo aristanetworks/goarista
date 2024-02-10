@@ -6,6 +6,7 @@ package netns
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 
@@ -14,22 +15,6 @@ import (
 )
 
 type ListenerCreator func() (net.Listener, error)
-
-func defaultListenerCreator(addr *net.TCPAddr, tos byte, logger logger.Logger) ListenerCreator {
-	return func() (net.Listener, error) {
-		return dscp.ListenTCPWithTOSLogger(addr, tos, logger)
-	}
-}
-
-type NSListenerOption func(*nsListener)
-
-// WithCustomListener makes it so the ListenerCreator passed in is called to create the internal
-// net.Listener. If this isn't used, a dscp.ListenTCPWithTOSLogger is created
-func WithCustomListener(lc ListenerCreator) NSListenerOption {
-	return func(l *nsListener) {
-		l.listenerCreator = lc
-	}
-}
 
 func accept(listener net.Listener, conns chan<- net.Conn, logger logger.Logger) {
 	for {
@@ -42,9 +27,9 @@ func accept(listener net.Listener, conns chan<- net.Conn, logger logger.Logger) 
 	}
 }
 
-// nsListener is a net.Listener that binds to a specific network namespace when it becomes
-// available and in case it gets deleted and recreated it will automatically bind to the newly
-// created namespace.
+// nsListener is a net.Listener that binds to a specific network namespace when it becomes available
+// and in case it gets deleted and recreated it will automatically bind to the newly created
+// namespace.
 type nsListener struct {
 	listener        net.Listener
 	listenerMutex   sync.Mutex
@@ -83,20 +68,18 @@ var newNsWatcher = func(nsName string, logger logger.Logger,
 	return NewNsWatcher(nsName, logger, netNsOperator)
 }
 
-func newNSListener(nsName string, addr *net.TCPAddr, tos byte, logger logger.Logger,
-	options ...NSListenerOption) (net.Listener, error) {
+func newNSListener(nsName string, addr *net.TCPAddr, logger logger.Logger,
+	listenerCreator ListenerCreator) (net.Listener, error) {
+	if listenerCreator == nil {
+		return nil, fmt.Errorf("newNSListener received nil listenerCreator")
+	}
 
 	l := &nsListener{
-		nsName: nsName,
-		addr:   addr,
-		logger: logger,
-		conns:  make(chan net.Conn),
-	}
-	for _, opt := range options {
-		opt(l)
-	}
-	if l.listenerCreator == nil {
-		l.listenerCreator = defaultListenerCreator(addr, tos, logger)
+		nsName:          nsName,
+		addr:            addr,
+		logger:          logger,
+		listenerCreator: listenerCreator,
+		conns:           make(chan net.Conn),
 	}
 
 	nsWatcher, err := newNsWatcher(nsName, logger, l)
@@ -116,8 +99,7 @@ func (l *nsListener) Accept() (net.Conn, error) {
 	return nil, errors.New("listener closed")
 }
 
-// Close closes the listener. This MUST be called before the nslistener is garbage collected or
-// watchers will be leaked
+// Close closes the listener.
 func (l *nsListener) Close() error {
 	l.nsWatcher.Close()
 	close(l.conns)
@@ -135,14 +117,20 @@ func (l *nsListener) Addr() net.Addr {
 	}
 }
 
-// NewNSListener creates a new net.Listener bound to a network namespace. If the default
-// ListenerCreator is used, the listening socket will be bound to the specified local address and
-// will have the specified tos.
-//
-// NewNSListener supports the following configuration options:
-//
-//	WithCustomListener - function used to create the listener
-func NewNSListener(nsName string, addr *net.TCPAddr, tos byte, logger logger.Logger,
-	options ...NSListenerOption) (net.Listener, error) {
-	return newNSListener(nsName, addr, tos, logger, options...)
+// NewNSListener creates a new net.Listener bound to a network namespace. The listening socket will
+// be bound to the specified local address and will have the specified tos.
+func NewNSListener(nsName string, addr *net.TCPAddr, tos byte, logger logger.Logger) (net.Listener,
+	error) {
+	return NewNSListenerWithCustomListener(nsName, addr, logger,
+		func() (net.Listener, error) {
+			return dscp.ListenTCPWithTOSLogger(addr, tos, logger)
+		})
+}
+
+// NewNSListenerWithCustomListener creates a new net.Listener bound to a network namespace. The
+// listener is created using listenerCreator. listenerCreator should create a listener that
+// binds to addr. listenerCreator may be called multiple times if the vrf is deleted and recreated.
+func NewNSListenerWithCustomListener(nsName string, addr *net.TCPAddr, logger logger.Logger,
+	listenerCreator ListenerCreator) (net.Listener, error) {
+	return newNSListener(nsName, addr, logger, listenerCreator)
 }
