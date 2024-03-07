@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/aristanetworks/glog"
 )
 

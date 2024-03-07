@@ -21,7 +21,10 @@ if ! test -x .git/hooks/commit-msg; then
 fi
 
 cd "$(dirname "$0")"
-go get -u ./... && go mod tidy -go=1.19 && go mod tidy -go=1.20
+go version
+# by default go mod tidy will tidy so that go sum includes checksums needed by one
+# version lower than the go version in go.mod
+go get -u ./... && go mod tidy -go=1.21
 git add go.mod go.sum
 
 ./refresh_protos.sh

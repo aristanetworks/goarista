@@ -12,7 +12,7 @@ import (
 	"github.com/aristanetworks/goarista/elasticsearch"
 	"github.com/aristanetworks/goarista/kafka"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/aristanetworks/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/protobuf/proto"

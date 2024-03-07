@@ -12,7 +12,7 @@ import (
 
 	"github.com/aristanetworks/goarista/monitor"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/aristanetworks/glog"
 	"google.golang.org/protobuf/proto"
 )

@@ -20,7 +20,7 @@ import (
 
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/aristanetworks/glog"
 )
 

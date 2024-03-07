@@ -11,7 +11,7 @@ import (
 	"github.com/aristanetworks/goarista/kafka"
 	"github.com/aristanetworks/goarista/kafka/gnmi"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/aristanetworks/glog"
 	"google.golang.org/protobuf/proto"
 )
