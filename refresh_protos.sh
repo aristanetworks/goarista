@@ -23,7 +23,7 @@ curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest \
  | grep -o -m 1 \
 "https://github.com/protocolbuffers/protobuf/releases/download/v.*/protoc\-.*-linux-x86_64.zip" \
  | xargs curl -LO && echo "protoc downloaded"
-python -c \
+python3 -c \
 "from glob import glob as g;from zipfile import ZipFile as z;
 p=g('protoc-*-linux-x86_64.zip')[0];f=z(p,'r');f.extractall('protoc');f.close()"
 rm protoc-*-linux-x86_64.zip
