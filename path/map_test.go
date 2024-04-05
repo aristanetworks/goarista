@@ -204,7 +204,7 @@ func TestMapGet(t *testing.T) {
 
 func TestMapGetLongestPrefix(t *testing.T) {
 	type testMap struct {
-		pathMap Map
+		pathMap        Map
 		expectedValues map[string]interface{}
 	}
 	makeMap := func(paths []string) (result testMap) {
@@ -307,48 +307,48 @@ func TestMapGetLongestPrefix(t *testing.T) {
 		// representing an entry or they may diverge from a node representing a
 		// non-entry.
 		{
-			name:        "no exact match, no descendents, ancestor, stray from "+
-			             "internal entry",
+			name: "no exact match, no descendents, ancestor, stray from " +
+				"internal entry",
 			mp:          regularMap,
 			path:        "/a/b/f",
 			ok:          true,
 			longestPath: "/a/b",
 		},
 		{
-			name:        "no exact match, no descendents, ancestor, stray two entries "+
-			             "from internal entry",
+			name: "no exact match, no descendents, ancestor, stray two entries " +
+				"from internal entry",
 			mp:          regularMap,
 			path:        "/a/b/f/g",
 			ok:          true,
 			longestPath: "/a/b",
 		},
 		{
-			name:        "no exact match, no descendents, ancestor, stray from leaf "+
-			             "entry",
+			name: "no exact match, no descendents, ancestor, stray from leaf " +
+				"entry",
 			mp:          regularMap,
 			path:        "/a/b/c/d/e/f",
 			ok:          true,
 			longestPath: "/a/b/c/d/e",
 		},
 		{
-			name:        "no exact match, no descendents, ancestor, stray two entries "+
-			             "from leaf entry",
+			name: "no exact match, no descendents, ancestor, stray two entries " +
+				"from leaf entry",
 			mp:          regularMap,
 			path:        "/a/b/c/d/e/f/g",
 			ok:          true,
 			longestPath: "/a/b/c/d/e",
 		},
 		{
-			name:        "no exact match, no descendents, ancestor, stray from "+
-			             "internal non-entry",
+			name: "no exact match, no descendents, ancestor, stray from " +
+				"internal non-entry",
 			mp:          regularMap,
 			path:        "/a/b/c/f",
 			ok:          true,
 			longestPath: "/a/b",
 		},
 		{
-			name:        "no exact match, no descendents, ancestor, stray two entries "+
-			             "from internal non-entry",
+			name: "no exact match, no descendents, ancestor, stray two entries " +
+				"from internal non-entry",
 			mp:          regularMap,
 			path:        "/a/b/c/f",
 			ok:          true,
@@ -424,7 +424,7 @@ func TestMapGetLongestPrefix(t *testing.T) {
 			if !tc.ok && tc.longestPath != "" {
 				t.Fatalf(
 					"Test case %q expects ok == false but has a configured "+
-					"longestPath value of %q. Please clear this.",
+						"longestPath value of %q. Please clear this.",
 					tc.name,
 					tc.longestPath,
 				)

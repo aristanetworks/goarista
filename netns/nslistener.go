@@ -19,6 +19,8 @@ import (
 	"github.com/aristanetworks/goarista/logger"
 )
 
+// ListenerCreator is the signature of a function which creates a listener,
+// for use in functions where custom listeners can be generated
 type ListenerCreator func() (net.Listener, error)
 
 var makeListener = func(nsName string, listenerCreator ListenerCreator) (net.Listener, error) {

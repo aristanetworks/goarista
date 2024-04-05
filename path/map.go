@@ -178,7 +178,7 @@ func (m *MapOf[T]) GetLongestPrefix(p key.Path) (key.Path, T, bool) {
 			// Found a new entry with a longer prefix; record the details for returning
 			// after the loop.
 			foundPrefixEntry = true
-			prefixEntryPathLen = i+1
+			prefixEntryPathLen = i + 1
 			prefixEntryNode = next
 		}
 
