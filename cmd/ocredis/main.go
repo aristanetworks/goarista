@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"strings"
 
 	"github.com/aristanetworks/goarista/gnmi"
@@ -52,6 +53,10 @@ func main() {
 	flag.StringVar(&cfg.Username, "username", "", "Username to authenticate with")
 	flag.StringVar(&cfg.Password, "password", "", "Password to authenticate with")
 	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
+	flag.StringVar(&cfg.TLSMinVersion, "tls-min-version", "",
+		fmt.Sprintf("Set minimum TLS version for connection (%s)", gnmi.TLSVersions))
+	flag.StringVar(&cfg.TLSMaxVersion, "tls-max-version", "",
+		fmt.Sprintf("Set maximum TLS version for connection (%s)", gnmi.TLSVersions))
 	subscribePaths := flag.String("subscribe", "/", "Comma-separated list of paths to subscribe to")
 	flag.Parse()
 	if *redisFlag == "" {

@@ -13,6 +13,8 @@ import (
 	"math"
 	"net"
 	"os"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/aristanetworks/goarista/netns"
@@ -30,6 +32,21 @@ const (
 	// HostnameArg is the value to be replaced by the actual hostname
 	HostnameArg = "HOSTNAME"
 )
+
+type tlsVersionMap map[string]uint16
+
+func (m tlsVersionMap) String() string {
+	r := make([]string, 0, len(m))
+	for k := range m {
+		r = append(r, k)
+	}
+	slices.Sort(r)
+	return strings.Join(r, ", ")
+}
+
+// TLSVersions is a map from TLS version strings to the tls version
+// constants in the crypto/tls package
+var TLSVersions = getTLSVersions()
 
 // PublishFunc is the method to publish responses
 type PublishFunc func(addr string, message proto.Message)
@@ -66,14 +83,16 @@ type Config struct {
 	CertData []byte
 	KeyData  []byte
 
-	Password     string
-	Username     string
-	TLS          bool
-	Compression  string
-	BDP          bool
-	DialOptions  []grpc.DialOption
-	Token        string
-	GRPCMetadata map[string]string
+	Password      string
+	Username      string
+	TLS           bool
+	TLSMinVersion string
+	TLSMaxVersion string
+	Compression   string
+	BDP           bool
+	DialOptions   []grpc.DialOption
+	Token         string
+	GRPCMetadata  map[string]string
 }
 
 // SubscribeOptions is the gNMI subscription request options
@@ -117,6 +136,10 @@ func ParseFlags() (*Config, []string) {
 
 		tlsFlag = flag.Bool("tls", false,
 			"Enable TLS")
+		tlsMinVersion = flag.String("tls-min-version", "",
+			fmt.Sprintf("Set minimum TLS version for connection (%s)", TLSVersions))
+		tlsMaxVersion = flag.String("tls-max-version", "",
+			fmt.Sprintf("Set minimum TLS version for connection (%s)", TLSVersions))
 
 		compressionFlag = flag.String("compression", "",
 			"Type of compression to use")
@@ -129,15 +152,17 @@ func ParseFlags() (*Config, []string) {
 	)
 	flag.Parse()
 	cfg := &Config{
-		Addr:        *addrsFlag,
-		CAFile:      *caFileFlag,
-		CertFile:    *certFileFlag,
-		KeyFile:     *keyFileFlag,
-		Password:    *passwordFlag,
-		Username:    *usernameFlag,
-		TLS:         *tlsFlag,
-		Compression: *compressionFlag,
-		Token:       *token,
+		Addr:          *addrsFlag,
+		CAFile:        *caFileFlag,
+		CertFile:      *certFileFlag,
+		KeyFile:       *keyFileFlag,
+		Password:      *passwordFlag,
+		Username:      *usernameFlag,
+		TLS:           *tlsFlag,
+		TLSMinVersion: *tlsMinVersion,
+		TLSMaxVersion: *tlsMaxVersion,
+		Compression:   *compressionFlag,
+		Token:         *token,
 	}
 	subscriptions := strings.Split(*subscribeFlag, ",")
 	return cfg, subscriptions
@@ -241,6 +266,28 @@ func DialContextConn(ctx context.Context, cfg *Config) (*grpc.ClientConn, error)
 			opts = append(opts,
 				grpc.WithPerRPCCredentials(newAccessTokenCredential(cfg.Token)))
 		}
+		if cfg.TLSMaxVersion != "" {
+			var ok bool
+			tlsConfig.MaxVersion, ok = TLSVersions[cfg.TLSMaxVersion]
+			if !ok {
+				return nil, fmt.Errorf("unrecognised TLS max version."+
+					" Supported TLS versions are %s", TLSVersions)
+			}
+		}
+		if cfg.TLSMinVersion != "" {
+			var ok bool
+			tlsConfig.MinVersion, ok = TLSVersions[cfg.TLSMinVersion]
+			if !ok {
+				return nil, fmt.Errorf("unrecognised TLS min version."+
+					" Supported TLS versions are %s", TLSVersions)
+			}
+		}
+		if cfg.TLSMinVersion != "" && cfg.TLSMaxVersion != "" &&
+			tlsConfig.MinVersion > tlsConfig.MaxVersion {
+			return nil, fmt.Errorf(
+				"TLS min version was greater than TLS max version")
+		}
+
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
@@ -427,4 +474,40 @@ func HistoryRangeExtension(s, e int64) *gnmi_ext.Extension_History {
 			},
 		},
 	}
+}
+
+// getTLSVersions generates a map of TLS version name to tls version, based on the versions
+// available in the crypto/tls package
+func getTLSVersions(testHook ...func(uint16, *regexp.Regexp)) tlsVersionMap {
+	cipherSuites := tls.CipherSuites()
+	allSupportedVersions := make(map[uint16]struct{})
+
+	for _, cipherSuite := range cipherSuites {
+		for _, version := range cipherSuite.SupportedVersions {
+			allSupportedVersions[version] = struct{}{}
+		}
+	}
+
+	// match TLS versions in dot format like X.Y or X.Y.Z etc (right now everything is X.Y)
+	re := regexp.MustCompile(`[\d.]+`)
+
+	nameToVersion := make(map[string]uint16, len(allSupportedVersions))
+	for version := range allSupportedVersions {
+		// tls.VersionName(version) will be something like "TLS 1.3"
+		name := re.FindString(tls.VersionName(version))
+		// check if the regex either failed to match, or if it is not specific enough
+		// (matching something which was already found)
+		if _, ok := nameToVersion[name]; ok || name == "" {
+			// if we ever fail to match a regex we shouldn't do anything in production
+			// but let's make a test fail so we can investigate and update the regex
+			for _, f := range testHook {
+				f(version, re)
+			}
+			continue
+		}
+
+		nameToVersion[name] = version
+
+	}
+	return nameToVersion
 }

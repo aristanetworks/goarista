@@ -6,7 +6,9 @@ package gnmi
 
 import (
 	"bytes"
+	"crypto/tls"
 	"os/exec"
+	"regexp"
 	"testing"
 )
 
@@ -25,4 +27,14 @@ func TestDependencies(t *testing.T) {
 	if bytes.Contains(out, []byte("github.com/aristanetworks/glog")) {
 		t.Error("gnmi depends on github.com/aristanetworks/glog")
 	}
+}
+
+func TestTLSVersions(t *testing.T) {
+	_ = getTLSVersions(func(u uint16, re *regexp.Regexp) {
+		// if we enter this function, it means that there is an issue with the regex matching
+		// against a particular version name of TLS, and we need to update the regex to catch
+		// this
+		t.Fatalf("the regex %s was not sufficient for matching %q,"+
+			" please update this regex", re.String(), tls.VersionName(u))
+	})
 }

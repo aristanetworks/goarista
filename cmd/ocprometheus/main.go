@@ -41,6 +41,10 @@ func main() {
 	enableDynDescs := flag.Bool("enable-description-labels", false, "disable attaching additional "+
 		"labels extracted from description nodes to closest list node children")
 	flag.BoolVar(&gNMIcfg.TLS, "tls", false, "Enable TLS")
+	flag.StringVar(&gNMIcfg.TLSMinVersion, "tls-min-version", "",
+		fmt.Sprintf("Set minimum TLS version for connection (%s)", gnmi.TLSVersions))
+	flag.StringVar(&gNMIcfg.TLSMaxVersion, "tls-max-version", "",
+		fmt.Sprintf("Set maximum TLS version for connection (%s)", gnmi.TLSVersions))
 	subscribePaths := flag.String("subscribe", "/", "Comma-separated list of paths to subscribe to")
 
 	// program options

@@ -65,6 +65,10 @@ func Main() {
 	flag.StringVar(&cfg.Compression, "compression", "", "Compression method. "+
 		`Supported options: "" and "gzip"`)
 	flag.BoolVar(&cfg.TLS, "tls", false, "Enable TLS")
+	flag.StringVar(&cfg.TLSMinVersion, "tls-min-version", "",
+		fmt.Sprintf("Set minimum TLS version for connection (%s)", gnmi.TLSVersions))
+	flag.StringVar(&cfg.TLSMaxVersion, "tls-max-version", "",
+		fmt.Sprintf("Set maximum TLS version for connection (%s)", gnmi.TLSVersions))
 	flag.BoolVar(&cfg.BDP, "bdp", true,
 		"Enable Bandwidth Delay Product (BDP) estimation and dynamic flow control window")
 	outputVersion := flag.Bool("version", false, "print version information")
