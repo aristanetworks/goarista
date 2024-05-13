@@ -250,6 +250,16 @@ func TestNewSetOperations(t *testing.T) {
 				Path:   gnmi.SplitPath("path"),
 			},
 		},
+		"union_replace": {
+			args: []string{"union_replace", "origin=cli", "target=target", "path", "100"},
+			exp: &gnmi.Operation{
+				Type:   "union_replace",
+				Origin: "cli",
+				Target: "target",
+				Val:    "100",
+				Path:   gnmi.SplitPath("path"),
+			},
+		},
 	}
 
 	for name, tc := range testCases {
@@ -263,7 +273,7 @@ func TestNewSetOperations(t *testing.T) {
 	}
 }
 
-// update|replace|delete request does not support encoding
+// update|replace|delete|union_replace request does not support encoding
 // test that it throws an error if encoding is given
 func TestEncodingNewSetOperations(t *testing.T) {
 	testCases := map[string]struct {
@@ -314,6 +324,24 @@ func TestEncodingNewSetOperations(t *testing.T) {
 				"target=h",
 				"origin=a",
 				"/"}},
+
+		// union_replace
+		"dot_union_replace": {[]string{"union_replace", "encoding=.", "/", "val"}},
+		"ASCII_union_replace": {
+			[]string{"union_replace", "encoding=ascii", "origin=cli", "/", "val"}},
+		"bytes_union_replace": {[]string{"union_replace", "encoding=bytes", "/", "val"}},
+		"json_union_replace": {
+			[]string{"union_replace", "encoding=json", "target=what", "/", "val"}},
+		"json_ieft_union_replace": {[]string{"union_replace", "encoding=json_ietf", "/", "val"}},
+		"proto_union_replace": {
+			[]string{
+				"union_replace",
+				"encoding=proto",
+				"target=h",
+				"origin=a",
+				"/",
+				"val"},
+		},
 	}
 	for name, tc := range testCases {
 		_, _, err := newSetOperation(0, tc.args, "")
@@ -323,7 +351,7 @@ func TestEncodingNewSetOperations(t *testing.T) {
 	}
 }
 
-// update|replace operation needs a value
+// update|replace|union_replace operation needs a value
 // test that it throws an error if missing
 func TestMissingValueNewSetOperations(t *testing.T) {
 	testCases := map[string]struct {
@@ -340,6 +368,12 @@ func TestMissingValueNewSetOperations(t *testing.T) {
 		"replace_origin": {[]string{"replace", "origin=cli", "/"}},
 		"replace_target": {[]string{"replace", "target=what", "/"}},
 		"replace_both":   {[]string{"replace", "target=h", "origin=a", "/"}},
+
+		// union_replace
+		"union_replace":        {[]string{"union_replace", "/"}},
+		"union_replace_origin": {[]string{"union_replace", "origin=cli", "/"}},
+		"union_replace_target": {[]string{"union_replace", "target=what", "/"}},
+		"union_replace_both":   {[]string{"union_replace", "target=h", "origin=a", "/"}},
 	}
 
 	for name, tc := range testCases {
@@ -350,7 +384,7 @@ func TestMissingValueNewSetOperations(t *testing.T) {
 	}
 }
 
-// update|replace|delete needs a path
+// update|replace|delete|union_replace needs a path
 // test that it throws an error if missing
 func TestMissingPathsNewSetOperations(t *testing.T) {
 	testCases := map[string]struct {
@@ -373,6 +407,12 @@ func TestMissingPathsNewSetOperations(t *testing.T) {
 		"delete_origin": {[]string{"delete", "origin=OpenConfig"}},
 		"delete_target": {[]string{"delete", "target=target"}},
 		"delete_both":   {[]string{"delete", "target=target", "origin=origin"}},
+
+		// union_replace
+		"union_replace":        {[]string{"union_replace"}},
+		"union_replace_origin": {[]string{"union_replace", "origin=cli"}},
+		"union_replace_target": {[]string{"union_replace", "target=what"}},
+		"union_replace_both":   {[]string{"union_replace", "target=h", "origin=a"}},
 	}
 
 	for name, tc := range testCases {
@@ -383,7 +423,7 @@ func TestMissingPathsNewSetOperations(t *testing.T) {
 	}
 }
 
-// for update|replace|delete
+// for update|replace|delete|union_replace
 // test that it stops parsing at the correct args position
 func TestArgsPosNewSetOperations(t *testing.T) {
 	testCases := map[string]struct {
@@ -406,6 +446,13 @@ func TestArgsPosNewSetOperations(t *testing.T) {
 		"delete_origin": {[]string{"delete", "origin=cli", "/", "next operation"}},
 		"delete_target": {[]string{"delete", "target=what", "/", "next operation"}},
 		"delete_both":   {[]string{"delete", "origin=cli", "target=tar", "/", "next operation"}},
+
+		// union_replace
+		"union_replace":        {[]string{"union_replace", "/", "hi", "hi"}},
+		"union_replace_origin": {[]string{"union_replace", "origin=cli", "/", "hi", "hi"}},
+		"union_replace_target": {[]string{"union_replace", "target=what", "/", "hi", "hi"}},
+		"union_replace_both": {
+			[]string{"union_replace", "target=h", "origin=a", "/", "hi", "hi"}},
 	}
 	for name, tc := range testCases {
 		pos, _, err := newSetOperation(0, tc.args, "")

@@ -48,7 +48,7 @@ Path to client TLS private key file
 ## Operations
 
 `gnmi` supports the following operations: `capabilites`, `get`,
-`subscribe`, `update`, `replace`, and `delete`.
+`subscribe`, `update`, `replace`, `delete`, and `union_replace`.
 
 ### capabilities
 
@@ -87,9 +87,9 @@ Subscribe to interface counters:
 $ gnmi [OPTIONS] subscribe '/interfaces/interface[name=*]/state/counters'
 ```
 
-### update/replace/delete
+### update/replace/delete/union_replace
 
-`update`, `replace`, and `delete` are used to
+`update`, `replace`, `delete`, and `union_replace` are used to
 [modify the configuration of a gNMI endpoint](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#34-modifying-state).
 All of these operations take a path that must specify a single node
 element. In other words all list members must be fully-specified.
@@ -103,10 +103,10 @@ Delete BGP configuration in the default network instance:
 $ gnmi [OPTIONS] delete '/network-instances/network-instance[name=default]/protocols/protocol[name=BGP][identifier=BGP]/'
 ```
 
-`update` and `replace` both take a path and a value in JSON
+`update`, `replace`, and `union_replace` take a path and a value in JSON
 format. The JSON data may be provided in a file. See
-[here](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#344-modes-of-update-replace-versus-update)
-for documentation on the differences between `update` and `replace`.
+[here](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#344-modes-of-update-union-replace-replace-and-update)
+for documentation on the differences between `update`, `replace`, and `union_replace`.
 
 Examples:
 
@@ -127,7 +127,7 @@ gnmi [OPTIONS] update '/system/config/login-banner '"tor[13]"'
 
 #### JSON in a file
 
-The value argument to `update` and `replace` may be a file. The
+The value argument to `update`, `replace`, and `union_replace` may be a file. The
 content of the file is used to make the request.
 
 Example:
@@ -157,9 +157,9 @@ gnmi [OPTIONS] update '/interfaces/interface[name=Ethernet4/1/1]/subinterfaces' 
 ```
 
 ### CLI requests
-`gnmi` offers the ability to send CLI text inside an `update` or
-`replace` operation. This is achieved by doing an `update` or
-`replace` and specifying `"origin=cli"` along with an empty path and a set of configure-mode
+`gnmi` offers the ability to send CLI text inside an `update`, `replace`, or
+`union_replace` operation. This is achieved by doing an `update`, `replace`, or
+`union_replace` and specifying `"origin=cli"` along with an empty path and a set of configure-mode
 CLI commands separated by `\n`.
 
 Example:

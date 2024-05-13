@@ -464,6 +464,12 @@ func newSetRequest(setOps []*Operation, exts ...*gnmi_ext.Extension) (*pb.SetReq
 				return nil, err
 			}
 			req.Replace = append(req.Replace, u)
+		case "union_replace":
+			u, err := update(p, op.Val)
+			if err != nil {
+				return nil, err
+			}
+			req.UnionReplace = append(req.UnionReplace, u)
 		}
 	}
 	for _, ext := range exts {

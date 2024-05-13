@@ -34,7 +34,7 @@ gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
   get ((encoding=ENCODING) (origin=ORIGIN) (target=TARGET) PATH+)+
   subscribe ((origin=ORIGIN) (target=TARGET) PATH+)+ 
-  ((update|replace (origin=ORIGIN) (target=TARGET) PATH JSON|FILE) |
+  ((update|replace|union_replace (origin=ORIGIN) (target=TARGET) PATH JSON|FILE) |
    (delete (origin=ORIGIN) (target=TARGET) PATH))+
 `
 
@@ -208,7 +208,8 @@ func Main() {
 		switch op {
 		case "capabilities":
 			if len(setOps) != 0 {
-				usageAndExit("error: 'capabilities' not allowed after 'merge|replace|delete'")
+				usageAndExit("error: 'capabilities' not allowed after" +
+					" 'update|replace|delete|union_replace'")
 			}
 			err := gnmi.Capabilities(ctx, client)
 			if err != nil {
@@ -217,7 +218,8 @@ func Main() {
 			return
 		case "get":
 			if len(setOps) != 0 {
-				usageAndExit("error: 'get' not allowed after 'merge|replace|delete'")
+				usageAndExit("error: 'get' not allowed after" +
+					" 'update|replace|delete|union_replace'")
 			}
 			pathParams, argsParsed := parsereqParams(args[1:], false)
 			if argsParsed == 0 {
@@ -238,7 +240,8 @@ func Main() {
 			return
 		case "subscribe":
 			if len(setOps) != 0 {
-				usageAndExit("error: 'subscribe' not allowed after 'merge|replace|delete'")
+				usageAndExit("error: 'subscribe' not allowed after" +
+					" 'update|replace|delete|union_replace'")
 			}
 			var g errgroup.Group
 			pathParams, argsParsed := parsereqParams(args[1:], false)
@@ -280,7 +283,7 @@ func Main() {
 				glog.Fatal(err)
 			}
 			return
-		case "update", "replace", "delete":
+		case "update", "replace", "delete", "union_replace":
 			j, op, err := newSetOperation(i, args, *arbitrationStr)
 			if err != nil {
 				usageAndExit("error: " + err.Error())
@@ -329,7 +332,7 @@ func newSetOperation(
 	pathParams, argsParsed := parsereqParams(args[index:], true)
 	index += argsParsed
 
-	// process update | replace | delete request one at a time
+	// process update | replace | delete | union_replace request one at a time
 	pathParam := pathParams[0]
 
 	// check that encoding is not set
@@ -348,7 +351,8 @@ func newSetOperation(
 		// set index to be right before the next arg that needs to be processed
 		index--
 	} else {
-		// no need for index-- since the value of update/replace is right before the next arg
+		// no need for index-- since the value of update/replace/union_replace is right
+		// before the next arg
 		if len(args) == index {
 			return 0, nil, errors.New("missing JSON or FILEPATH to data")
 		}

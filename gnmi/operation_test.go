@@ -151,6 +151,31 @@ hostname new`,
 				}},
 			},
 		},
+		"union_replace": {
+			setOps: []*Operation{{Type: "union_replace", Path: []string{"foo"}, Val: "true"}},
+			exp: &pb.SetRequest{
+				UnionReplace: []*pb.Update{{
+					Path: pathFoo,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte("true")}},
+				}},
+			},
+		},
+		"union_replace openconfig and cli origin": {
+			setOps: []*Operation{{Type: "union_replace", Origin: "openconfig", Val: "true"},
+				{Type: "union_replace", Origin: "cli", Val: fileNames[1]}},
+			exp: &pb.SetRequest{
+				UnionReplace: []*pb.Update{{
+					Path: pathOC,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_JsonIetfVal{JsonIetfVal: []byte("true")}},
+				}, {
+					Path: pathCli,
+					Val: &pb.TypedValue{
+						Value: &pb.TypedValue_AsciiVal{AsciiVal: fileData[1].content}},
+				}},
+			},
+		},
 	}
 
 	for name, tc := range testCases {
