@@ -53,11 +53,14 @@ func hasUpdate[T comparable](t *testing.T, req loglevelReq, key string, want *T)
 }
 
 func TestRequestParsing(t *testing.T) {
+	defer glog.SetRateLimit(glog.SetRateLimit(time.Millisecond, 10000))
+	doubleRateLimit := glogRateLimitUpdater{time.Millisecond / 2, 20000}
 	tcases := map[string]struct {
-		req         *http.Request
-		wantErr     string
-		wantGlog    *glogUpdater
-		wantVModule *vModuleUpdater
+		req           *http.Request
+		wantErr       string
+		wantGlog      *glogUpdater
+		wantRateLimit *glogRateLimitUpdater
+		wantVModule   *vModuleUpdater
 	}{
 		"GET": {
 			req:     req("GET"),
@@ -72,11 +75,11 @@ func TestRequestParsing(t *testing.T) {
 			wantErr: "empty request",
 		},
 		"error small": {
-			req:     req("POST", "timeout", ".1s"),
+			req:     req("POST", glogV, "0", "timeout", ".1s"),
 			wantErr: "timeout too small",
 		},
 		"error large": {
-			req:     req("POST", "timeout", "24h1s"),
+			req:     req("POST", glogV, "0", "timeout", "24h1s"),
 			wantErr: "timeout too large",
 		},
 
@@ -87,46 +90,28 @@ func TestRequestParsing(t *testing.T) {
 		},
 		"negative glog": {
 			req:     req("POST", glogV, "-1"),
-			wantErr: "invalid glog argument",
+			wantErr: "invalid glog verbosity",
 		},
 		"glog": {
 			req:      req("POST", glogV, "0"),
 			wantGlog: &glogUpdater{v: 0},
 		},
 		"glog with timeout": {
-			req:      req("POST", glogV, "1", "timeout", "10s"),
-			wantGlog: &glogUpdater{v: 1},
+			req:           req("POST", glogV, "1", "timeout", "10s"),
+			wantGlog:      &glogUpdater{v: 1},
+			wantRateLimit: &doubleRateLimit,
 		},
 		"glog with 24h timeout": {
 			req:      req("POST", glogV, "2", "timeout", "24h"),
 			wantGlog: &glogUpdater{v: 2},
 		},
 		"glog with 1s timeout": {
-			req:      req("POST", glogV, "3", "timeout", "1s"),
-			wantGlog: &glogUpdater{v: 3},
+			req:           req("POST", glogV, "3", "timeout", "1s"),
+			wantGlog:      &glogUpdater{v: 3},
+			wantRateLimit: &doubleRateLimit,
 		},
 
-		// vmodule parsing
-		"invalid vmodule": {
-			req:     req("POST", glogVModule, "not valid"),
-			wantErr: "invalid glog-vmodule argument",
-		},
-		"invalid vmodule 2": {
-			req:     req("POST", glogVModule, "x="),
-			wantErr: "invalid glog-vmodule argument",
-		},
-		"invalid vmodule 3": {
-			req:     req("POST", glogVModule, "x=09,asdf"),
-			wantErr: "invalid glog-vmodule argument",
-		},
-		"valid vmodule": {
-			req:         req("POST", glogVModule, "x=09,y=100,x/y/z=0"),
-			wantVModule: &vModuleUpdater{v: "x=09,y=100,x/y/z=0"},
-		},
-		"valid vmodule that should not work": {
-			req:         req("POST", glogVModule, "invalid:;path:-_=10"),
-			wantVModule: &vModuleUpdater{v: "invalid:;path:-_=10"},
-		},
+		// vmodule parsing: there is none. we let glog handle it all.
 	}
 
 	for name, tcase := range tcases {
@@ -141,6 +126,7 @@ func TestRequestParsing(t *testing.T) {
 			}
 			hasUpdate(t, req, glogV, tcase.wantGlog)
 			hasUpdate(t, req, glogVModule, tcase.wantVModule)
+			hasUpdate(t, req, glogRateLimit, tcase.wantRateLimit)
 
 		})
 	}
@@ -177,6 +163,15 @@ func TestGlogLogset(t *testing.T) {
 	})
 }
 
+func mustSetVMod(t *testing.T, v string) string {
+	t.Helper()
+	prev, err := glog.SetVModule(v)
+	if err != nil {
+		t.Error("invalid vmodule: %", v)
+	}
+	return prev
+}
+
 func TestVModuleSet(t *testing.T) {
 	t.Run("updater", func(t *testing.T) {
 		// reset vmodule at end of test
@@ -184,7 +179,7 @@ func TestVModuleSet(t *testing.T) {
 		if err != nil {
 			t.Fatalf("vmodule call failed: %v", err)
 		}
-		defer glog.SetVModule(prev)
+		defer mustSetVMod(t, prev)
 		updater := vModuleUpdater{v: "next=100"}
 		resetter, err := updater.Apply()
 		if err != nil {
@@ -197,7 +192,6 @@ func TestVModuleSet(t *testing.T) {
 		if got := glog.VModule(); got != "prev=99" {
 			t.Fatalf("vmodule should be 'prev=99', got %#v", got)
 		}
-
 	})
 	t.Run("request", func(t *testing.T) {
 		// reset vmodule at end of test
@@ -205,7 +199,7 @@ func TestVModuleSet(t *testing.T) {
 		if err != nil {
 			t.Fatalf("vmodule call failed: %v", err)
 		}
-		defer glog.SetVModule(prev)
+		defer mustSetVMod(t, prev)
 		// make request
 		ls := newLogsetSrv()
 		resp := call(t, ls, req("POST", glogVModule, "y=001"))
@@ -263,14 +257,15 @@ func newMockedRequest(t *testing.T, ls *logsetSrv, opts ...string) mockedRequest
 	ls.timer = newTimer // has to be set on each new request
 	ls.mu.Unlock()
 
-	args := []string{glogV, "1"}
+	args := []string{noopUpdate, noopUpdate}
 	args = append(args, opts...)
 	req := req("POST", args...)
 	request, err := parseLoglevelReq(req)
 	if err != nil {
-		t.Fatalf("could not create glog request: %v", err)
+		t.Fatalf("could not create request: %v", err)
 	}
-	request.updates[glogV] = m
+	t.Logf("created request %#v", request)
+	request.updates[noopUpdate] = m
 
 	t.Log("send logrequest", opts)
 	if err := ls.handle(request); err != nil {
@@ -278,7 +273,7 @@ func newMockedRequest(t *testing.T, ls *logsetSrv, opts ...string) mockedRequest
 	}
 
 	ls.mu.Lock()
-	if v, exists := ls.resetTo[glogV]; exists {
+	if v, exists := ls.resetTo[noopUpdate]; exists {
 		m.timerCancelled = v.cancel
 	}
 	ls.mu.Unlock()
@@ -289,15 +284,21 @@ func TestResetBehavior(t *testing.T) {
 	t.Run("reset is called", func(t *testing.T) {
 		ls := newLogsetSrv()
 		req := newMockedRequest(t, ls, "timeout", "1s")
+
+		t.Log("request should be applied")
 		<-req.logApplied
+		t.Log("check request timer interval")
 		if timerD := <-req.timerCreated; timerD != time.Second {
 			t.Fatalf("expected timer to be set for %v, got %v", time.Second, timerD)
 		}
 
+		t.Log("trigger timer")
 		req.timerTrigger <- time.Time{}
+
+		t.Log("timer should be reset")
 		<-req.logReset
 
-		t.Log("wait until all ongoing resets are done")
+		t.Log("wait for no other requests")
 		ls.wg.Wait()
 	})
 
@@ -305,20 +306,26 @@ func TestResetBehavior(t *testing.T) {
 		ls := newLogsetSrv()
 
 		req1 := newMockedRequest(t, ls, "timeout", "33s")
+		t.Log("request 1 should be applied")
 		<-req1.logApplied
 		if timerD := <-req1.timerCreated; timerD != time.Second*33 {
 			t.Fatalf("expected timer to be set for %v, got %v", time.Second*33, timerD)
 		}
 
+		t.Log("trigger timer 1")
 		req1.timerTrigger <- time.Time{}
 		t.Log("request 1 should be reset after timer is triggered")
 		<-req1.logReset
 
 		req2 := newMockedRequest(t, ls, "timeout", "45s")
+		t.Log("request 2 should be applied")
 		<-req2.logApplied
+		t.Log("check request 2 timer interval")
 		if timerD := <-req2.timerCreated; timerD != 45*time.Second {
 			t.Fatalf("expected timer to be set for %v, got %v", 45*time.Second, timerD)
 		}
+
+		t.Log("triggering timer 2")
 		req2.timerTrigger <- time.Time{}
 		t.Log("request 2 should be reset after timer is triggered")
 		<-req2.logReset
@@ -374,20 +381,25 @@ func TestResetBehavior(t *testing.T) {
 		}
 
 		req2 := newMockedRequest(t, ls)
+		t.Log("request 2 should be applied")
 		<-req2.logApplied
 
 		t.Log("timer 1 should be cancelled")
 		<-req1.timerCancelled
 
 		req3 := newMockedRequest(t, ls, "timeout", "12s")
+		t.Log("request 3 should be applied")
 		<-req3.logApplied
 
+		t.Log("request 3 timer created correctly")
 		if timerD := <-req3.timerCreated; timerD != time.Second*12 {
 			t.Fatalf("expected timer to be set for %v, got %v", time.Second*12, timerD)
 		}
 
 		t.Log("triggering timer 3 should call the new reset function")
 		req3.timerTrigger <- time.Time{}
+
+		t.Log("triggering log reset")
 		<-req3.logReset
 
 		t.Log("wait until all ongoing resets are done")
@@ -421,4 +433,10 @@ func TestResetBehavior(t *testing.T) {
 		default:
 		}
 	})
+}
+
+func TestFormZeroValue(t *testing.T) {
+	if err := loglevelForm.Execute(io.Discard, loglevelTmplArgs{}); err != nil {
+		t.Fatalf("could not render template: %v", err)
+	}
 }

@@ -8,6 +8,17 @@
 // The handler accepts URL or Form params which are documented when calling GET on this
 // endpoint.
 //
+// The following verbositys can be set:
+//
+//   - glog: set "github.com/aristanetworks/glog" verbosity.
+//   - glog-vmodule: set "github.com/aristanetworks/glog" verbosity on a per function basis.
+//
+// The following options control log resetting:
+//   - timeout: A duration (e.g. "1m") for which the log should remain set at the verbosity
+//     passed in. it's safe to send multiple: if you send another request with a timeout,
+//     the ongoing timeout will be cancelled but the value will be reset to the original
+//     value detected by this endpoint.
+//
 // This timeout logic is nuanced to handle cases where multiple updates are performed
 // on the log at once. We allow timeout to change, but the original verbosity is preserved.
 // See the following description:
@@ -29,7 +40,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 	"sync"
 	"text/template"
@@ -49,38 +59,23 @@ func newLogsetSrv() *logsetSrv {
 	return &logsetSrv{timer: realTimer, resetTo: map[string]*resetState{}}
 }
 
+// Handler returns a http handler for the loglevel request. See package docs.
+func Handler() http.Handler {
+	return newLogsetSrv()
+}
+
 func (ls *logsetSrv) err(w http.ResponseWriter, err string, code int) {
 	err = fmt.Sprintf("loglevel error: %v (code %v)", err, code)
 	glog.Error(err)
 	http.Error(w, err, code)
 }
 
-// Handler returns a http handler for the loglevel request. See package docs.
-func Handler() http.Handler {
-	return newLogsetSrv()
-}
-
-// ServeHTTP handles a /debug/loglevel request.
+// ServeHTTP serves the loglevel request.
 //
 // It parses options from a HTTP form or from URL params.
 //
-// The following verbositys can be set:
-// - glog: set "github.com/aristanetworks/glog" verbosity.
-//
-// The following options control log resetting:
-//
-//   - timeout: A duration (e.g. "1m") for which the log should remain set at the verbosity
-//     passed in. it's safe to send multiple: if you send another request with a timeout,
-//     the ongoing timeout will be cancelled but the value will be reset to the original
-//     value detected by this endpoint.
-//
-// Here's a detailed example of timeout behavior with overlapping timeouts:
-// - User wants to increase verbosity to find bug. Lets assume it starts at 0.
-// - They call /debug/loglevel?glog=1&timeout=10m
-// - User decides this glog verbosity is not enough, so decides to increase to 10.
-// - They call /debug/loglevel?glog=10&timeout=5m
-// - 5 minutes later, the loglevel will be set back to 0.
-// - No further changes to verbosity occur.
+// See the package level docs or the self hosted documentation for a high level
+// overview of the API features.
 func (ls *logsetSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		// serve page to configure log level
@@ -111,6 +106,7 @@ func (ls *logsetSrv) handle(req loglevelReq) error {
 		resetFn, err := change.Apply()
 		if err != nil {
 			errs = append(errs, err)
+			continue
 		}
 
 		// reset logic is kept as simple as possible by always cancelling a waiting reset.
@@ -149,7 +145,11 @@ func (ls *logsetSrv) handle(req loglevelReq) error {
 				default:
 				}
 
-				resetFn()
+				if resetFn == nil {
+					glog.Error("log reset error: nothing to reset to")
+				} else {
+					resetFn()
+				}
 				delete(ls.resetTo, typ) // delete so resetFn is dropped
 			}
 		}()
@@ -191,9 +191,6 @@ func (v glogUpdater) Apply() (func(), error) {
 	return func() { glog.SetVGlobal(prev) }, nil
 }
 
-const glogV = "glog"
-const glogVModule = "glog-vmodule"
-
 type vModuleUpdater struct {
 	v string
 }
@@ -211,13 +208,32 @@ func (v vModuleUpdater) Apply() (func(), error) {
 	}, nil
 }
 
+type glogRateLimitUpdater struct {
+	every time.Duration
+	burst int
+}
+
+func (v glogRateLimitUpdater) Apply() (func(), error) {
+	prevLimit, prevBurst := glog.SetRateLimit(v.every, v.burst)
+	return func() { glog.SetRateLimit(prevLimit, prevBurst) }, nil
+}
+
+type noopUpdater struct{}
+
+func (v noopUpdater) Apply() (func(), error) {
+	return func() {}, nil
+}
+
 type loglevelReq struct {
 	reset        bool
 	resetTimeout time.Duration         // duration change should be active
 	updates      map[string]logUpdater // log type as a string -> updater to apply change
 }
 
-var vModuleRegexp = regexp.MustCompile(`^(.*[0-9]+,?)+$`)
+const glogV = "glog"
+const glogVModule = "glog-vmodule"
+const noopUpdate = "noop"         // useful for test
+const glogRateLimit = "glog-rate" // note: this is populated internally and not in the API
 
 func parseLoglevelReq(r *http.Request) (loglevelReq, error) {
 	if r.Method != http.MethodPost {
@@ -230,6 +246,33 @@ func parseLoglevelReq(r *http.Request) (loglevelReq, error) {
 	opts := r.Form
 
 	ll := loglevelReq{updates: map[string]logUpdater{}}
+	// parse glog options
+	if setGlog := opts.Get(glogV); setGlog != "" {
+		v, err := strconv.Atoi(setGlog)
+		if err != nil {
+			return loglevelReq{}, fmt.Errorf("invalid glog argument: %v", err)
+		}
+		if v < 0 {
+			return loglevelReq{}, fmt.Errorf("invalid glog verbosity: %d", v)
+		}
+
+		ll.updates[glogV] = glogUpdater{v: glog.Level(v)}
+	}
+
+	if vmod := opts.Get(glogVModule); vmod != "" {
+		// If vmod is invalid, user will see error from Apply function, so no parsing
+		// required.
+		ll.updates[glogVModule] = vModuleUpdater{v: vmod}
+	}
+
+	if noop := opts.Get(noopUpdate); noop != "" {
+		ll.updates[noopUpdate] = noopUpdater{}
+	}
+
+	// this check must happen before we parse timeout
+	if len(ll.updates) == 0 {
+		return loglevelReq{}, errors.New("empty request")
+	}
 
 	if timeout := opts.Get("timeout"); timeout != "" {
 		w, err := time.ParseDuration(timeout)
@@ -241,36 +284,24 @@ func parseLoglevelReq(r *http.Request) (loglevelReq, error) {
 		} else if w > (time.Hour * 24) {
 			return loglevelReq{}, errors.New("timeout too large: valid between 1s-24h")
 		}
+
+		// Raise glog rate limit when the reset is going to be less than 5 mins.
+		//
+		// Note that there is some more complexity when we enter this state: if somebody comes
+		// along and updates glog without a timeout before the reset fires, that will remove
+		// the original reset. But that only happens for glog, and our rate limit reset will
+		// kick in eventually.
+		if _, ok := ll.updates[glogV]; ok && w <= 5*time.Minute {
+			duration, burst := glog.GetRateLimit()
+			var doubleRateLimit = glogRateLimitUpdater{
+				every: duration / 2, burst: burst * 2}
+			ll.updates[glogRateLimit] = doubleRateLimit
+		}
+
 		ll.resetTimeout = w
 		ll.reset = true
 	}
 
-	// parse glog options
-	if setGlog := opts.Get(glogV); setGlog != "" {
-		v, err := strconv.Atoi(setGlog)
-		if err != nil {
-			return loglevelReq{}, fmt.Errorf("invalid glog argument: %v", err)
-		}
-		if v < 0 {
-			return loglevelReq{}, fmt.Errorf("invalid glog argument: %v", err)
-		}
-		ll.updates[glogV] = glogUpdater{v: glog.Level(v)}
-	}
-
-	// parse glog-vmodule options
-	if setVModule := opts.Get(glogVModule); setVModule != "" {
-		// would be nice to be able to parse ahead of time in glog
-		// for now just use a basic regex
-		if !vModuleRegexp.MatchString(setVModule) {
-			return loglevelReq{}, fmt.Errorf(
-				"invalid glog-vmodule argument: should match regex: %v", vModuleRegexp)
-		}
-		ll.updates[glogVModule] = vModuleUpdater{v: setVModule}
-	}
-
-	if len(ll.updates) == 0 {
-		return loglevelReq{}, errors.New("empty request")
-	}
 	return ll, nil
 }
 
