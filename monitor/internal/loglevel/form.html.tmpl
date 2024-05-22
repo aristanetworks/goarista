@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>{{ .Path }}</title>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: sans-serif; }
+    .mono { font-family: monospace; }
+  </style>
+</head>
+
+<body>
+  <h1><span class="code">{{ .Path }}</span>: modify the loglevel</h2>
+
+  <div>
+    <h2>Parameter docs<h2>
+    <h3><span class="mono">timeout</span></h3>
+    <ul>
+      <li>This is optional but recommended for services running in production.</li>
+      <li>The string format is described in
+      <a href="https://pkg.go.dev/time#ParseDuration">time.ParseDuration</a>.</li>
+      <li>It is safe to call with a timeout multiple times and the initial verbosity will always be
+      respected.</li>
+      <li>If timeout is less than or equal to 5 mins: the log ratelimit will be increased.</li>
+    </ul>
+
+    <h3><span class="mono">glog-verbosity</span></h3>
+    <ul>
+      <li>Sets global 
+        <a href="https://pkg.go.dev/github.com/aristanetworks/glog">aristanetworks/glog</a>
+      verbosity.</li>
+    </ul>
+
+    <h3><span class="mono">glog-vmodule</span></h3>
+    <ul>
+      <li>vmodule is a way to selectively enable logging. For example, <span class="mono">gopher*=3</span>
+      sets the V level to 3 in all Go files whose names begin "gopher"</li>
+      <li>The syntax of the argument is a comma-separated list of pattern=N, where pattern is a either
+      literal file name (minus the ".go" suffix) or "glob" pattern and N is a V level.</li>
+    </ul>
+  </div>
+
+  <div>
+    <h2>Glog</h2>
+
+    <div>
+      <h3>Set Global Verbosity</h3>
+      <span> Currently: {{ .GlogV }} </span>
+      <form method="post">
+        <label for="glog">glog verbosity</label> <input type="number" id="glog" name="glog" min="0" value="">
+        <label for="glog">timeout</label>
+        <input style="width:5em" type="text" id="timeout" name="timeout" value="5m">
+        <input type="submit" value="Apply">
+      </form>
+    </div>
+
+    <div>
+      <h3>Set VModule</h3>
+      <span> Currently: {{ .GlogVModule }} </span>
+      <form method="post">
+        <label for="glog">glog vmodule</label>
+        <input type="text" id="glog-vmodule" name="glog-vmodule" value="">
+        <label for="glog">timeout</label>
+        <input style="width:5em" type="text" id="timeout" name="timeout" value="5m">
+        <input type="submit" value="Apply">
+      </form>
+    </div>
+
+  </div>
+</body>
+</html>

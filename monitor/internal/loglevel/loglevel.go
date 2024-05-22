@@ -25,12 +25,14 @@
 package loglevel
 
 import (
+	"embed"
 	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/aristanetworks/glog"
@@ -80,6 +82,12 @@ func Handler() http.Handler {
 // - 5 minutes later, the loglevel will be set back to 0.
 // - No further changes to verbosity occur.
 func (ls *logsetSrv) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		// serve page to configure log level
+		ls.form(w, r)
+		return
+	}
+
 	change, err := parseLoglevelReq(r)
 	if err != nil {
 		ls.err(w, "could not parse form: "+err.Error(), http.StatusBadRequest)
@@ -286,4 +294,29 @@ func (t timerImpl) C() <-chan time.Time {
 
 func realTimer(d time.Duration) timer {
 	return timerImpl{time.NewTimer(d)}
+}
+
+//go:embed form.html.tmpl
+var loglevelTmpl embed.FS
+var loglevelForm *template.Template
+
+func init() {
+	loglevelForm = template.Must(template.ParseFS(loglevelTmpl, "form.html.tmpl"))
+}
+
+type loglevelTmplArgs struct {
+	Path        string
+	GlogV       glog.Level
+	GlogVModule string
+}
+
+func (ls *logsetSrv) form(w http.ResponseWriter, r *http.Request) {
+	args := loglevelTmplArgs{
+		Path:        r.URL.Path,
+		GlogV:       glog.VGlobal(),
+		GlogVModule: glog.VModule(),
+	}
+	if err := loglevelForm.Execute(w, args); err != nil {
+		ls.err(w, "could not write form: "+err.Error(), http.StatusInternalServerError)
+	}
 }
