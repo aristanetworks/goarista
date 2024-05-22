@@ -13,6 +13,7 @@ import (
 	"net/http"
 	_ "net/http/pprof" // Go documentation recommended usage
 
+	"github.com/aristanetworks/goarista/monitor/internal/loglevel"
 	"github.com/aristanetworks/goarista/netns"
 
 	"github.com/aristanetworks/glog"
@@ -29,7 +30,7 @@ type server struct {
 	vrfName string
 	// Server name e.g. host[:port]
 	serverName string
-	loglevel   *logsetSrv
+	loglevel   http.Handler
 }
 
 // NewServer creates a new server struct
@@ -41,7 +42,7 @@ func NewServer(address string) Server {
 	return &server{
 		vrfName:    vrfName,
 		serverName: addr,
-		loglevel:   newLogsetSrv(),
+		loglevel:   loglevel.Handler(),
 	}
 }
 
@@ -54,6 +55,7 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 	<p>/debug</p>
 	<div><a href="/debug/vars">vars</a></div>
 	<div><a href="/debug/pprof">pprof</a></div>
+	<div><a href="/debug/loglevel">loglevel</a></div>
 	</body>
 	</html>
 	`
@@ -86,7 +88,6 @@ func (s *server) Run(serveMux *http.ServeMux) {
 func (s *server) Serve(serveMux *http.ServeMux) error {
 	serveMux.HandleFunc("/debug", debugHandler)
 	serveMux.HandleFunc("/debug/histograms", histogramHandler)
-	// for example, to set glog verbosity to 5: curl localhost:6060/debug/loglevel?glog=5
 	serveMux.Handle("/debug/loglevel", s.loglevel)
 
 	var listener net.Listener

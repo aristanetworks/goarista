@@ -1,8 +1,28 @@
-// Copyright (c) 2022 Arista Networks, Inc.
+// Copyright (c) 2024 Arista Networks, Inc.
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-package monitor
+// Package loglevel exposes a HTTP handler to dynamically update log levels on a timer.
+//
+// Calling GET on this handler will return a html form which can be used to input params.
+// The handler accepts URL or Form params which are documented when calling GET on this
+// endpoint.
+//
+// This timeout logic is nuanced to handle cases where multiple updates are performed
+// on the log at once. We allow timeout to change, but the original verbosity is preserved.
+// See the following description:
+//
+//   - User wants to increase verbosity to find bug. Lets assume it starts at 0.
+//   - They call /debug/loglevel?glog=1&timeout=10m
+//   - User decides this glog verbosity is not enough, so decides to increase to 10.
+//   - They call /debug/loglevel?glog=10&timeout=5m
+//   - We update the verbosity to 10, but instead of reseting to 1 we keep the original
+//     reset value from the first log level.
+//   - After 5 mins, we reset to 0.
+//
+// Note that if you frequently change verbosity externally to loglevel, or run multiple loglevel
+// handlers, you can introduce race conditions.
+package loglevel
 
 import (
 	"errors"
@@ -31,6 +51,11 @@ func (ls *logsetSrv) err(w http.ResponseWriter, err string, code int) {
 	err = fmt.Sprintf("loglevel error: %v (code %v)", err, code)
 	glog.Error(err)
 	http.Error(w, err, code)
+}
+
+// Handler returns a http handler for the loglevel request. See package docs.
+func Handler() http.Handler {
+	return newLogsetSrv()
 }
 
 // ServeHTTP handles a /debug/loglevel request.
