@@ -167,7 +167,7 @@ func TestMapEntry(t *testing.T) {
 	}
 	t.Log(m.debug())
 
-	// delete nonexistant member
+	// delete nonexistent member
 	m.Del(dumbHashable{4})
 	if m.Len() != 3 {
 		t.Errorf("expected len of 3, got %d", m.Len())
