@@ -33,16 +33,17 @@ var help = `Usage of gnmi:
 gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
   get ((encoding=ENCODING) (origin=ORIGIN) (target=TARGET) PATH+)+
-  subscribe ((origin=ORIGIN) (target=TARGET) PATH+)+ 
+  subscribe ((origin=ORIGIN) (target=TARGET) (sample_interval=SAMPLE_INTERVAL) PATH+)+ 
   ((update|replace|union_replace (origin=ORIGIN) (target=TARGET) PATH JSON|FILE) |
    (delete (origin=ORIGIN) (target=TARGET) PATH))+
 `
 
 type reqParams struct {
-	encoding string
-	origin   string
-	target   string
-	paths    []string
+	encoding       string
+	origin         string
+	target         string
+	sampleInterval string
+	paths          []string
 }
 
 func usageAndExit(s string) {
@@ -140,7 +141,7 @@ func Main() {
 	var sampleInterval, heartbeatInterval time.Duration
 	var err error
 	if sampleInterval, err = time.ParseDuration(*sampleIntervalStr); err != nil {
-		usageAndExit(fmt.Sprintf("error: sample interval (%s) invalid", *sampleIntervalStr))
+		usageAndExit(fmt.Sprintf("error: parsing sample interval failed, %s", err))
 	}
 	subscribeOptions.SampleInterval = uint64(sampleInterval)
 	if heartbeatInterval, err = time.ParseDuration(*heartbeatIntervalStr); err != nil {
@@ -371,6 +372,25 @@ func newSubscribeOptions(
 	target := pathParam.target
 	paths := pathParam.paths
 	encoding := pathParam.encoding
+	sampleIntervalStr := pathParam.sampleInterval
+
+	var sampleInterval time.Duration
+	var err error
+
+	// converting the per path sample interval from string -> time -> uint64
+	sampleInterval, err = time.ParseDuration(sampleIntervalStr)
+	if err != nil {
+		usageAndExit(fmt.Sprintf("error: parsing sample interval failed, %s", err))
+	}
+
+	// check that -sample_interval flag (used for legacy backwards compatibility support)
+	// and sample_interval= path attribute, are not set together
+	// only one should be set for a valid Subscribe
+	if subscribeOptions != nil && subscribeOptions.SampleInterval != 0 &&
+		uint64(sampleInterval) != 0 {
+		return nil, errors.New("cannot set sample interval both as a flag and path attribute" +
+			"for subscribe requests")
+	}
 
 	// check that encoding is not set
 	if encoding != "" {
@@ -381,6 +401,13 @@ func newSubscribeOptions(
 	*subOptions = *subscribeOptions
 	subOptions.Origin = origin
 	subOptions.Target = target
+
+	// setting sample interval from pathParam only if
+	// -sample_interval flag is not set & sample_interval= is set
+	// otherwise use the already set value from -sample_interval flag
+	if subOptions.SampleInterval == 0 && uint64(sampleInterval) != 0 {
+		subOptions.SampleInterval = uint64(sampleInterval)
+	}
 	subOptions.Paths = gnmi.SplitPaths(paths)
 	if histExt != nil {
 		subOptions.Extensions = []*gnmi_ext.Extension{{
@@ -487,8 +514,13 @@ func parseEncoding(s string) (string, bool) {
 	return parseStringOpt(s, "encoding")
 }
 
+func parseSampleInterval(s string) (string, bool) {
+	return parseStringOpt(s, "sample_interval")
+}
+
 func parsereqParams(args []string, maxOnePath bool) ([]reqParams, int) {
 	var pathParam *reqParams = new(reqParams)
+	pathParam.sampleInterval = "0" // default sample interval value
 	var pathParams []reqParams
 	var argsParsed int
 
@@ -497,11 +529,12 @@ func parsereqParams(args []string, maxOnePath bool) ([]reqParams, int) {
 	// - PATHS+ still mark the end of a pathParam
 	// - only path is required and everything else is optional
 	// - there can be one or more paths
-	// - there can be zero or one encoding, origin, and target.
+	// - there can be zero or one encoding, origin, target and sample_interval.
 
 	var isOriginSet bool
 	var isTargetSet bool
 	var isEncodingSet bool
+	var isSampleIntervalSet bool
 
 	// check if the current config forms a pathParam
 	// If yes, reset all the trackers and add it to pathParams
@@ -511,8 +544,10 @@ func parsereqParams(args []string, maxOnePath bool) ([]reqParams, int) {
 			isOriginSet = false
 			isTargetSet = false
 			isEncodingSet = false
+			isSampleIntervalSet = false
 			pathParams = append(pathParams, *pathParam)
 			pathParam = new(reqParams)
+			pathParam.sampleInterval = "0"
 		}
 	}
 
@@ -530,6 +565,10 @@ func parsereqParams(args []string, maxOnePath bool) ([]reqParams, int) {
 			checkGroup(isEncodingSet)
 			pathParam.encoding = e
 			isEncodingSet = true
+		} else if si, ok := parseSampleInterval(arg); ok {
+			checkGroup(isSampleIntervalSet)
+			pathParam.sampleInterval = si
+			isSampleIntervalSet = true
 		} else {
 			pathParam.paths = append(pathParam.paths, arg)
 			if maxOnePath {

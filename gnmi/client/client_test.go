@@ -121,21 +121,24 @@ func TestNewSubscribeOptions(t *testing.T) {
 	}{
 		"core": {
 			pathParam: &reqParams{
-				target: "target",
-				origin: "cli",
-				paths:  []string{"show version"},
+				target:         "target",
+				origin:         "cli",
+				sampleInterval: "10s",
+				paths:          []string{"show version"},
 			},
 			exp: &gnmi.SubscribeOptions{
-				Paths:  gnmi.SplitPaths([]string{"show version"}),
-				Origin: "cli",
-				Target: "target",
+				Paths:          gnmi.SplitPaths([]string{"show version"}),
+				Origin:         "cli",
+				SampleInterval: 10000000000,
+				Target:         "target",
 			},
 		},
 		"multi-paths": {
 			pathParam: &reqParams{
-				target: "target",
-				origin: "cli",
-				paths:  []string{"show version", "show running-config", "show history"},
+				target:         "target",
+				origin:         "cli",
+				sampleInterval: "0",
+				paths:          []string{"show version", "show running-config", "show history"},
 			},
 			exp: &gnmi.SubscribeOptions{
 				Paths: gnmi.SplitPaths(
@@ -166,44 +169,50 @@ func TestEncodingSubscribeOptions(t *testing.T) {
 	}{
 		"ASCII": {
 			&reqParams{
-				encoding: "ASCII",
-				origin:   "cli",
-				paths:    []string{"show version"},
+				encoding:       "ASCII",
+				origin:         "cli",
+				sampleInterval: "0",
+				paths:          []string{"show version"},
 			},
 		},
 		"bytes": {
 			&reqParams{
-				encoding: "bytes",
-				origin:   "cli",
-				target:   "target",
-				paths:    []string{"show version"},
+				encoding:       "bytes",
+				origin:         "cli",
+				target:         "target",
+				sampleInterval: "0",
+				paths:          []string{"show version"},
 			},
 		},
 		"json": {
 			&reqParams{
-				encoding: "json",
-				paths:    []string{"show version"},
+				encoding:       "json",
+				sampleInterval: "0",
+				paths:          []string{"show version"},
 			},
 		},
 		"json_ietf": {
 			&reqParams{
-				encoding: "json_ietf",
-				origin:   "cli",
-				paths:    []string{"show version"},
+				encoding:       "json_ietf",
+				origin:         "cli",
+				sampleInterval: "0",
+				paths:          []string{"show version"},
 			},
 		},
 		"proto": {
 			&reqParams{
-				encoding: "proto",
-				origin:   "OpenConfig",
-				target:   "whatever",
-				paths:    []string{"show version"},
+				encoding:       "proto",
+				origin:         "OpenConfig",
+				target:         "whatever",
+				sampleInterval: "0",
+				paths:          []string{"show version"},
 			},
 		},
 		"dot": {
 			&reqParams{
-				encoding: ".",
-				paths:    []string{"show version"},
+				encoding:       ".",
+				sampleInterval: "0",
+				paths:          []string{"show version"},
 			},
 		},
 	}
