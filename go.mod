@@ -20,7 +20,7 @@ require (
 	golang.org/x/sys v0.21.0
 	golang.org/x/tools v0.22.0
 	golang.org/x/tools/go/vcs v0.1.0-deprecated
-	google.golang.org/grpc v1.64.0
+	google.golang.org/grpc v1.64.1
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/redis.v4 v4.2.4
 	gopkg.in/yaml.v2 v2.4.0
