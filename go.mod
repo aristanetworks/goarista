@@ -6,7 +6,7 @@ require (
 	github.com/IBM/sarama v1.43.2
 	github.com/aristanetworks/fsnotify v1.4.6
 	github.com/aristanetworks/glog v0.0.0-20240405175045-cc0ea3461e10
-	github.com/aristanetworks/gomap v0.0.0-20240103001659-f6b0e31fb1a7
+	github.com/aristanetworks/gomap v0.0.0-20240724180630-b4cffb90720f
 	github.com/aristanetworks/splunk-hec-go v0.3.3
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
@@ -14,7 +14,6 @@ require (
 	github.com/openconfig/gnmi v0.11.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/xtaci/kcp-go v5.4.20+incompatible
-	golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7
 	golang.org/x/net v0.27.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/sys v0.22.0

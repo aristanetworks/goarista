@@ -5,7 +5,7 @@
 package sliceutils
 
 import (
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 // ToAnySlice takes a []T, and converts it into a []any.

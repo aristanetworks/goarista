@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"strings"
 	"sync"
@@ -17,7 +18,6 @@ import (
 	"github.com/aristanetworks/goarista/test"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/maps"
 )
 
 func makeMetrics(cfg *Config, expValues map[source]float64, notification *pb.Notification,

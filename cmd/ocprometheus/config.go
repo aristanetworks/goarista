@@ -6,14 +6,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/aristanetworks/glog"
+	"maps"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/aristanetworks/glog"
 	gnmiUtils "github.com/aristanetworks/goarista/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v2"
 )
 
