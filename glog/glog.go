@@ -4,7 +4,12 @@
 
 package glog
 
-import "github.com/aristanetworks/glog"
+import (
+	"bytes"
+	"io"
+
+	"github.com/aristanetworks/glog"
+)
 
 // Glog is an empty type that allows to pass glog as a logger, implementing logger.Logger
 type Glog struct {
@@ -40,4 +45,66 @@ func (g *Glog) Fatal(args ...interface{}) {
 // Fatalf logs at the fatal level, with format
 func (g *Glog) Fatalf(format string, args ...interface{}) {
 	glog.Fatalf(format, args...)
+}
+
+// SuppressLines adds filtering to glog output so that all lines containing
+// any of the supplied substrings are removed. It returns a function that
+// reverts the glog output writer to the previous one (without filtering).
+// A typical use case is test functions where certain warning or error messages
+// are expected, so they only add noise to the output of `go test`.
+//
+// Example usage:
+//
+//	import aglog "github.com/aristanetworks/goarista/glog"
+//	func TestExampleFunction(t *testing.T) {
+//		reset := aglog.SuppressLines(
+//			`Warning: non-ASCII value in test A`,
+//			`Test B is failing with exit code 0`,
+//			`Test C exceeds timeout of 60 seconds`,
+//		)
+//		defer reset()
+//		...
+//	}
+func SuppressLines(substrToSuppress ...string) func() {
+	bytesToSuppress := make([][]byte, len(substrToSuppress))
+	for i, substr := range substrToSuppress {
+		bytesToSuppress[i] = []byte(substr)
+	}
+	fw := &filterWriter{buffer: &bytes.Buffer{},
+		bytesToSuppress: bytesToSuppress}
+	prev := glog.SetOutput(fw)
+	fw.writer = prev
+	return func() {
+		glog.SetOutput(prev)
+	}
+}
+
+type filterWriter struct {
+	writer          io.Writer
+	buffer          *bytes.Buffer
+	bytesToSuppress [][]byte
+}
+
+func (fw *filterWriter) Write(data []byte) (n int, err error) {
+	fw.buffer.Write(data)
+	for bytes.IndexByte(fw.buffer.Bytes(), '\n') != -1 {
+		byteLine, readErr := fw.buffer.ReadBytes('\n')
+		if readErr != nil {
+			break
+		}
+		skipLine := false
+		for _, subslice := range fw.bytesToSuppress {
+			if bytes.Contains(byteLine, subslice) {
+				skipLine = true
+				break
+			}
+		}
+		if !skipLine {
+			_, err = fw.writer.Write(byteLine)
+			if err != nil {
+				return len(data), err
+			}
+		}
+	}
+	return len(data), nil
 }
