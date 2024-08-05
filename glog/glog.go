@@ -70,22 +70,27 @@ func SuppressLines(substrToSuppress ...string) func() {
 	for i, substr := range substrToSuppress {
 		bytesToSuppress[i] = []byte(substr)
 	}
-	fw := &filterWriter{buffer: &bytes.Buffer{},
-		bytesToSuppress: bytesToSuppress}
+	fw := &filterWriter{bytesToSuppress: bytesToSuppress}
 	prev := glog.SetOutput(fw)
 	fw.writer = prev
 	return func() {
+		fw.flush()
 		glog.SetOutput(prev)
 	}
 }
 
 type filterWriter struct {
 	writer          io.Writer
-	buffer          *bytes.Buffer
+	buffer          bytes.Buffer
 	bytesToSuppress [][]byte
+	err             error
 }
 
 func (fw *filterWriter) Write(data []byte) (n int, err error) {
+	if fw.err != nil {
+		return 0, fw.err
+	}
+
 	fw.buffer.Write(data)
 	for bytes.IndexByte(fw.buffer.Bytes(), '\n') != -1 {
 		byteLine, readErr := fw.buffer.ReadBytes('\n')
@@ -102,9 +107,20 @@ func (fw *filterWriter) Write(data []byte) (n int, err error) {
 		if !skipLine {
 			_, err = fw.writer.Write(byteLine)
 			if err != nil {
+				fw.err = err
 				return len(data), err
 			}
 		}
 	}
 	return len(data), nil
+}
+
+func (fw *filterWriter) flush() {
+	if fw.err != nil {
+		return
+	}
+
+	if fw.buffer.Available() > 0 {
+		fw.buffer.WriteTo(fw.writer)
+	}
 }
