@@ -99,6 +99,11 @@ func (s *server) Serve(serveMux *http.ServeMux) error {
 	if err != nil {
 		return fmt.Errorf("could not start monitor server in VRF %q: %s", s.vrfName, err)
 	}
+	_, boundPort, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		return fmt.Errorf("failed to split monitor addr: %s", err)
+	}
+	glog.Infof("monitoring served on port: %s", boundPort)
 
 	return http.Serve(listener, serveMux)
 }
