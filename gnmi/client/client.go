@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -34,6 +35,7 @@ gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
   capabilities
   get ((encoding=ENCODING) (origin=ORIGIN) (target=TARGET) PATH+)+
   subscribe ((origin=ORIGIN) (target=TARGET) (sample_interval=SAMPLE_INTERVAL) PATH+)+ 
+  set PROTO|FILE
   ((update|replace|union_replace (origin=ORIGIN) (target=TARGET) PATH JSON|FILE) |
    (delete (origin=ORIGIN) (target=TARGET) PATH))+
 `
@@ -293,6 +295,14 @@ func Main() {
 				setOps = append(setOps, op)
 			}
 			i = j
+		case "set":
+			if len(args) != 2 {
+				usageAndExit("'set' must be followed by a single proto text/file argument")
+			}
+			if err := setWithProto(ctx, client, args[1]); err != nil {
+				glog.Fatal(err)
+			}
+			return
 		default:
 			usageAndExit(fmt.Sprintf("error: unknown operation %q", args[i]))
 		}
@@ -361,6 +371,24 @@ func newSetOperation(
 	}
 
 	return index, op, nil
+}
+
+// setWithProto unmarshals the proto text/file of the SetRequest and calls gnmi.Set.
+func setWithProto(ctx context.Context, client pb.GNMIClient, arg string) error {
+	// Assume the argument is a file. If it cannot be read, the argument is the proto text.
+	var proto []byte
+	proto, err := os.ReadFile(arg)
+	if err != nil {
+		proto = []byte(arg)
+	}
+	req := &pb.SetRequest{}
+	if err := prototext.Unmarshal(proto, req); err != nil {
+		return fmt.Errorf("unable to parse SetRequest %s", err)
+	}
+	if _, err := client.Set(ctx, req); err != nil {
+		return err
+	}
+	return nil
 }
 
 func newSubscribeOptions(

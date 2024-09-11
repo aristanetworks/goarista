@@ -5,11 +5,17 @@
 package client
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/test"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewGetRequest(t *testing.T) {
@@ -473,4 +479,129 @@ func TestArgsPosNewSetOperations(t *testing.T) {
 			t.Fatalf("ERROR!\n%s: got pos = %d, but expect pos = %d\n", name, pos, expectedPos)
 		}
 	}
+}
+
+// mockClientConn mocks the grpc.ClientConnInterface interface
+// and checks if the SetRequest is expected.
+type mockClientConn struct {
+	t   *testing.T
+	req *pb.SetRequest
+}
+
+// Invoke checks if the SetRequest is expected.
+func (cc *mockClientConn) Invoke(_ context.Context, _ string, args any, _ any,
+	_ ...grpc.CallOption) error {
+	if req := args.(*pb.SetRequest); !proto.Equal(cc.req, req) {
+		cc.t.Errorf("SetRequest: want %s, got %s", cc.req, req)
+	}
+	return nil
+}
+
+// NewStream is a no-op.
+func (*mockClientConn) NewStream(context.Context, *grpc.StreamDesc, string, ...grpc.CallOption) (
+	grpc.ClientStream, error) {
+	return nil, nil
+}
+
+func TestSetWithProto(t *testing.T) {
+	protoFile, err := os.CreateTemp("", "protofile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(protoFile.Name())
+	if _, err := protoFile.Write([]byte(`replace {
+  path {
+    elem {
+      name: "system"
+    }
+    elem {
+      name: "config"
+    }
+    elem {
+      name: "hostname"
+    }
+  }
+  val {
+    string_val: "foo"
+  }
+}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := protoFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	testCases := []struct {
+		name string
+		arg  string
+		req  *pb.SetRequest
+		err  error
+	}{{
+		name: "proto file",
+		arg:  protoFile.Name(),
+		req: &pb.SetRequest{
+			Replace: []*pb.Update{{
+				Path: &pb.Path{
+					Elem: []*pb.PathElem{
+						{Name: "system"},
+						{Name: "config"},
+						{Name: "hostname"},
+					},
+				},
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{
+						StringVal: "foo",
+					},
+				},
+			}},
+		},
+	}, {
+		name: "proto argument",
+		arg: `replace{path{elem{name:"system"}elem{name:"config"}elem{name:"hostname"}}` +
+			`val{string_val:"bar"}}`,
+		req: &pb.SetRequest{
+			Replace: []*pb.Update{{
+				Path: &pb.Path{
+					Elem: []*pb.PathElem{
+						{Name: "system"},
+						{Name: "config"},
+						{Name: "hostname"},
+					},
+				},
+				Val: &pb.TypedValue{
+					Value: &pb.TypedValue_StringVal{
+						StringVal: "bar",
+					},
+				},
+			}},
+		},
+	}, {
+		name: "proto file error",
+		arg:  "foo",
+		err:  fmt.Errorf("unable to parse SetRequest"),
+	}, {
+		name: "proto error",
+		arg:  "foo{}",
+		err:  fmt.Errorf("unable to parse SetRequest"),
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			client := pb.NewGNMIClient(&mockClientConn{
+				t:   t,
+				req: tc.req,
+			})
+			if err := setWithProto(ctx, client, tc.arg); !errorHasPrefix(err, tc.err) {
+				t.Errorf("err: want %s, got %s", tc.err, err)
+			}
+		})
+	}
+}
+
+func errorHasPrefix(a, b error) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return strings.HasPrefix(a.Error(), b.Error())
 }

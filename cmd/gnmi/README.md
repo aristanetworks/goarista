@@ -48,7 +48,7 @@ Path to client TLS private key file
 ## Operations
 
 `gnmi` supports the following operations: `capabilites`, `get`,
-`subscribe`, `update`, `replace`, `delete`, and `union_replace`.
+`subscribe`, `set`, `update`, `replace`, `delete`, and `union_replace`.
 
 ### capabilities
 
@@ -85,6 +85,48 @@ Example:
 Subscribe to interface counters:
 ```
 $ gnmi [OPTIONS] subscribe '/interfaces/interface[name=*]/state/counters'
+```
+
+### set
+
+`set` takes a single argument, the Protocol Buffer Text Format of the
+[SetRequest](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#341-the-setrequest-message),
+and calls the [Set gNMI RPC](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#34-modifying-state).  
+The argument is either the path to the proto file or the proto text itself.
+
+Example:
+
+**Proto file**
+
+File `path/to/config.proto` contains the following:
+
+```
+replace {
+  path {
+    elem {
+      name: "system"
+    }
+    elem {
+      name: "config"
+    }
+    elem {
+      name: "hostname"
+    }
+  }
+  val {
+    string_val: "foo"
+  }
+}
+```
+
+```
+$ gnmi [OPTIONS] set path/to/config.proto
+```
+
+**Proto text**
+
+```
+$ gnmi [OPTIONS] set 'replace{path{elem{name:"system"}elem{name:"config"}elem{name:"hostname"}}val{string_val:"foo"}}'
 ```
 
 ### update/replace/delete/union_replace
