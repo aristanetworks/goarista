@@ -38,46 +38,46 @@ func Hash(seed maphash.Seed, k Key) uint64 {
 		s := v.Hash()
 		// Mix up the hash to ensure it covers 64-bits
 		binary.LittleEndian.PutUint64(buf[:8], uint64(s))
-		return hashBytes(seed, buf[:8])
+		return maphash.Bytes(seed, buf[:8])
 	case strKey:
-		return hashString(seed, string(v))
+		return maphash.String(seed, string(v))
 	case bytesKey:
-		return hashBytes(seed, []byte(v))
+		return maphash.Bytes(seed, []byte(v))
 	case int8Key:
 		buf[0] = byte(v)
-		return hashBytes(seed, buf[:1])
+		return maphash.Bytes(seed, buf[:1])
 	case int16Key:
 		binary.LittleEndian.PutUint16(buf[:2], uint16(v))
-		return hashBytes(seed, buf[:2])
+		return maphash.Bytes(seed, buf[:2])
 	case int32Key:
 		binary.LittleEndian.PutUint32(buf[:4], uint32(v))
-		return hashBytes(seed, buf[:4])
+		return maphash.Bytes(seed, buf[:4])
 	case int64Key:
 		binary.LittleEndian.PutUint64(buf[:8], uint64(v))
-		return hashBytes(seed, buf[:8])
+		return maphash.Bytes(seed, buf[:8])
 	case uint8Key:
 		buf[0] = byte(v)
-		return hashBytes(seed, buf[:1])
+		return maphash.Bytes(seed, buf[:1])
 	case uint16Key:
 		binary.LittleEndian.PutUint16(buf[:2], uint16(v))
-		return hashBytes(seed, buf[:2])
+		return maphash.Bytes(seed, buf[:2])
 	case uint32Key:
 		binary.LittleEndian.PutUint32(buf[:4], uint32(v))
-		return hashBytes(seed, buf[:4])
+		return maphash.Bytes(seed, buf[:4])
 	case uint64Key:
 		binary.LittleEndian.PutUint64(buf[:8], uint64(v))
-		return hashBytes(seed, buf[:8])
+		return maphash.Bytes(seed, buf[:8])
 	case float32Key:
 		binary.LittleEndian.PutUint32(buf[:4], math.Float32bits(float32(v)))
-		return hashBytes(seed, buf[:4])
+		return maphash.Bytes(seed, buf[:4])
 	case float64Key:
 		binary.LittleEndian.PutUint64(buf[:8], math.Float64bits(float64(v)))
-		return hashBytes(seed, buf[:8])
+		return maphash.Bytes(seed, buf[:8])
 	case boolKey:
 		if v {
 			buf[0] = 1
 		}
-		return hashBytes(seed, buf[:1])
+		return maphash.Bytes(seed, buf[:1])
 	case sliceKey:
 		return hashSliceKey(seed, v)
 	case pointerKey:
@@ -85,15 +85,15 @@ func Hash(seed maphash.Seed, k Key) uint64 {
 	case pathKey:
 		return hashSliceKey(seed, v.sliceKey)
 	case nilKey:
-		return hashBytes(seed, nil)
+		return maphash.Bytes(seed, nil)
 	case Hashable:
 		// Mix up the hash to ensure it covers 64-bits
 		binary.LittleEndian.PutUint64(buf[:8], v.Hash())
-		return hashBytes(seed, buf[:8])
+		return maphash.Bytes(seed, buf[:8])
 	default:
 		s := _nilinterhash(v.Key())
 		binary.LittleEndian.PutUint64(buf[:8], uint64(s))
-		return hashBytes(seed, buf[:8])
+		return maphash.Bytes(seed, buf[:8])
 	}
 }
 
