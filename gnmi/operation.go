@@ -524,6 +524,12 @@ func SubscribeErr(ctx context.Context, client pb.GNMIClient, subscribeOptions *S
 	if err := stream.Send(req); err != nil {
 		return err
 	}
+	if subscribeOptions.Mode != "poll" {
+		// Non polling subscriptions are not expected to submit any other messages to server.
+		if err := stream.CloseSend(); err != nil {
+			return err
+		}
+	}
 
 	for {
 		resp, err := stream.Recv()
