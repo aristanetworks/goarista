@@ -143,6 +143,8 @@ func New(intf interface{}) Key {
 		return bytesKey(t)
 	case Path:
 		return pathKey{sliceKey(pathToSlice(t))}
+	case Key:
+		return t
 	default:
 		panic(fmt.Sprintf("Invalid type for key: %T", intf))
 	}
