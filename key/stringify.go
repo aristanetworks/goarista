@@ -135,6 +135,8 @@ func stringifyCollectionHelper(val interface{}) string {
 		return "{" + val.Pointer().String() + "}"
 	case Path:
 		return "[" + val.String() + "]"
+	case NonUnwrappingKey:
+		return val.String()
 	case Key:
 		return stringifyCollectionHelper(val.Key())
 	}

@@ -10,6 +10,29 @@ import (
 	"testing"
 )
 
+type directKeyImplementation struct{ v bool }
+
+// Equal implements Key.
+func (d directKeyImplementation) Equal(other interface{}) bool {
+	o, ok := other.(directKeyImplementation)
+	return ok && o == d
+}
+
+// Key implements Key.
+func (d directKeyImplementation) Key() interface{} {
+	return d
+}
+
+// String implements Key.
+func (d directKeyImplementation) String() string {
+	return fmt.Sprintf("{%v}", d.v)
+}
+
+func (d directKeyImplementation) NonUnwrappingKey() {}
+
+var _ Key = directKeyImplementation{}
+var _ NonUnwrappingKey = directKeyImplementation{}
+
 func TestStringify(t *testing.T) {
 	testcases := []struct {
 		name   string
@@ -134,6 +157,10 @@ func TestStringify(t *testing.T) {
 		name:   "map with []byte",
 		input:  map[string]interface{}{"key1": []byte{0x1}, "key2": uint32(42)},
 		output: "AQ==_42",
+	}, {
+		name:   "map with direct key implementation",
+		input:  map[string]any{"key1": directKeyImplementation{true}, "key2": uint32(42)},
+		output: "{true}_42",
 	}}
 
 	for _, tcase := range testcases {

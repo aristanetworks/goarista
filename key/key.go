@@ -26,6 +26,20 @@ type Key interface {
 	Equal(other interface{}) bool
 }
 
+// NonUnwrappingKey is just like a key, except calling key.Kew() on it returns itself.
+// This is to prevent non-terminating recursive calls such as
+// func myRec(val any) {
+//
+//	switch val.(type) {
+//	    case key.NonUnwrappingKey: // something directly
+//	    case key.Key: myRec(val.Key()) // never ending without the previous branch
+//
+// ...
+type NonUnwrappingKey interface {
+	Key
+	NonUnwrappingKey()
+}
+
 type mapKey map[string]interface{}
 
 type sliceKey []interface{}

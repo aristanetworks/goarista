@@ -87,6 +87,10 @@ func TestMapEqual(t *testing.T) {
 		a:      NewMap(New(map[string]interface{}{"a": 1, "b": 2}), "c"),
 		b:      NewMap(New(map[string]interface{}{"a": 1, "b": 2}), "c"),
 		result: true,
+	}, {
+		a:      NewMap(New(map[string]any{"a": directKeyImplementation{true}, "b": 2}), "c"),
+		b:      NewMap(New(map[string]any{"a": directKeyImplementation{true}, "b": 2}), "c"),
+		result: true,
 	}, { // maps with keys that hash to same buckets in different order
 		a: NewMap(
 			dumbHashable{dumb: "hashable1"}, 1,
@@ -486,6 +490,13 @@ func TestMapString(t *testing.T) {
 			New(map[string]interface{}{"key1": uint32(3), "key2": uint32(4)}), "bazquux",
 		),
 		s: "key.Map[map[key1:1 key2:2]:foobar map[key1:3 key2:4]:bazquux]",
+	}, {
+		m: NewMap(
+			New(map[string]interface{}{"key1": uint32(1), "key2": uint32(2)}), "foobar",
+			New(map[string]interface{}{"key1": directKeyImplementation{true},
+				"key2": uint32(4)}), "bazquux",
+		),
+		s: "key.Map[map[key1:1 key2:2]:foobar map[key1:{true} key2:4]:bazquux]",
 	}} {
 		t.Run(tc.s, func(t *testing.T) {
 			out := tc.m.String()
