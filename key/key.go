@@ -104,49 +104,60 @@ func sliceToPointer(s []interface{}) pointer {
 // This function panics if the value passed in isn't allowed in a Key or
 // doesn't implement value.Value.
 func New(intf interface{}) Key {
+	k, err := TryNew(intf)
+	if err != nil {
+		panic(err.Error())
+	}
+	return k
+}
+
+// TryNew wraps the given value in a Key.
+// Returns error if the value passed in isn't allowed in a Key or
+// doesn't implement value.Value.
+func TryNew(intf interface{}) (Key, error) {
 	switch t := intf.(type) {
 	case nil:
-		return nilKey{}
+		return nilKey{}, nil
 	case map[string]interface{}:
-		return mapKey(t)
+		return mapKey(t), nil
 	case []interface{}:
-		return sliceKey(t)
+		return sliceKey(t), nil
 	case string:
-		return strKey(t)
+		return strKey(t), nil
 	case int8:
-		return int8Key(t)
+		return int8Key(t), nil
 	case int16:
-		return int16Key(t)
+		return int16Key(t), nil
 	case int32:
-		return int32Key(t)
+		return int32Key(t), nil
 	case int64:
-		return int64Key(t)
+		return int64Key(t), nil
 	case uint8:
-		return uint8Key(t)
+		return uint8Key(t), nil
 	case uint16:
-		return uint16Key(t)
+		return uint16Key(t), nil
 	case uint32:
-		return uint32Key(t)
+		return uint32Key(t), nil
 	case uint64:
-		return uint64Key(t)
+		return uint64Key(t), nil
 	case float32:
-		return float32Key(t)
+		return float32Key(t), nil
 	case float64:
-		return float64Key(t)
+		return float64Key(t), nil
 	case bool:
-		return boolKey(t)
+		return boolKey(t), nil
 	case value.Value:
-		return interfaceKey{key: intf}
+		return interfaceKey{key: intf}, nil
 	case Pointer:
-		return pointerKey{sliceKey(pointerToSlice(t))}
+		return pointerKey{sliceKey(pointerToSlice(t))}, nil
 	case []byte:
-		return bytesKey(t)
+		return bytesKey(t), nil
 	case Path:
-		return pathKey{sliceKey(pathToSlice(t))}
+		return pathKey{sliceKey(pathToSlice(t))}, nil
 	case Key:
-		return t
+		return t, nil
 	default:
-		panic(fmt.Sprintf("Invalid type for key: %T", intf))
+		return nil, fmt.Errorf("Invalid type for key: %T", intf)
 	}
 }
 

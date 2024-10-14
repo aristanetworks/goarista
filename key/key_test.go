@@ -603,6 +603,22 @@ func TestMisc(t *testing.T) {
 	}
 }
 
+func TestTryNew(t *testing.T) {
+	k, err := TryNew(42)
+	if k != nil {
+		t.Error("expected nil key for unsupported type")
+	}
+	if err == nil {
+		t.Error("expected error unsupported type")
+	}
+	k, err = TryNew("foo")
+	if err != nil {
+		t.Errorf("expected no error but got %v", err)
+	} else if expected, str := "foo", k.String(); expected != str {
+		t.Errorf("Wanted string representation %q but got %q", expected, str)
+	}
+}
+
 func BenchmarkSetToMapWithStringKey(b *testing.B) {
 	m := NewMap(New("a"), true,
 		New("a1"), true,
