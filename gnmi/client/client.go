@@ -29,6 +29,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Manual client version. This is updated by the developer every time a change is made to
+// the client code.
+const clientVersion = "2024.10.20"
+
 // TODO: Make this more clear
 var help = `Usage of gnmi:
 gnmi -addr [<VRF-NAME>/]ADDRESS:PORT [options...]
@@ -123,15 +127,18 @@ func Main() {
 	}
 	flag.Parse()
 	if *outputVersion {
+		var vcsVersion string
 		if info, ok := debug.ReadBuildInfo(); ok {
 			for _, data := range info.Settings {
 				if data.Key == "vcs.revision" {
-					fmt.Printf("%s_%s", data.Value, info.GoVersion)
+					vcsVersion = fmt.Sprintf(" %s_%s", data.Value, info.GoVersion)
+					break
 				}
 			}
-		} else {
-			fmt.Printf("version information only available in go 1.18+")
 		}
+
+		// Print both since vcsVersion is not always available
+		fmt.Printf("%s%s\n", clientVersion, vcsVersion)
 		return
 	}
 
