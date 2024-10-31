@@ -31,7 +31,7 @@ import (
 
 // Manual client version. This is updated by the developer every time a change is made to
 // the client code.
-const clientVersion = "2024.10.20"
+const clientVersion = "2024.10.31"
 
 // TODO: Make this more clear
 var help = `Usage of gnmi:
@@ -106,6 +106,8 @@ func Main() {
 		"precision, e.g., 2006-01-02T15:04:05.999999999+07:00)")
 	dataTypeStr := flag.String("data_type", "all",
 		"Get data type (all | config | state | operational)")
+	protoRequest := flag.Bool("proto", false,
+		"Parse the Subscribe argument as a SubscribeRequest proto text/file")
 	flag.StringVar(&cfg.Token, "token", "", "Authentication token")
 	grpcMetadata := aflag.Map{}
 	flag.Var(grpcMetadata, "grpcmetadata",
@@ -254,41 +256,39 @@ func Main() {
 					" 'update|replace|delete|union_replace'")
 			}
 			var g errgroup.Group
-			pathParams, argsParsed := parsereqParams(args[1:], false)
-			if argsParsed == 0 {
-				usageAndExit("error: missing path")
-			}
-			for _, pathParam := range pathParams {
-				subOptions, err := newSubscribeOptions(pathParam, histExt, subscribeOptions)
-				if err != nil {
-					usageAndExit("error: " + err.Error())
+			if *protoRequest {
+				if len(args[1:]) != 1 {
+					usageAndExit("error: 'subscribe' with -proto must be followed by a" +
+						" single SubscribeRequest proto text/file argument")
 				}
-
+				req, err := parseSubscribeRequestProto(args[1])
+				if err != nil {
+					usageAndExit(fmt.Sprintf("error: %s", err))
+				}
 				respChan := make(chan *pb.SubscribeResponse)
 				g.Go(func() error {
-					return gnmi.SubscribeErr(ctx, client, subOptions, respChan)
+					return gnmi.SubscribeWithRequest(ctx, client, req, respChan)
 				})
-				switch *debugMode {
-				case "proto":
-					for resp := range respChan {
-						fmt.Println(resp)
+				handleSubscribeResponses(*debugMode, &g, respChan)
+			} else {
+				pathParams, argsParsed := parsereqParams(args[1:], false)
+				if argsParsed == 0 {
+					usageAndExit("error: missing path")
+				}
+				for _, pathParam := range pathParams {
+					subOptions, err := newSubscribeOptions(pathParam, histExt, subscribeOptions)
+					if err != nil {
+						usageAndExit("error: " + err.Error())
 					}
-				case "latency":
-					for resp := range respChan {
-						printLatencyStats(resp)
-					}
-				case "throughput":
-					handleThroughput(respChan)
-				case "clog":
-					// Don't read any subscription updates
-					g.Wait()
-				case "":
-					go processSubscribeResponses(pathParam.origin, respChan)
 
-				default:
-					usageAndExit(fmt.Sprintf("unknown debug option: %q", *debugMode))
+					respChan := make(chan *pb.SubscribeResponse)
+					g.Go(func() error {
+						return gnmi.SubscribeErr(ctx, client, subOptions, respChan)
+					})
+					handleSubscribeResponses(*debugMode, &g, respChan)
 				}
 			}
+
 			if err := g.Wait(); err != nil {
 				glog.Fatal(err)
 			}
@@ -327,6 +327,51 @@ func Main() {
 		glog.Fatal(err)
 	}
 
+}
+
+// parseSubscribeRequestProto unmarshals the proto text/file of the SubscribeRequest.
+func parseSubscribeRequestProto(arg string) (*pb.SubscribeRequest, error) {
+	proto := parseProtoFileOrText(arg)
+	req := &pb.SubscribeRequest{}
+	if err := prototext.Unmarshal(proto, req); err != nil {
+		return nil, fmt.Errorf("unable to parse SubscribeRequest %s", err)
+	}
+	return req, nil
+}
+
+// parseProtoFileOrText assumes the argument is a file.
+// If it cannot be read, the argument is the proto text.
+func parseProtoFileOrText(arg string) []byte {
+	var proto []byte
+	proto, err := os.ReadFile(arg)
+	if err != nil {
+		proto = []byte(arg)
+	}
+	return proto
+}
+
+func handleSubscribeResponses(debugMode string, g *errgroup.Group,
+	respChan chan *pb.SubscribeResponse) {
+	switch debugMode {
+	case "proto":
+		for resp := range respChan {
+			fmt.Println(resp)
+		}
+	case "latency":
+		for resp := range respChan {
+			printLatencyStats(resp)
+		}
+	case "throughput":
+		handleThroughput(respChan)
+	case "clog":
+		// Don't read any subscription updates
+		g.Wait()
+	case "":
+		go processSubscribeResponses(respChan)
+
+	default:
+		usageAndExit(fmt.Sprintf("unknown debug option: %q", debugMode))
+	}
 }
 
 func newSetOperation(
@@ -382,12 +427,7 @@ func newSetOperation(
 
 // setWithProto unmarshals the proto text/file of the SetRequest and calls gnmi.Set.
 func setWithProto(ctx context.Context, client pb.GNMIClient, arg string) error {
-	// Assume the argument is a file. If it cannot be read, the argument is the proto text.
-	var proto []byte
-	proto, err := os.ReadFile(arg)
-	if err != nil {
-		proto = []byte(arg)
-	}
+	proto := parseProtoFileOrText(arg)
 	req := &pb.SetRequest{}
 	if err := prototext.Unmarshal(proto, req); err != nil {
 		return fmt.Errorf("unable to parse SetRequest %s", err)
@@ -513,7 +553,7 @@ Supported encodings are (case insensitive):
 	return req, nil
 }
 
-func processSubscribeResponses(origin string, respChan chan *pb.SubscribeResponse) {
+func processSubscribeResponses(respChan chan *pb.SubscribeResponse) {
 	for resp := range respChan {
 		if err := gnmi.LogSubscribeResponse(resp); err != nil {
 			glog.Fatal(err)

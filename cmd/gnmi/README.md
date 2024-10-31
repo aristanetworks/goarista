@@ -82,14 +82,76 @@ exit, for example by typing `Ctrl-C`.
 
 Example:
 
-Subscribe to interface counters:
+**Subscribe to interface counters**
 ```
 $ gnmi [OPTIONS] subscribe '/interfaces/interface[name=*]/state/counters'
 ```
 
+**Subscribe with proto**
+
+The `-proto` option parses the `subscribe` argument as the Protocol Buffer Text Format of a
+[SubscribeRequest](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#3511-the-subscriberequest-message).  
+The argument is either the path to the proto file or the proto text itself.
+
+**Proto file**
+
+File `path/to/request.proto` contains the following:
+
+```
+subscribe: {
+  mode: STREAM
+  subscription: {
+    mode: ON_CHANGE
+    path: {
+      elem: {
+        name: "interfaces"
+      }
+      elem: {
+        name: "interface"
+        key: {
+          key: "name"
+          value: "Management1"
+        }
+      }
+      elem: {
+        name: "state"
+      }
+      elem: {
+        name: "counters"
+      }
+    }
+  }
+  subscription: {
+    mode: SAMPLE
+    sample_interval: 2000000000
+    path: {
+      elem: {
+        name: "system"
+      }
+      elem: {
+        name: "state"
+      }
+      elem: {
+        name: "hostname"
+      }
+    }
+  }
+}
+```
+
+```
+$ gnmi [OPTIONS] -proto subscribe path/to/request.proto
+```
+
+**Proto text**
+
+```
+$ gnmi [OPTIONS] -proto subscribe 'subscribe:{subscription:{mode:SAMPLE sample_interval:2000000000 path:{elem:{name:"system"}elem:{name:"state"}elem:{name:"hostname"}}}}'
+```
+
 ### set
 
-`set` takes a single argument, the Protocol Buffer Text Format of the
+`set` takes a single argument, the Protocol Buffer Text Format of a
 [SetRequest](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#341-the-setrequest-message),
 and calls the [Set gNMI RPC](https://github.com/openconfig/reference/blob/master/rpc/gnmi/gnmi-specification.md#34-modifying-state).  
 The argument is either the path to the proto file or the proto text itself.

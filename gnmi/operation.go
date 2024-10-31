@@ -509,6 +509,16 @@ func Subscribe(ctx context.Context, client pb.GNMIClient, subscribeOptions *Subs
 // to the respChan. Before returning respChan will be closed.
 func SubscribeErr(ctx context.Context, client pb.GNMIClient, subscribeOptions *SubscribeOptions,
 	respChan chan<- *pb.SubscribeResponse) error {
+	req, err := NewSubscribeRequest(subscribeOptions)
+	if err != nil {
+		return err
+	}
+	return SubscribeWithRequest(ctx, client, req, respChan)
+}
+
+// SubscribeWithRequest calls gNMI.Subscribe with the SubscribeRequest.
+func SubscribeWithRequest(ctx context.Context, client pb.GNMIClient, req *pb.SubscribeRequest,
+	respChan chan<- *pb.SubscribeResponse) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	defer close(respChan)
@@ -517,14 +527,10 @@ func SubscribeErr(ctx context.Context, client pb.GNMIClient, subscribeOptions *S
 	if err != nil {
 		return err
 	}
-	req, err := NewSubscribeRequest(subscribeOptions)
-	if err != nil {
-		return err
-	}
 	if err := stream.Send(req); err != nil {
 		return err
 	}
-	if subscribeOptions.Mode != "poll" {
+	if req.GetSubscribe().GetMode() != pb.SubscriptionList_POLL {
 		// Non polling subscriptions are not expected to submit any other messages to server.
 		if err := stream.CloseSend(); err != nil {
 			return err
@@ -547,7 +553,7 @@ func SubscribeErr(ctx context.Context, client pb.GNMIClient, subscribeOptions *S
 		}
 
 		// For POLL subscriptions, initiate a poll request by pressing ENTER
-		if subscribeOptions.Mode == "poll" {
+		if req.GetSubscribe().GetMode() == pb.SubscriptionList_POLL {
 			switch resp.Response.(type) {
 			case *pb.SubscribeResponse_SyncResponse:
 				fmt.Print("Press ENTER to send a poll request: ")
