@@ -56,23 +56,27 @@ func SetTOS(network string, c syscall.RawConn, tos byte) error {
 // Logger.
 func SetTOSLogger(network string, c syscall.RawConn, tos byte, l logger.Logger) error {
 	return c.Control(func(fd uintptr) {
-		// Configure ipv4 TOS for both IPv4 and IPv6 networks because
-		// v4 connections can still come over v6 networks.
-		err := unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, int(tos))
-		if err != nil {
-			l.Errorf("failed to configure IP_TOS: %v", os.NewSyscallError("setsockopt", err))
-		}
-		if strings.HasSuffix(network, "4") {
-			// Skip configuring IPv6 when we know we are using an IPv4
-			// network to avoid error.
-			return
-		}
-		err6 := unix.SetsockoptInt(int(fd), unix.IPPROTO_IPV6, unix.IPV6_TCLASS, int(tos))
-		if err6 != nil {
-			l.Errorf(
-				"failed to configure IPV6_TCLASS, traffic may not use the configured DSCP: %v",
-				os.NewSyscallError("setsockopt", err6))
-		}
-
+		SetsockoptTOS(fd, network, tos, l)
 	})
+}
+
+// SetsockoptTOS sets the socket with the TOS byte.
+func SetsockoptTOS(fd uintptr, network string, tos byte, l logger.Logger) {
+	// Configure ipv4 TOS for both IPv4 and IPv6 networks because
+	// v4 connections can still come over v6 networks.
+	err := unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, int(tos))
+	if err != nil {
+		l.Errorf("failed to configure IP_TOS: %v", os.NewSyscallError("setsockopt", err))
+	}
+	if strings.HasSuffix(network, "4") {
+		// Skip configuring IPv6 when we know we are using an IPv4
+		// network to avoid error.
+		return
+	}
+	err6 := unix.SetsockoptInt(int(fd), unix.IPPROTO_IPV6, unix.IPV6_TCLASS, int(tos))
+	if err6 != nil {
+		l.Errorf(
+			"failed to configure IPV6_TCLASS, traffic may not use the configured DSCP: %v",
+			os.NewSyscallError("setsockopt", err6))
+	}
 }
