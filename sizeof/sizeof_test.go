@@ -37,7 +37,7 @@ func TestDeepSizeof(t *testing.T) {
 	sliceHdrSize := 3 * ptrSize     // ptr to data + 2 * int
 
 	// struct hchan is defined in /go/src/runtime/chan.go
-	chanHdrSize := 2*ptrSize + ptrSize + 2 + 2 /* padding */ + 4 + ptrSize + 2*ptrSize +
+	chanHdrSize := 2*ptrSize + ptrSize + 2 + 2 /* padding */ + 4 + 4*ptrSize +
 		2*(2*ptrSize) + ptrSize
 	yoloSize := unsafe.Sizeof(yolo{})
 	interfaceSize := 2 * ptrSize
