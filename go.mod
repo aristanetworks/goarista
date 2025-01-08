@@ -18,7 +18,6 @@ require (
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.29.0
 	golang.org/x/tools v0.29.0
-	golang.org/x/tools/go/vcs v0.1.0-deprecated
 	google.golang.org/grpc v1.69.2
 	google.golang.org/protobuf v1.36.2
 	gopkg.in/redis.v4 v4.2.4
