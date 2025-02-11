@@ -24,7 +24,6 @@ import (
 	"github.com/aristanetworks/goarista/dscp"
 	gnmilib "github.com/aristanetworks/goarista/gnmi"
 	"github.com/aristanetworks/goarista/gnmireverse"
-	"github.com/aristanetworks/goarista/netns"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"golang.org/x/sync/errgroup"
@@ -254,8 +253,9 @@ type config struct {
 // Main initializes the gNMIReverse client.
 func Main() {
 	var cfg config
-	flag.StringVar(&cfg.targetAddr, "target_addr", "127.0.0.1:6030",
-		"address of the gNMI target in the form of [<vrf-name>/]address:port")
+	flag.StringVar(&cfg.targetAddr, "target_addr", "unix:///var/run/gnmiServer.sock",
+		"address of the gNMI target in the form of [<vrf-name>/]address:port\n"+
+			"or unix:///path/to/uds.sock")
 	flag.StringVar(&cfg.username, "username", "", "username to authenticate with target")
 	flag.StringVar(&cfg.password, "password", "", "password to authenticate with target")
 	credentialsFileUsage := `Path to file containing username and/or password to` +
@@ -309,7 +309,8 @@ Credentials specified with -username or -password take precedence.`
 	getMode := flag.String("get_mode", "get", getModeUsage)
 
 	flag.StringVar(&cfg.collectorAddr, "collector_addr", "",
-		"Address of collector in the form of [<vrf-name>/]host:port.\n"+
+		"Address of collector in the form of [<vrf-name>/]host:port"+
+			" or unix:///path/to/uds.sock.\n"+
 			"The host portion must be enclosed in square brackets "+
 			"if it is a literal IPv6 address.\n"+
 			"For example, -collector_addr mgmt/[::1]:1234")
@@ -523,7 +524,7 @@ func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("unknown compression method %q", cfg.collectorCompression)
 	}
 
-	nsName, addr, err := netns.ParseAddress(cfg.collectorAddr)
+	network, nsName, addr, err := gnmilib.ParseAddress(cfg.collectorAddr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing address: %s", err)
 	}
@@ -533,24 +534,9 @@ func dialCollector(cfg *config) (*grpc.ClientConn, error) {
 		return nil, err
 	}
 
-	dialOptions = append(dialOptions, grpc.WithContextDialer(newVRFDialer(dialer, nsName)))
+	dialOptions = append(dialOptions,
+		grpc.WithContextDialer(gnmilib.Dialer(dialer, network, nsName)))
 	return grpc.Dial(addr, dialOptions...)
-}
-
-func newVRFDialer(d *net.Dialer, nsName string) func(context.Context, string) (net.Conn, error) {
-	return func(ctx context.Context, addr string) (net.Conn, error) {
-		var conn net.Conn
-		err := netns.Do(nsName, func() error {
-			c, err := d.DialContext(ctx, "tcp", addr)
-			if err != nil {
-				return err
-			}
-			conn = c
-			return nil
-		})
-
-		return conn, err
-	}
 }
 
 func newTLSConfig(skipVerify bool, certFile, keyFile, caFile string) (*tls.Config,
@@ -623,7 +609,7 @@ func newDialer(cfg *config) (*net.Dialer, error) {
 }
 
 func dialTarget(cfg *config) (*grpc.ClientConn, error) {
-	nsName, addr, err := netns.ParseAddress(cfg.targetAddr)
+	network, nsName, addr, err := gnmilib.ParseAddress(cfg.targetAddr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing address: %s", err)
 	}
@@ -643,7 +629,7 @@ func dialTarget(cfg *config) (*grpc.ClientConn, error) {
 
 	var d net.Dialer
 	dialOptions = append(dialOptions,
-		grpc.WithContextDialer(newVRFDialer(&d, nsName)),
+		grpc.WithContextDialer(gnmilib.Dialer(&d, network, nsName)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 	)
 

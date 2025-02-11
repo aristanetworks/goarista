@@ -30,10 +30,10 @@ Run the program with the flag `--help` or `-h` to see the full list of options a
 `username`                 | Username to authenticate with the target (gNMI server).
 `password`                 | Password to authenticate with the target (gNMI server).
 `credentials_file`         | File containing username and/or password to authenticate with target, in YAML form of:<br/>`username: admin`<br/>`password: pass123`<br/>Credentials specified with `-username` or `-password` take precedence.
-`target_addr`              | Address of the gNMI server running on the device.<br/>- Form: `[vrf/]address:port`<br/>- Example: `default/127.0.0.1:6030`, `mgmt/localhost:9339`
+`target_addr`              | Address of the gNMI server running on the device.<br/>- Default: `unix:///var/run/gnmiServer.sock` (does not require authentication)<br/>- Form: `[vrf/]address:port` or `unix:///path/to/uds.sock`<br/>- Example: `default/127.0.0.1:6030`, `mgmt/localhost:9339`<br/>
 `target_value`             | Target name to include in the prefix of all responses to identify the device.
 `target_tls_insecure`      | Use TLS connection with the target and do not verify the target certificate. Used if the gNMI server is configured with a TLS certificate and mutual TLS authentication is not enforced.<br/>By default, a plaintext connection is used with the target.
-`collector_addr`           | Address of the gNMIReverse server collecting the data.<br/>- Form: `[vrf/]host:port`<br/>- Example: `1.2.3.4:6000`, `mgmt/collector1:10000`
+`collector_addr`           | Address of the gNMIReverse server collecting the data.<br/>- Form: `[vrf/]host:port` or `unix:///path/to/uds.sock`<br/>- Example: `1.2.3.4:6000`, `mgmt/collector1:10000`
 `source_addr`              | Address to use as source in connection to the collector. An IPv6 address must be enclosed in square brackets when specified with a port.<br/>- Form: `ip[:port]` or `:port`<br/>- Example: `10.2.3.4`, `[::1]:1234`, `:1234`
 `collector_tls`            | Use TLS connection with the gNMIReverse server.<br/>- Default: `true`
 `collector_tls_skipverify` | Do not verify the collector TLS certificate. Used if mutual TLS authentication is not enforced.
@@ -58,9 +58,6 @@ For example, on an Arista EOS device the client can be configured in the CLI:
 ```
 daemon gnmireverse
    exec /mnt/flash/gnmireverse_client
-      -username USER
-      -password PASS
-      -target_addr=mgmt/127.0.0.1:6030
       -collector_addr=mgmt/1.2.3.4:6000
       -target_value=device1
       -sample interfaces/interface/state/counters@30s
@@ -68,8 +65,7 @@ daemon gnmireverse
    no shutdown
 ```
 
-* The username and password authenticates with the gNMI server.
-* The client is connecting to the gNMI server locally on `127.0.0.1:6030` in the `mgmt` VRF.
+* The target by default is the Unix domain socket gNMI server which does not require authentication.
 * The client is connecting through the `mgmt` VRF to the gNMIReverse server listening on `1.2.3.4:6000`.
 * Interface counters sampled every 30 seconds are streamed to the collector.
 * Changes as they happen to network-instances config and state are streamed to the collector.
@@ -82,9 +78,6 @@ An example CLI configuration on an Arista EOS device to stream responses using g
 ```
 daemon gnmireverse
    exec /mnt/flash/gnmireverse_client
-      -username admin
-      -password pass
-      -target_addr=mgmt/127.0.0.1:6030
       -collector_addr=mgmt/1.2.3.4:6000
       -target_value=device1
       -get_sample_interval 10s

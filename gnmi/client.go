@@ -293,44 +293,66 @@ func DialContextConn(ctx context.Context, cfg *Config) (*grpc.ClientConn, error)
 		opts = append(opts, grpc.WithInsecure())
 	}
 
-	dial := func(ctx context.Context, addrIn string) (conn net.Conn, err error) {
-		var network, nsName, addr string
-
-		split := strings.Split(addrIn, "://")
-		if l := len(split); l == 2 {
-			network = split[0]
-			addr = split[1]
-		} else {
-			network = "tcp"
-			addr = split[0]
-		}
-
-		if !strings.HasPrefix(network, "unix") {
-			if !strings.ContainsRune(addr, ':') {
-				addr += ":" + defaultPort
-			}
-
-			nsName, addr, err = netns.ParseAddress(addr)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		err = netns.Do(nsName, func() (err error) {
-			conn, err = (&net.Dialer{}).DialContext(ctx, network, addr)
-			return
-		})
-		return
+	network, nsName, addr, err := ParseAddress(cfg.Addr)
+	if err != nil {
+		return nil, err
 	}
 
 	opts = append(opts,
-		grpc.WithContextDialer(dial),
+		grpc.WithContextDialer(Dialer(&net.Dialer{}, network, nsName)),
 
 		// Allows received protobuf messages to be larger than 4MB
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 	)
 
-	return grpc.DialContext(ctx, cfg.Addr, opts...)
+	return grpc.DialContext(ctx, addr, opts...)
+}
+
+// ParseAddress parses the network, namespace and address for TCP or
+// Unix domain socket addresses. Examples:
+//
+//	"mgmt/127.0.0.1:6030" returns "tcp", "ns-mgmt", "127.0.0.1:6030"
+//	"unix:///var/run/gnmiServer.sock" returns "unix", "", "/var/run/gnmiServer.sock".
+func ParseAddress(addrIn string) (string, string, string, error) {
+	var network, nsName, addr string
+	split := strings.Split(addrIn, "://")
+	if l := len(split); l == 2 {
+		network = split[0]
+		addr = split[1]
+	} else {
+		network = "tcp"
+		addr = split[0]
+	}
+
+	if !strings.HasPrefix(network, "unix") {
+		if !strings.ContainsRune(addr, ':') {
+			addr += ":" + defaultPort
+		}
+
+		var err error
+		nsName, addr, err = netns.ParseAddress(addr)
+		if err != nil {
+			return "", "", "", err
+		}
+	}
+	return network, nsName, addr, nil
+}
+
+// Dialer returns a dialer function with the given net.Dialer, network and namespace.
+func Dialer(d *net.Dialer, network, nsName string) func(
+	context.Context, string) (net.Conn, error) {
+	return func(ctx context.Context, addr string) (net.Conn, error) {
+		var conn net.Conn
+		err := netns.Do(nsName, func() error {
+			c, err := d.DialContext(ctx, network, addr)
+			if err != nil {
+				return err
+			}
+			conn = c
+			return nil
+		})
+		return conn, err
+	}
 }
 
 // DialContext connects to a gnmi service and returns a client
