@@ -314,6 +314,12 @@ func DialContextConn(ctx context.Context, cfg *Config) (*grpc.ClientConn, error)
 //	"mgmt/127.0.0.1:6030" returns "tcp", "ns-mgmt", "127.0.0.1:6030"
 //	"unix:///var/run/gnmiServer.sock" returns "unix", "", "/var/run/gnmiServer.sock".
 func ParseAddress(addrIn string) (string, string, string, error) {
+	// Parse "unix://" and "unix:" addresses as in
+	// google.golang.org/grpc/internal/transport/http2_client.go
+	if addr, ok := strings.CutPrefix(addrIn, "unix:"); ok {
+		return "unix", "", strings.TrimPrefix(addr, "//"), nil
+	}
+
 	var network, nsName, addr string
 	split := strings.Split(addrIn, "://")
 	if l := len(split); l == 2 {
@@ -324,16 +330,14 @@ func ParseAddress(addrIn string) (string, string, string, error) {
 		addr = split[0]
 	}
 
-	if !strings.HasPrefix(network, "unix") {
-		if !strings.ContainsRune(addr, ':') {
-			addr += ":" + defaultPort
-		}
+	if !strings.ContainsRune(addr, ':') {
+		addr += ":" + defaultPort
+	}
 
-		var err error
-		nsName, addr, err = netns.ParseAddress(addr)
-		if err != nil {
-			return "", "", "", err
-		}
+	var err error
+	nsName, addr, err = netns.ParseAddress(addr)
+	if err != nil {
+		return "", "", "", err
 	}
 	return network, nsName, addr, nil
 }

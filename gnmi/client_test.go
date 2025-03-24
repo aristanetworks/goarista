@@ -28,13 +28,25 @@ func TestParseAddress(t *testing.T) {
 		network: "tcp",
 		addr:    "[::1]:9339",
 	}, {
+		addrIn:  "localhost",
+		network: "tcp",
+		addr:    "localhost:6030",
+	}, {
+		addrIn:  "localhost:9339",
+		network: "tcp",
+		addr:    "localhost:9339",
+	}, {
 		addrIn:  "unix:///var/run/gnmiServer.sock",
 		network: "unix",
 		addr:    "/var/run/gnmiServer.sock",
 	}, {
-		addrIn:  "http://example:80",
-		network: "http",
-		addr:    "example:80",
+		addrIn:  "unix:/var/run/gnmiServer.sock",
+		network: "unix",
+		addr:    "/var/run/gnmiServer.sock",
+	}, {
+		addrIn:  "unix://var/run/gnmiServer.sock",
+		network: "unix",
+		addr:    "var/run/gnmiServer.sock",
 	}, {
 		addrIn: "invalid/invalid/invalid",
 		err: fmt.Errorf(
