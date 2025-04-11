@@ -31,7 +31,7 @@ import (
 
 // Manual client version. This is updated by the developer every time a change is made to
 // the client code.
-const clientVersion = "2024.10.31"
+const clientVersion = "2025.04.10"
 
 // TODO: Make this more clear
 var help = `Usage of gnmi:
