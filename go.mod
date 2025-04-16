@@ -1,6 +1,7 @@
 module github.com/aristanetworks/goarista
 
 go 1.22.0
+toolchain go1.24.1
 
 require (
 	github.com/IBM/sarama v1.45.0
@@ -14,9 +15,9 @@ require (
 	github.com/openconfig/gnmi v0.12.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/xtaci/kcp-go v5.4.20+incompatible
-	golang.org/x/net v0.34.0
-	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0
+	golang.org/x/net v0.38.0
+	golang.org/x/sync v0.12.0
+	golang.org/x/sys v0.31.0
 	golang.org/x/tools v0.29.0
 	google.golang.org/grpc v1.69.2
 	google.golang.org/protobuf v1.36.2
@@ -59,8 +60,8 @@ require (
 	github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/lossyconn v0.0.0-20190602105132-8df528c0c9ae // indirect
-	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250106144421-5f5ef82da422 // indirect
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20170922094635-f56db5e73a5e // indirect
