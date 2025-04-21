@@ -1,6 +1,6 @@
 module github.com/aristanetworks/goarista
 
-go 1.22.0
+go 1.23.8
 
 require (
 	github.com/IBM/sarama v1.45.0
