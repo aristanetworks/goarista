@@ -5,9 +5,7 @@
 package key
 
 import (
-	"encoding/binary"
 	"hash/maphash"
-	"math"
 	"unsafe"
 )
 
@@ -23,105 +21,120 @@ func _strhash(s string) uintptr {
 //go:linkname nilinterhash runtime.nilinterhash
 func nilinterhash(a unsafe.Pointer, h uintptr) uintptr
 
-func _nilinterhash(v interface{}) uintptr {
+func _nilinterhash(v any) uintptr {
 	return nilinterhash(unsafe.Pointer(&v), 0)
 }
 
 // Hash will hash a key. Can be used with
 // [github.com/aristanetworks/gomap.Map].
 func Hash(seed maphash.Seed, k Key) uint64 {
-	var buf [8]byte
 	switch v := k.(type) {
 	case mapKey:
 		return hashMapKey(seed, v)
 	case interfaceKey:
-		s := v.Hash()
-		// Mix up the hash to ensure it covers 64-bits
-		binary.LittleEndian.PutUint64(buf[:8], uint64(s))
-		return maphash.Bytes(seed, buf[:8])
+		if h, ok := v.key.(Hashable); ok {
+			// Mix up the hash to ensure it covers 64-bits
+			return maphash.Comparable(seed, h.Hash())
+		}
+		return maphash.Comparable(seed, v.key)
 	case strKey:
 		return maphash.String(seed, string(v))
 	case bytesKey:
 		return maphash.Bytes(seed, []byte(v))
 	case int8Key:
-		buf[0] = byte(v)
-		return maphash.Bytes(seed, buf[:1])
+		return maphash.Comparable(seed, v)
 	case int16Key:
-		binary.LittleEndian.PutUint16(buf[:2], uint16(v))
-		return maphash.Bytes(seed, buf[:2])
+		return maphash.Comparable(seed, v)
 	case int32Key:
-		binary.LittleEndian.PutUint32(buf[:4], uint32(v))
-		return maphash.Bytes(seed, buf[:4])
+		return maphash.Comparable(seed, v)
 	case int64Key:
-		binary.LittleEndian.PutUint64(buf[:8], uint64(v))
-		return maphash.Bytes(seed, buf[:8])
+		return maphash.Comparable(seed, v)
 	case uint8Key:
-		buf[0] = byte(v)
-		return maphash.Bytes(seed, buf[:1])
+		return maphash.Comparable(seed, v)
 	case uint16Key:
-		binary.LittleEndian.PutUint16(buf[:2], uint16(v))
-		return maphash.Bytes(seed, buf[:2])
+		return maphash.Comparable(seed, v)
 	case uint32Key:
-		binary.LittleEndian.PutUint32(buf[:4], uint32(v))
-		return maphash.Bytes(seed, buf[:4])
+		return maphash.Comparable(seed, v)
 	case uint64Key:
-		binary.LittleEndian.PutUint64(buf[:8], uint64(v))
-		return maphash.Bytes(seed, buf[:8])
+		return maphash.Comparable(seed, v)
 	case float32Key:
-		binary.LittleEndian.PutUint32(buf[:4], math.Float32bits(float32(v)))
-		return maphash.Bytes(seed, buf[:4])
+		return maphash.Comparable(seed, v)
 	case float64Key:
-		binary.LittleEndian.PutUint64(buf[:8], math.Float64bits(float64(v)))
-		return maphash.Bytes(seed, buf[:8])
+		return maphash.Comparable(seed, v)
 	case boolKey:
-		if v {
-			buf[0] = 1
-		}
-		return maphash.Bytes(seed, buf[:1])
+		return maphash.Comparable(seed, v)
 	case sliceKey:
-		return hashSliceKey(seed, v)
+		return hashSliceAny(seed, v)
 	case pointerKey:
-		return hashSliceKey(seed, v.sliceKey)
+		return hashSliceAny(seed, v.sliceKey)
 	case pathKey:
-		return hashSliceKey(seed, v.sliceKey)
+		return hashSliceAny(seed, v.sliceKey)
 	case nilKey:
 		return maphash.Bytes(seed, nil)
 	case Hashable:
-		// Mix up the hash to ensure it covers 64-bits
-		binary.LittleEndian.PutUint64(buf[:8], v.Hash())
-		return maphash.Bytes(seed, buf[:8])
+		return maphash.Comparable(seed, v.Hash())
 	default:
-		s := _nilinterhash(v.Key())
-		binary.LittleEndian.PutUint64(buf[:8], uint64(s))
-		return maphash.Bytes(seed, buf[:8])
+		return maphash.Comparable(seed, v.Key())
 	}
 }
 
 func hashMapKey(seed maphash.Seed, m mapKey) uint64 {
-	var buf [8]byte
 	var h maphash.Hash
 	h.SetSeed(seed)
 	var s uint64
 	for k, v := range m {
-		h.WriteString(k)
-		binary.BigEndian.PutUint64(buf[:8], uint64(HashInterface(v)))
-		h.Write(buf[:8])
+		maphash.WriteComparable(&h, k)
+		writeHashAny(&h, v)
 		// combine hashes with addition so that order doesn't
 		// matter
 		s += h.Sum64()
 		h.Reset()
 	}
 	return s
-
 }
 
-func hashSliceKey(seed maphash.Seed, s sliceKey) uint64 {
-	var buf [8]byte
+func hashSliceAny(seed maphash.Seed, s []any) uint64 {
 	var h maphash.Hash
 	h.SetSeed(seed)
 	for _, v := range s {
-		binary.BigEndian.PutUint64(buf[:8], uint64(HashInterface(v)))
-		h.Write(buf[:8])
+		writeHashAny(&h, v)
+	}
+	return h.Sum64()
+}
+
+func writeHashAny(h *maphash.Hash, v any) {
+	if vv, ok := v.(Key); ok {
+		v = vv.Key()
+	}
+	switch v := v.(type) {
+	case map[string]any:
+		maphash.WriteComparable(h, hashMapKey(h.Seed(), v))
+	case []any:
+		maphash.WriteComparable(h, hashSliceAny(h.Seed(), v))
+	case []byte:
+		h.Write(v)
+	case Pointer:
+		// This case applies to pointers used
+		// as values in maps or slices (i.e.
+		// not wrapped in a key).
+		maphash.WriteComparable(h, hashPath(h.Seed(), v.Pointer()))
+	case Path:
+		// This case applies to paths used
+		// as values in maps or slices (i.e
+		// not wrapped in a key).
+		maphash.WriteComparable(h, hashPath(h.Seed(), v))
+	case Hashable:
+		maphash.WriteComparable(h, v.Hash())
+	default:
+		maphash.WriteComparable(h, v)
+	}
+}
+
+func hashPath(seed maphash.Seed, p Path) uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	for _, v := range p {
+		maphash.WriteComparable(&h, Hash(h.Seed(), v))
 	}
 	return h.Sum64()
 }
