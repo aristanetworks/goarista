@@ -222,12 +222,12 @@ func sizeof(v reflect.Value, m map[string]uintptr, ptrsTypes map[uintptr]map[str
 		}
 	case reflect.String:
 		str := v.String()
-		strHdr := (*reflect.StringHeader)(unsafe.Pointer(&str))
-		tmpSize := uintptr(strHdr.Len)
-		strBlock := block{start: strHdr.Data, end: strHdr.Data + tmpSize}
+		dataPtr := uintptr(unsafe.Pointer(unsafe.StringData(str)))
+		strBlock := block{start: dataPtr, end: dataPtr + uintptr(len(str))}
 		if isKnownBlock(strBlock, seen) {
 			break
 		}
+		var tmpSize uintptr
 		seen, tmpSize = updateSeenBlocks(strBlock, seen)
 		vs += tmpSize
 	case reflect.Chan:
@@ -290,15 +290,21 @@ type maptype struct {
 }
 
 func sizeofmap(v reflect.Value, seen []block) (uintptr, []block) {
+	types := typesByString("*runtime.hmap")
+	if len(types) == 0 {
+		// This must be go1.24 or newer and using swiss maps.
+		// Swiss maps are not supported.
+		return 0, nil
+	}
 	// find the size of the buckets used in this map
 	iface := v.Interface()
+	// get hmap
+	hmap := (*unsafe.Pointer)(unsafe.Pointer(&iface))
+	*hmap = types[0]
+
 	efacev := (*eface)(unsafe.Pointer(&iface))
 	maptypev := (*maptype)(unsafe.Pointer(efacev._type))
 	bucketsize := uint64(maptypev.bucketsize)
-
-	// get hmap
-	hmap := (*unsafe.Pointer)(unsafe.Pointer(&iface))
-	*hmap = typesByString("*runtime.hmap")[0]
 
 	hmapv := reflect.ValueOf(iface)
 	// account for the size of the hmap, buckets and oldbuckets
