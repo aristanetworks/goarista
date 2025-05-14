@@ -5,13 +5,18 @@
 package gnmi
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"slices"
@@ -93,6 +98,7 @@ type Config struct {
 	DialOptions   []grpc.DialOption
 	Token         string
 	GRPCMetadata  map[string]string
+	Proxy         string
 }
 
 // SubscribeOptions is the gNMI subscription request options
@@ -299,7 +305,7 @@ func DialContextConn(ctx context.Context, cfg *Config) (*grpc.ClientConn, error)
 	}
 
 	opts = append(opts,
-		grpc.WithContextDialer(Dialer(&net.Dialer{}, network, nsName)),
+		grpc.WithContextDialer(Dialer(&net.Dialer{}, network, nsName, WithProxy(cfg.Proxy))),
 
 		// Allows received protobuf messages to be larger than 4MB
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
@@ -342,15 +348,56 @@ func ParseAddress(addrIn string) (string, string, string, error) {
 	return network, nsName, addr, nil
 }
 
+// DialOption configures how we set up the connection.
+type DialOption func(m *dialOptions)
+
+type dialOptions struct {
+	proxy string // example: http://[user:password@]ip:port
+}
+
+// WithProxy requires the connection to go through the specified proxy
+func WithProxy(proxy string) DialOption {
+	return func(d *dialOptions) {
+		d.proxy = proxy
+	}
+}
+
 // Dialer returns a dialer function with the given net.Dialer, network and namespace.
-func Dialer(d *net.Dialer, network, nsName string) func(
+func Dialer(d *net.Dialer, network, nsName string, opts ...DialOption) func(
 	context.Context, string) (net.Conn, error) {
+
+	dialOpts := &dialOptions{}
+	for _, opt := range opts {
+		opt(dialOpts)
+	}
+
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		var conn net.Conn
 		err := netns.Do(nsName, func() error {
+			var proxyUser, proxyPass string
+			target := addr
+			if dialOpts.proxy != "" {
+				proxy, err := url.Parse(dialOpts.proxy)
+				if err != nil {
+					return fmt.Errorf("Can't parse proxy URL: %v", err)
+				}
+				if u := proxy.User; u != nil {
+					proxyUser = u.Username()
+					proxyPass, _ = u.Password()
+				}
+				addr = proxy.Host
+			}
+
 			c, err := d.DialContext(ctx, network, addr)
 			if err != nil {
 				return err
+			}
+
+			if dialOpts.proxy != "" {
+				c, err = proxyConnect(ctx, c, target, proxyUser, proxyPass)
+				if err != nil {
+					return fmt.Errorf("can't connect through proxy: %w", err)
+				}
 			}
 			conn = c
 			return nil
@@ -536,4 +583,45 @@ func getTLSVersions(testHook ...func(uint16, *regexp.Regexp)) tlsVersionMap {
 
 	}
 	return nameToVersion
+}
+
+type proxyConn struct {
+	net.Conn
+	rdr io.Reader
+}
+
+func (c *proxyConn) Read(b []byte) (int, error) {
+	return c.rdr.Read(b)
+}
+
+// proxyConnect connects through a proxy that supports HTTP tunnelling as described in RFC7231
+// secion 4.3.6.
+func proxyConnect(ctx context.Context, conn net.Conn, target, user, pass string) (net.Conn, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodConnect, "grpc://"+target, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create send request: %v", err)
+	}
+	if user != "" || pass != "" {
+		auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+pass))
+		req.Header.Add("Proxy-Authorization", auth)
+	}
+
+	if err := req.Write(conn); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to send to proxy: %v", err)
+	}
+
+	rdr := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(rdr, req)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to read from proxy: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		conn.Close()
+		return nil, fmt.Errorf("proxy returned status: %v ", resp.Status)
+	}
+
+	return &proxyConn{Conn: conn, rdr: rdr}, nil
 }
