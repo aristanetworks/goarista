@@ -433,6 +433,10 @@ type Operation struct {
 	Val    string
 }
 
+func NewSetRequest(setOps []*Operation, exts ...*gnmi_ext.Extension) (*pb.SetRequest, error) {
+	return newSetRequest(setOps, exts...)
+}
+
 func newSetRequest(setOps []*Operation, exts ...*gnmi_ext.Extension) (*pb.SetRequest, error) {
 	req := &pb.SetRequest{}
 	for _, op := range setOps {
