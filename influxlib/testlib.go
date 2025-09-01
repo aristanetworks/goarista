@@ -48,7 +48,7 @@ func (w *fakeClient) Write(bp influx.BatchPoints) error {
 	}
 	w.writer.Reset()
 	for _, p := range bp.Points() {
-		fmt.Fprintf(&w.writer, p.String()+"\n")
+		fmt.Fprint(&w.writer, p.String()+"\n")
 	}
 	return nil
 }

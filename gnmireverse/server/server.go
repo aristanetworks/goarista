@@ -242,7 +242,7 @@ func (d *debugger) logGetResponse(res *gnmi.GetResponse) {
 	if d.debugFlag&debugUpdatesAll != 0 {
 		d.logGetResponseNotifs(res, receiveTime)
 	}
-	logger.Printf(d.logBuffer.String())
+	logger.Print(d.logBuffer.String())
 	d.logBuffer.Reset()
 	d.lastResponseTime = receiveTime
 	d.responsesCounter++
@@ -332,7 +332,7 @@ func (d *debugger) logSubscribeResponse(res *gnmi.SubscribeResponse) {
 	if d.debugFlag&debugUpdatesAll != 0 {
 		d.logSubscribeResponseNotif(res, receiveTime)
 	}
-	logger.Printf(d.logBuffer.String())
+	logger.Print(d.logBuffer.String())
 	d.logBuffer.Reset()
 	d.lastResponseTime = receiveTime
 	d.responsesCounter++

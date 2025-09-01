@@ -59,7 +59,7 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 	</body>
 	</html>
 	`
-	fmt.Fprintf(w, indexTmpl)
+	fmt.Fprint(w, indexTmpl)
 }
 
 // PrintableHistogram represents a Histogram that can be printed as

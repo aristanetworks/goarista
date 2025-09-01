@@ -536,7 +536,7 @@ func TestExtractValue(t *testing.T) {
 	for _, tc := range cases {
 		out, err := ExtractValue(tc.in)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err.Error())
 		}
 		if !test.DeepEqual(tc.exp, out) {
 			t.Errorf("Extracted value is incorrect. Expected %+v, got %+v", tc.exp, out)
