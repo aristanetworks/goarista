@@ -2,8 +2,12 @@
 
 This is a client for the OpenConfig gRPC interface that pushes telemetry to
 Prometheus. Numerical and boolean (converted to 1 for true and 0 for false) are
-supported. Non-numerical data isn't supported by Prometheus and is silently
-dropped. Arrays (even with numeric values) are not yet supported.
+supported. String values can be inserted as a label using the `valuelabel` option
+with the numeric value of the metric specified using the `defaultvalue` option.
+For enumerated string values, the option `decodeenum` can be used to transform
+each string value into a numeric value. Other non-numerical data isn't supported
+by Prometheus and is silently dropped. Arrays (even with numeric values) are not
+yet supported.
 
 This tool requires a config file to specify how to map the path of the
 notificatons coming out of the OpenConfig gRPC interface onto Prometheus

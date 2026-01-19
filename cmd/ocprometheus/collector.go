@@ -40,6 +40,7 @@ type labelledMetric struct {
 	defaultValue float64
 	floatVal     float64
 	stringMetric bool
+	decodeEnum   map[string]float64
 }
 
 type collector struct {
@@ -268,6 +269,18 @@ func (c *collector) update(addr string, message proto.Message) {
 		c.m.Lock()
 		// Use the cached labels and descriptor if available
 		if m, ok := c.metrics[src]; ok {
+			if m.decodeEnum != nil {
+				// decode the string value according to the enum lookup
+				decodedVal, enumExists := m.decodeEnum[strVal]
+				if enumExists {
+					strUpdate = false
+					floatVal = decodedVal
+				} else {
+					glog.V(8).Infof("Failed to decode enum value %+v of update %v at %s:%s",
+						value, update, device, path)
+				}
+			}
+
 			if strUpdate {
 				// Skip string updates for non string metrics
 				if !m.stringMetric {
@@ -295,7 +308,20 @@ func (c *collector) update(addr string, message proto.Message) {
 			continue
 		}
 
-		if metric.stringMetric {
+		enumDecoded := false
+		if metric.decodeEnum != nil {
+			// Decode the string value according to the enum lookup
+			decodedVal, enumExists := metric.decodeEnum[strVal]
+			if enumExists {
+				floatVal = decodedVal
+				enumDecoded = true
+			} else {
+				glog.V(8).Infof("Failed to decode enum value %+v of update %v at %s:%s",
+					value, update, device, path)
+			}
+		}
+
+		if metric.stringMetric && !enumDecoded {
 			if !strUpdate {
 				// A float was parsed from the update, yet metric expects a string.
 				// Store the float as a string.
@@ -315,6 +341,7 @@ func (c *collector) update(addr string, message proto.Message) {
 			labels:       metric.labels,
 			defaultValue: metric.defaultValue,
 			stringMetric: metric.stringMetric,
+			decodeEnum:   metric.decodeEnum,
 		}
 		c.m.Unlock()
 	}
