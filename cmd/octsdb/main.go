@@ -254,6 +254,9 @@ func parseNumber(num json.Number, update *pb.Update) interface{} {
 		// num is either a large unsigned integer or a floating point.
 		if strings.Contains(err.Error(), "value out of range") { // Sigh.
 			value, err = strconv.ParseUint(num.String(), 10, 64)
+			if err != nil {
+				glog.Fatalf("Error parsing Uint: %s", err)
+			}
 		} else {
 			value, err = num.Float64()
 			if err != nil {
