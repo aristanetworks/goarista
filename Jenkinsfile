@@ -34,7 +34,8 @@ pipeline {
                             [$class: 'CleanBeforeCheckout'],
                         ],
                         userRemoteConfigs: [[
-                            url: 'https://gerrit.corp.arista.io/goarista',
+                            url: 'https://gerrit.corp.arista.io/a/goarista',
+                            credentialsId: 'srv-jenkins-io',
                             refspec: '+${GERRIT_REFSPEC}:${GERRIT_REFSPEC}',
                         ]],
                     ])
