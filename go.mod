@@ -14,6 +14,7 @@ require (
 	github.com/openconfig/gnmi v0.14.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/xtaci/kcp-go v5.4.20+incompatible
+	go.yaml.in/yaml/v2 v2.4.4
 	golang.org/x/net v0.49.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.40.0
@@ -21,7 +22,6 @@ require (
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/redis.v4 v4.2.4
-	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -57,10 +57,10 @@ require (
 	github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/xtaci/lossyconn v0.0.0-20190602105132-8df528c0c9ae // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20170922094635-f56db5e73a5e // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

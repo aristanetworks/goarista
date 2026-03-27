@@ -26,6 +26,7 @@ import (
 	"github.com/aristanetworks/goarista/gnmireverse"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/openconfig/gnmi/proto/gnmi"
+	"go.yaml.in/yaml/v2"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,7 +36,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/yaml.v2"
 )
 
 const (

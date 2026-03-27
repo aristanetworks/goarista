@@ -14,7 +14,7 @@ import (
 	"github.com/aristanetworks/glog"
 	gnmiUtils "github.com/aristanetworks/goarista/gnmi"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v2"
 )
 
 // Config is the representation of ocprometheus's YAML config file.
