@@ -192,9 +192,12 @@ func TestHashStable(t *testing.T) {
 }
 
 var benchSink uint64
+var benchSinkPtr uintptr
 
-func BenchmarkHash(b *testing.B) {
-	seed := maphash.MakeSeed()
+func hashBenchCases() []struct {
+	name string
+	k    Key
+} {
 	bigSlice := make([]any, 32)
 	for i := range bigSlice {
 		bigSlice[i] = int64(i)
@@ -203,7 +206,7 @@ func BenchmarkHash(b *testing.B) {
 	for i := range 32 {
 		bigMap[fmt.Sprintf("k%d", i)] = int64(i)
 	}
-	cases := []struct {
+	return []struct {
 		name string
 		k    Key
 	}{
@@ -228,13 +231,32 @@ func BenchmarkHash(b *testing.B) {
 			NewPointer(Path{New("p")}),
 		})},
 	}
-	for _, tc := range cases {
+}
+
+func BenchmarkHash(b *testing.B) {
+	seed := maphash.MakeSeed()
+	for _, tc := range hashBenchCases() {
 		b.Run(tc.name, func(b *testing.B) {
 			var s uint64
 			for b.Loop() {
 				s ^= Hash(seed, tc.k)
 			}
 			benchSink = s
+		})
+	}
+}
+
+func BenchmarkHashInterface(b *testing.B) {
+	// HashInterface receives the raw value (it unwraps Keys internally),
+	// so we feed it tc.k.Key() to match real callers like Map.Hash.
+	for _, tc := range hashBenchCases() {
+		v := tc.k.Key()
+		b.Run(tc.name, func(b *testing.B) {
+			var s uintptr
+			for i := 0; i < b.N; i++ {
+				s ^= HashInterface(v)
+			}
+			benchSinkPtr = s
 		})
 	}
 }

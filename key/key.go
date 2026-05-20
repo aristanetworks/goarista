@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"hash/maphash"
 	"math"
 	"strconv"
 
@@ -186,7 +187,7 @@ func (k interfaceKey) Hash() uint64 {
 	if h, ok := k.key.(Hashable); ok {
 		return h.Hash()
 	}
-	return uint64(_nilinterhash(k.key))
+	return maphash.Comparable(hashInterfaceSeed, k.key)
 }
 
 // Comparable types have an equality-testing method.
@@ -273,7 +274,7 @@ func (k mapKey) Hash() uint64 {
 	if k == nil {
 		return 0
 	}
-	return uint64(hashMapString(k))
+	return hashMapKey(hashInterfaceSeed, k)
 }
 
 func (k sliceKey) Key() interface{} {
@@ -301,7 +302,7 @@ func (k sliceKey) Hash() uint64 {
 	if k == nil {
 		return 0
 	}
-	return uint64(hashSlice(k))
+	return hashSliceAny(hashInterfaceSeed, k)
 }
 
 func (k strKey) Key() interface{} {

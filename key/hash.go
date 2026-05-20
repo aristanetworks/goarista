@@ -4,26 +4,21 @@
 
 package key
 
-import (
-	"hash/maphash"
-	"unsafe"
-)
+import "hash/maphash"
 
-//go:noescape
-//go:linkname strhash runtime.strhash
-func strhash(a unsafe.Pointer, h uintptr) uintptr
+// hashInterfaceSeed is the process-stable seed used by HashInterface and by
+// the Hash methods on the unexported key types.
+var hashInterfaceSeed = maphash.MakeSeed()
 
-func _strhash(s string) uintptr {
-	return strhash(unsafe.Pointer(&s), 0)
-}
-
-//go:noescape
-//go:linkname nilinterhash runtime.nilinterhash
-func nilinterhash(a unsafe.Pointer, h uintptr) uintptr
-
-func _nilinterhash(v any) uintptr {
-	return nilinterhash(unsafe.Pointer(&v), 0)
-}
+// Hash and HashInterface both dispatch on the input's concrete type and call
+// into maphash. They look parallel but can't share their type switches:
+// Hash switches on the unexported Key wrapper types (int64Key, strKey, ...)
+// and returns a fresh uint64 via maphash.Comparable; writeHashAny — the
+// helper used for slice/map elements — switches on raw types and writes into
+// an existing maphash.Hash via maphash.WriteComparable. Funneling either
+// through the other regresses scalar performance by 20-50% because
+// maphash.Comparable[T=any] goes through the runtime's interface-type
+// hasher, whereas a concrete T specializes to a direct call.
 
 // Hash will hash a key. Can be used with
 // [github.com/aristanetworks/gomap.Map].
@@ -78,6 +73,57 @@ func Hash(seed maphash.Seed, k Key) uint64 {
 	}
 }
 
+// HashInterface computes the hash of a value.
+func HashInterface(v any) uintptr {
+	if vv, ok := v.(Key); ok {
+		v = vv.Key()
+	}
+	switch v := v.(type) {
+	case nil:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case string:
+		return uintptr(maphash.String(hashInterfaceSeed, v))
+	case []byte:
+		return uintptr(maphash.Bytes(hashInterfaceSeed, v))
+	case int:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case int8:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case int16:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case int32:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case int64:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case uint:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case uint16:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case uint32:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case uint64:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case float32:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case float64:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case bool:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	case map[string]any:
+		return uintptr(hashMapKey(hashInterfaceSeed, mapKey(v)))
+	case []any:
+		return uintptr(hashSliceAny(hashInterfaceSeed, v))
+	case Pointer:
+		return uintptr(hashPath(hashInterfaceSeed, v.Pointer()))
+	case Path:
+		return uintptr(hashPath(hashInterfaceSeed, v))
+	case Hashable:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v.Hash()))
+	default:
+		return uintptr(maphash.Comparable(hashInterfaceSeed, v))
+	}
+}
+
 func hashMapKey(seed maphash.Seed, m mapKey) uint64 {
 	var h maphash.Hash
 	h.SetSeed(seed)
@@ -102,6 +148,11 @@ func hashSliceAny(seed maphash.Seed, s []any) uint64 {
 	return h.Sum64()
 }
 
+// writeHashAny hashes a slice/map element into an existing maphash.Hash.
+// The typed cases let maphash.WriteComparable instantiate at a concrete T
+// so it specializes to a direct hash call; the any-typed default goes
+// through the runtime's interface-type hasher and is noticeably slower
+// (~2 ns per element).
 func writeHashAny(h *maphash.Hash, v any) {
 	if vv, ok := v.(Key); ok {
 		v = vv.Key()
@@ -123,6 +174,32 @@ func writeHashAny(h *maphash.Hash, v any) {
 		// as values in maps or slices (i.e
 		// not wrapped in a key).
 		maphash.WriteComparable(h, hashPath(h.Seed(), v))
+	case string:
+		h.WriteString(v)
+	case int:
+		maphash.WriteComparable(h, v)
+	case int8:
+		maphash.WriteComparable(h, v)
+	case int16:
+		maphash.WriteComparable(h, v)
+	case int32:
+		maphash.WriteComparable(h, v)
+	case int64:
+		maphash.WriteComparable(h, v)
+	case uint:
+		maphash.WriteComparable(h, v)
+	case uint16:
+		maphash.WriteComparable(h, v)
+	case uint32:
+		maphash.WriteComparable(h, v)
+	case uint64:
+		maphash.WriteComparable(h, v)
+	case float32:
+		maphash.WriteComparable(h, v)
+	case float64:
+		maphash.WriteComparable(h, v)
+	case bool:
+		maphash.WriteComparable(h, v)
 	case Hashable:
 		maphash.WriteComparable(h, v.Hash())
 	default:
