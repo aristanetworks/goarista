@@ -5,7 +5,9 @@
 package client
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -31,7 +33,7 @@ import (
 
 // Manual client version. This is updated by the developer every time a change is made to
 // the client code.
-const clientVersion = "2025.04.10"
+const clientVersion = "2026.06.07"
 
 // TODO: Make this more clear
 var help = `Usage of gnmi:
@@ -78,6 +80,8 @@ func Main() {
 		fmt.Sprintf("Set maximum TLS version for connection (%s)", gnmi.TLSVersions))
 	flag.BoolVar(&cfg.BDP, "bdp", true,
 		"Enable Bandwidth Delay Product (BDP) estimation and dynamic flow control window")
+	compactJSON := flag.Bool("compact-json", false,
+		"For Set requests, compact the input JSON from the file")
 	outputVersion := flag.Bool("version", false, "print version information")
 
 	subscribeOptions := &gnmi.SubscribeOptions{}
@@ -312,6 +316,27 @@ func Main() {
 			return
 		default:
 			usageAndExit(fmt.Sprintf("error: unknown operation %q", args[i]))
+		}
+	}
+	if *compactJSON && len(setOps) > 0 {
+		for _, op := range setOps {
+			if op.Type == "delete" {
+				continue
+			}
+			switch op.Origin {
+			case "", "openconfig", "eos_native":
+				content, err := os.ReadFile(op.Val)
+				if err != nil {
+					content = []byte(op.Val)
+				}
+				var buf bytes.Buffer
+				if err := json.Compact(&buf, content); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: could not compact JSON for %s: %v\n",
+						strings.Join(op.Path, "/"), err)
+				} else {
+					op.Val = buf.String()
+				}
+			}
 		}
 	}
 	arb, err := gnmi.ArbitrationExt(*arbitrationStr)
