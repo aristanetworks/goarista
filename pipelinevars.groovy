@@ -3,6 +3,6 @@
 // Use of this source code is governed by the Apache License 2.0
 // that can be found in the COPYING file.
 
-goimage = "golang:1.24.2-bookworm"
+goimage = "golang:1.26.1-bookworm"
 
 return this
