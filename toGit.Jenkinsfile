@@ -12,7 +12,8 @@ pipeline {
                         [$class: 'CleanBeforeCheckout'],
                     ],
                     userRemoteConfigs: [[
-                        url: 'https://gerrit.corp.arista.io/goarista',
+                        url: 'https://gerrit.corp.arista.io/a/goarista',
+                        credentialsId: 'srv-jenkins-io',
                     ]],
                 ])
                 sshagent (credentials: ['jenkins-rsa-key']) {
