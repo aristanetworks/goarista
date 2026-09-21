@@ -10,12 +10,36 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+
+	"github.com/aristanetworks/goarista/logger"
 )
 
 const (
-	netNsRunDir = "/var/run/netns/"
-	selfNsFile  = "/proc/self/ns/net"
+	netNsRunDir      = "/var/run/netns/"
+	threadSelfNsFile = "/proc/thread-self/ns/net"
 )
+
+// Variables allow tests to verify that namespace capture happens only after
+// the goroutine is pinned to an OS thread.
+var (
+	lockOSThread   = runtime.LockOSThread
+	unlockOSThread = runtime.UnlockOSThread
+)
+
+// getCurrentThreadNs opens the calling thread's network namespace. It must be
+// called only after the goroutine is pinned so both paths resolve to that
+// stable OS thread.
+func getCurrentThreadNs() (handle, string, error) {
+	path := threadSelfNsFile
+	ns, err := getNs(path)
+	if os.IsNotExist(err) {
+		// /proc/thread-self was added in Linux 3.17. Older kernels can
+		// identify the same locked thread through its explicit TID.
+		path = currentThreadNsFallbackFile()
+		ns, err = getNs(path)
+	}
+	return ns, path, err
+}
 
 // Callback is a function that gets called in a given network namespace.
 // The user needs to check any errors from any calls inside this function.
@@ -58,37 +82,53 @@ func setNsByName(nsName string) error {
 // complex logic in a goroutine that is pinned to the current OS thread.
 // Also any goroutine started from the callback function may or may not
 // execute in the desired namespace.
-func Do(nsName string, cb Callback) error {
+func Do(nsName string, cb Callback) (retErr error) {
 	// If destNS is empty, the function is called in the caller's namespace
 	if nsName == "" {
 		return cb()
 	}
 
-	// Get the file descriptor to the current namespace
-	currNsFd, err := getNs(selfNsFile)
+	// Namespace membership is an OS-thread property. Pin first, then use
+	// thread-self so the saved namespace belongs to the exact thread that
+	// setNs below will move.
+	lockOSThread()
+	safeToUnlock := true
+	defer func() {
+		if safeToUnlock {
+			unlockOSThread()
+		}
+	}()
+
+	currNsFd, currNsPath, err := getCurrentThreadNs()
 	if os.IsNotExist(err) {
 		return fmt.Errorf("File descriptor to current namespace does not exist: %s", err)
 	} else if err != nil {
-		return fmt.Errorf("Failed to open %s: %s", selfNsFile, err)
+		return fmt.Errorf("Failed to open %s: %s", currNsPath, err)
 	}
 	defer currNsFd.close()
-
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
 
 	// Jump to the new network namespace
 	if err := setNsByName(nsName); err != nil {
 		return fmt.Errorf("Failed to set the namespace to %s: %s", nsName, err)
 	}
 
-	// Call the given function
-	cbErr := cb()
+	// The thread must not return to Go's scheduler between entering the target
+	// namespace and successfully restoring its original namespace.
+	safeToUnlock = false
+	defer func() {
+		if err := setNs(currNsFd); err != nil {
+			// Keep the goroutine pinned if restoration fails. This quarantines
+			// the OS thread from unrelated goroutines; Go terminates the thread
+			// when the calling goroutine exits while still locked to it.
+			retErr = fmt.Errorf(
+				"Failed to return to the original namespace: %w (callback returned %v)",
+				err, retErr)
+			logger.Std.Errorf("%v; current goroutine remains locked to its OS thread", retErr)
+			return
+		}
+		safeToUnlock = true
+	}()
 
-	// Come back to the original namespace
-	if err = setNs(currNsFd); err != nil {
-		return fmt.Errorf("Failed to return to the original namespace: %s (callback returned %v)",
-			err, cbErr)
-	}
-
-	return cbErr
+	// Restoration is deferred so it also runs while a callback panic unwinds.
+	return cb()
 }

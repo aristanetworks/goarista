@@ -7,6 +7,10 @@
 
 package netns
 
+var currentThreadNsFallbackFile = func() string {
+	return threadSelfNsFile
+}
+
 // stub: close closes the file descriptor mapped to a network namespace
 func (h nsHandle) close() error {
 	return nil

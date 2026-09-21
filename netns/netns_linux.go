@@ -4,7 +4,15 @@
 
 package netns
 
-import "golang.org/x/sys/unix"
+import (
+	"fmt"
+
+	"golang.org/x/sys/unix"
+)
+
+var currentThreadNsFallbackFile = func() string {
+	return fmt.Sprintf("/proc/self/task/%d/ns/net", unix.Gettid())
+}
 
 // close closes the file descriptor mapped to a network namespace
 func (h nsHandle) close() error {
