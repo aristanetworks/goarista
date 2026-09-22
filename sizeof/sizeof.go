@@ -404,7 +404,7 @@ func sizeofChan(v reflect.Value, m map[string]uintptr, ptrsTypes map[uintptr]map
 			// chan map[whatEver]whatEver. In this case elemType will
 			// be either of type *whatEver, chan whatEver or map[whatEver]whatEver
 			// but what we set eface.ptr = elem above, we make it point to a pointer
-			// to where the data is sotred in the buffer of our channel.
+			// to where the data is stored in the buffer of our channel.
 			// So the interface tmp would look like:
 			// chan *whatEver -> (type=*whatEver, ptr=**whatEver)
 			// chan chan whatEver -> (type= chan whatEver, ptr=*chan whatEver)

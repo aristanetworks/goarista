@@ -57,7 +57,7 @@ func (m *Map) String() string {
 	})
 	sort.Slice(kvs, func(i, j int) bool { return kvs[i].k < kvs[j].k })
 	var buf strings.Builder
-	buf.Grow(length + len("key.Map[]") + 2*len(kvs) /* room for seperators: ", :" */)
+	buf.Grow(length + len("key.Map[]") + 2*len(kvs) /* room for separators: ", :" */)
 	buf.WriteString("key.Map[")
 	for i, kv := range kvs {
 		if i != 0 {
