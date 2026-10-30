@@ -115,7 +115,7 @@ var index = map[string]interface{}{
 
 	// ID of the doc is:
 	// {orgid}-{dataset_id}-{md5 "{tsnano}-{codec_path}-{codec_key}"}
-	// Note: For DeleteAll the "-codec_key" is ommited
+	// Note: For DeleteAll the "-codec_key" is omitted
 	// id in elasticsearch can be 512 bytes max, so we use sha1 to hash.
 	// We theorically can have collision. It will unlikely happen.
 	// In case there is a collision, too bad, we'll have corrupted data.
